@@ -1,18 +1,14 @@
-# OS / IDE
-.DS_Store
-Thumbs.db
-.vscode/
+# Android
+.gradle/
 .idea/
+build/
+app/build/
+local.properties
+*.iml
+.DS_Store
 
-# Python
+# Python / Server
 __pycache__/
 *.pyc
-.venv/
 .env
-
-# Android / Gradle
-android/.gradle/
-android/**/build/
-android/**/.cxx/
-android/local.properties
-*.iml
+venv/
