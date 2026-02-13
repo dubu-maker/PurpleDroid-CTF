@@ -225,8 +225,12 @@ fun HintCard(context: Context, osName: String, command: String) {
     }
 }
 
+// MainActivity.kt 파일 하단 CodeLine 함수 수정
+
 @Composable
-fun CodeLine(code: String, isVulnerable: Boolean, onClick: () -> Unit) {
+fun CodeLine(code: String, isVulnerable: Boolean, onCorrect: () -> Unit) {
+    val context = LocalContext.current // 토스트를 띄우기 위해 Context 필요
+
     Text(
         text = code,
         color = Color.White,
@@ -234,7 +238,15 @@ fun CodeLine(code: String, isVulnerable: Boolean, onClick: () -> Unit) {
         fontSize = 14.sp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable {
+                if (isVulnerable) {
+                    // 정답! -> 전달받은 성공 로직 실행
+                    onCorrect()
+                } else {
+                    // 오답! -> 토스트 메시지 띄우기 ❌
+                    Toast.makeText(context, "🚫 이 코드는 안전하거나 필수적인 코드입니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
             .padding(vertical = 2.dp)
     )
 }

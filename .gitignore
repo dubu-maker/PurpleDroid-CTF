@@ -1,4 +1,4 @@
-# Android
+# Android Ignore Rules
 .gradle/
 .idea/
 build/
@@ -6,9 +6,5 @@ app/build/
 local.properties
 *.iml
 .DS_Store
-
-# Python / Server
-__pycache__/
-*.pyc
-.env
-venv/
+captures/
+.externalNativeBuild/
