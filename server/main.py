@@ -6,7 +6,7 @@ import secrets
 import time
 from typing import Any, Dict, Optional, List, Tuple
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -382,3 +382,15 @@ def reset_level(challenge_id: str, authorization: Optional[str] = Header(None)):
 
     session["progress"][challenge_id] = {"attackSolved": False, "defenseSolved": False}
     return ok({"message": "reset ok", "status": _status_for(session, challenge_id)})
+
+
+@app.post("/api/v1/challenges/level2_1/actions/track")
+def track_parcel(response: Response):
+    """2-1 배송 조회 전용 API (응답 헤더에 플래그 숨김)"""
+    from levels.level2_1 import LEVEL2_1_FLAG
+    
+    # 여기서 마법이 일어남: 헤더에 X-Courier-Ticket 추가
+    response.headers["X-Courier-Ticket"] = LEVEL2_1_FLAG
+    
+    # Body는 아주 평범하게 줘서 스포일러 방지
+    return {"ok": True, "message": "delivered"}
