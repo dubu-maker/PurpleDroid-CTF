@@ -2,10 +2,38 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Terminal } from "xterm";
 
 const TOKEN_KEY = "purpledroid_session_token";
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:8000/api/v1").replace(
-  /\/$/,
-  ""
-);
+const API_BASE_RAW =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  "http://localhost:8000";
+
+function normalizeApiBase(raw) {
+  const trimmed = (raw || "").replace(/\/$/, "");
+  if (!trimmed) {
+    return "http://localhost:8000/api/v1";
+  }
+  if (trimmed.endsWith("/api/v1")) {
+    return trimmed;
+  }
+  return `${trimmed}/api/v1`;
+}
+
+const API_BASE = normalizeApiBase(API_BASE_RAW);
+
+const FALLBACK_HINTS = {
+  level1: [
+    { platform: "windows", text: 'adb logcat -d | findstr "PurpleDroid_"' },
+    { platform: "unix", text: 'adb logcat -d | grep "PurpleDroid_"' },
+  ],
+  level1_2: [
+    { platform: "windows", text: 'adb logcat -d | findstr "AuthService"' },
+    { platform: "unix", text: 'adb logcat -d | grep "AuthService"' },
+  ],
+  level1_3: [
+    { platform: "windows", text: 'adb logcat -d | findstr "part["' },
+    { platform: "unix", text: 'adb logcat -d | grep "part["' },
+  ],
+};
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
   const headers = {};
@@ -47,13 +75,41 @@ function StatusPill({ value }) {
   return <span className={`pill pill-${value}`}>{value}</span>;
 }
 
-function XTermPanel({ disabled, prompt, onExec }) {
+function challengeShortLabel(challenge, index) {
+  const fromTitle = challenge?.title?.match(/\b\d-\d\b/)?.[0];
+  if (fromTitle) {
+    return fromTitle;
+  }
+  if (challenge?.id === "level1") {
+    return "1-1";
+  }
+  if (challenge?.id === "level1_2") {
+    return "1-2";
+  }
+  if (challenge?.id === "level1_3") {
+    return "1-3";
+  }
+  return `L${index + 1}`;
+}
+
+function resolveHints(detail, challengeId) {
+  const serverHints = detail?.attack?.hints;
+  if (Array.isArray(serverHints) && serverHints.length > 0) {
+    return serverHints;
+  }
+  return FALLBACK_HINTS[challengeId] || [];
+}
+
+function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange }) {
   const hostRef = useRef(null);
-  const termRef = useRef(null);
   const bufferRef = useRef("");
-  const busyRef = useRef(false);
   const historyRef = useRef([]);
   const historyIndexRef = useRef(-1);
+  const busyRef = useRef(false);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   useEffect(() => {
     const term = new Terminal({
@@ -66,11 +122,12 @@ function XTermPanel({ disabled, prompt, onExec }) {
       },
     });
 
-    termRef.current = term;
     term.open(hostRef.current);
     term.focus();
     term.writeln("PurpleDroid fake terminal");
-    term.writeln('Type: adb logcat -d | grep "PurpleDroid"');
+    if (introHint) {
+      term.writeln(`Type: ${introHint}`);
+    }
     term.write(prompt);
 
     const redrawPromptLine = () => {
@@ -103,7 +160,19 @@ function XTermPanel({ disabled, prompt, onExec }) {
       try {
         await navigator.clipboard.writeText(selected);
       } catch {
-        // Browser permission can block clipboard write; ignore silently.
+        // Ignore clipboard permission failures.
+      }
+    };
+
+    const pasteFromClipboard = async () => {
+      if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+        return;
+      }
+      try {
+        const text = await navigator.clipboard.readText();
+        appendInputText(sanitizePastedText(text));
+      } catch {
+        // Ignore clipboard permission failures.
       }
     };
 
@@ -111,13 +180,19 @@ function XTermPanel({ disabled, prompt, onExec }) {
       const key = domEvent.key.toLowerCase();
       const hasMod = domEvent.ctrlKey || domEvent.metaKey;
 
+      if (hasMod && key === "v") {
+        domEvent.preventDefault();
+        pasteFromClipboard();
+        return;
+      }
+
       if (hasMod && key === "c" && term.hasSelection()) {
         domEvent.preventDefault();
         copySelection();
       }
     });
 
-    const sub = term.onData((data) => {
+    const onDataSub = term.onData((data) => {
       if (data === "\x1b[A" || data === "\x1bOA") {
         const history = historyRef.current;
         if (!history.length) {
@@ -169,6 +244,7 @@ function XTermPanel({ disabled, prompt, onExec }) {
           term.write(prompt);
           return;
         }
+
         const history = historyRef.current;
         if (history[history.length - 1] !== command) {
           history.push(command);
@@ -176,23 +252,26 @@ function XTermPanel({ disabled, prompt, onExec }) {
             history.shift();
           }
         }
+
         if (command === "clear" || command === "cls") {
           term.clear();
           term.write(prompt);
           return;
         }
+
         if (busyRef.current) {
           term.writeln("busy...");
           term.write(prompt);
           return;
         }
+
         if (disabled) {
           term.writeln("Attack is locked for this challenge.");
           term.write(prompt);
           return;
         }
 
-        busyRef.current = true;
+        onBusyChange(true);
         onExec(command)
           .then((result) => {
             if (result.stdout) {
@@ -205,15 +284,20 @@ function XTermPanel({ disabled, prompt, onExec }) {
             if (result.truncated) {
               term.writeln("[output truncated]");
             }
+            term.scrollToBottom();
           })
           .catch((error) => {
-            term.writeln(`[error] ${error.message}`);
+            if (error.status === 429) {
+              term.writeln("[error] Too many requests. Slow down.");
+            } else {
+              term.writeln(`[error] ${error.message}`);
+            }
+            term.scrollToBottom();
           })
           .finally(() => {
-            busyRef.current = false;
+            onBusyChange(false);
             term.write(prompt);
           });
-
         return;
       }
 
@@ -226,18 +310,16 @@ function XTermPanel({ disabled, prompt, onExec }) {
       }
 
       if (data >= " " && data <= "~") {
-        bufferRef.current += data;
-        term.write(data);
+        appendInputText(data);
       }
     });
 
     return () => {
       keySub.dispose();
-      sub.dispose();
+      onDataSub.dispose();
       term.dispose();
-      termRef.current = null;
     };
-  }, [disabled, onExec, prompt]);
+  }, [disabled, introHint, onBusyChange, onExec, prompt]);
 
   return <div className="terminal-host" ref={hostRef} />;
 }
@@ -246,13 +328,24 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
   const [challenges, setChallenges] = useState([]);
   const [selectedId, setSelectedId] = useState("");
-  const [detail, setDetail] = useState(null);
+  const [detailsById, setDetailsById] = useState({});
   const [me, setMe] = useState(null);
-  const [flagInput, setFlagInput] = useState("");
-  const [patchByLevel, setPatchByLevel] = useState({});
   const [activeTab, setActiveTab] = useState("attack");
+  const [flagById, setFlagById] = useState({});
+  const [resultById, setResultById] = useState({});
+  const [terminalBusyById, setTerminalBusyById] = useState({});
   const [statusText, setStatusText] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const detailsRef = useRef({});
+
+  const updateDetailCache = useCallback((id, detail) => {
+    setDetailsById((prev) => {
+      const next = { ...prev, [id]: detail };
+      detailsRef.current = next;
+      return next;
+    });
+  }, []);
 
   const createSession = useCallback(async () => {
     const data = await apiRequest("/session", {
@@ -264,30 +357,39 @@ function App() {
     return data.sessionToken;
   }, []);
 
-  const loadChallenges = useCallback(
-    async (sessionToken) => {
-      const data = await apiRequest("/challenges", {
-        token: sessionToken,
-      });
-      setChallenges(data.challenges || []);
-      if (!selectedId && data.challenges?.length) {
-        setSelectedId(data.challenges[0].id);
+  const loadChallenges = useCallback(async (sessionToken) => {
+    const data = await apiRequest("/challenges", {
+      token: sessionToken,
+    });
+    const list = data.challenges || [];
+    setChallenges(list);
+    setSelectedId((prev) => {
+      if (prev && list.some((item) => item.id === prev)) {
+        return prev;
       }
-    },
-    [selectedId]
-  );
+      return list[0]?.id || "";
+    });
+    return list;
+  }, []);
 
   const loadMe = useCallback(async (sessionToken) => {
     const data = await apiRequest("/me", { token: sessionToken });
     setMe(data);
   }, []);
 
-  const loadDetail = useCallback(async (sessionToken, challengeId) => {
-    const data = await apiRequest(`/challenges/${challengeId}`, {
-      token: sessionToken,
-    });
-    setDetail(data);
-  }, []);
+  const loadDetail = useCallback(
+    async (sessionToken, challengeId, force = false) => {
+      if (!force && detailsRef.current[challengeId]) {
+        return detailsRef.current[challengeId];
+      }
+      const data = await apiRequest(`/challenges/${challengeId}`, {
+        token: sessionToken,
+      });
+      updateDetailCache(challengeId, data);
+      return data;
+    },
+    [updateDetailCache]
+  );
 
   const refreshAll = useCallback(
     async (sessionToken) => {
@@ -330,18 +432,42 @@ function App() {
       return;
     }
     setActiveTab("attack");
-    loadDetail(token, selectedId).catch((error) => setStatusText(error.message));
+    loadDetail(token, selectedId, true).catch((error) => setStatusText(error.message));
   }, [loadDetail, selectedId, token]);
 
-  const selectedPatchIds = useMemo(() => patchByLevel[selectedId] || [], [patchByLevel, selectedId]);
+  const detail = detailsById[selectedId] || null;
+  const currentFlag = flagById[selectedId] || "";
+  const currentResult = resultById[selectedId] || null;
+  const currentTerminalBusy = terminalBusyById[selectedId] || false;
+  const solvedFromServer = detail?.status?.attack === "solved";
+  const effectiveSolved = Boolean(currentResult?.correct || solvedFromServer);
+
+  const selectedPatchIds = useMemo(
+    () => (Array.isArray(resultById[`patch:${selectedId}`]) ? resultById[`patch:${selectedId}`] : []),
+    [resultById, selectedId]
+  );
+
+  const hints = useMemo(() => resolveHints(detail, selectedId), [detail, selectedId]);
+  const primaryHint = hints[0]?.text || 'adb logcat -d | grep "PurpleDroid_"';
+
+  const setCurrentFlag = useCallback(
+    (value) => {
+      if (!selectedId) {
+        return;
+      }
+      setFlagById((prev) => ({ ...prev, [selectedId]: value }));
+    },
+    [selectedId]
+  );
 
   const togglePatch = useCallback(
     (patchableId) => {
       if (!selectedId || !patchableId) {
         return;
       }
-      setPatchByLevel((prev) => {
-        const current = new Set(prev[selectedId] || []);
+      setResultById((prev) => {
+        const patchKey = `patch:${selectedId}`;
+        const current = new Set(Array.isArray(prev[patchKey]) ? prev[patchKey] : []);
         if (current.has(patchableId)) {
           current.delete(patchableId);
         } else {
@@ -349,9 +475,19 @@ function App() {
         }
         return {
           ...prev,
-          [selectedId]: Array.from(current),
+          [patchKey]: Array.from(current),
         };
       });
+    },
+    [selectedId]
+  );
+
+  const updateTerminalBusy = useCallback(
+    (isBusy) => {
+      if (!selectedId) {
+        return;
+      }
+      setTerminalBusyById((prev) => ({ ...prev, [selectedId]: isBusy }));
     },
     [selectedId]
   );
@@ -370,41 +506,113 @@ function App() {
     [selectedId, token]
   );
 
+  const resolveNextId = useCallback(
+    (challengeId, preferredNextId) => {
+      if (preferredNextId) {
+        return preferredNextId;
+      }
+      const detailNextId = detailsRef.current[challengeId]?.next?.id;
+      if (detailNextId) {
+        return detailNextId;
+      }
+      const idx = challenges.findIndex((item) => item.id === challengeId);
+      if (idx < 0 || idx + 1 >= challenges.length) {
+        return null;
+      }
+      return challenges[idx + 1].id;
+    },
+    [challenges]
+  );
+
   const handleSubmitFlag = useCallback(async () => {
-    if (!token || !selectedId || !flagInput.trim()) {
+    if (!token || !selectedId || !currentFlag.trim()) {
       return;
     }
-    const data = await apiRequest(`/challenges/${selectedId}/submit-flag`, {
-      method: "POST",
-      token,
-      body: { flag: flagInput.trim() },
-    });
-    setStatusText(data.message);
-    await Promise.all([refreshAll(token), loadDetail(token, selectedId)]);
-  }, [flagInput, loadDetail, refreshAll, selectedId, token]);
+
+    try {
+      const data = await apiRequest(`/challenges/${selectedId}/submit-flag`, {
+        method: "POST",
+        token,
+        body: { flag: currentFlag.trim() },
+      });
+
+      const refreshedDetail = await loadDetail(token, selectedId, true);
+      await Promise.all([loadChallenges(token), loadMe(token)]);
+
+      const nextId = resolveNextId(selectedId, data?.next?.id || refreshedDetail?.next?.id || null);
+      const isCorrect = Boolean(data?.correct);
+
+      setResultById((prev) => ({
+        ...prev,
+        [selectedId]: {
+          correct: isCorrect,
+          nextId,
+          message: isCorrect
+            ? nextId
+              ? "Correct! Level Cleared 🎉"
+              : "All Challenges Cleared! 🏆"
+            : "Wrong Flag ❌",
+        },
+      }));
+    } catch (error) {
+      setResultById((prev) => ({
+        ...prev,
+        [selectedId]: {
+          correct: false,
+          nextId: null,
+          message: error.message || "Wrong Flag ❌",
+        },
+      }));
+    }
+  }, [currentFlag, loadChallenges, loadDetail, loadMe, resolveNextId, selectedId, token]);
+
+  const handleNextLevel = useCallback(() => {
+    if (!selectedId) {
+      return;
+    }
+    const current = resultById[selectedId];
+    const nextId = resolveNextId(selectedId, current?.nextId || null);
+    if (nextId) {
+      setSelectedId(nextId);
+      setActiveTab("attack");
+      return;
+    }
+    setResultById((prev) => ({
+      ...prev,
+      [selectedId]: {
+        correct: true,
+        nextId: null,
+        message: "All Challenges Cleared! 🏆",
+      },
+    }));
+  }, [resolveNextId, resultById, selectedId]);
 
   const handleSubmitPatch = useCallback(async () => {
     if (!token || !selectedId) {
       return;
     }
+    const patchKey = `patch:${selectedId}`;
+    const patched = Array.isArray(resultById[patchKey]) ? resultById[patchKey] : [];
     const data = await apiRequest(`/challenges/${selectedId}/submit-patch`, {
       method: "POST",
       token,
-      body: { patched: selectedPatchIds },
+      body: { patched },
     });
     setStatusText(data.message);
-    await Promise.all([refreshAll(token), loadDetail(token, selectedId)]);
-  }, [loadDetail, refreshAll, selectedId, selectedPatchIds, token]);
+    await Promise.all([refreshAll(token), loadDetail(token, selectedId, true)]);
+  }, [loadDetail, refreshAll, resultById, selectedId, token]);
 
   const handleResetSession = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
     setChallenges([]);
     setSelectedId("");
-    setDetail(null);
+    setDetailsById({});
+    detailsRef.current = {};
     setMe(null);
-    setPatchByLevel({});
-    setFlagInput("");
+    setFlagById({});
+    setResultById({});
+    setTerminalBusyById({});
     setStatusText("Session reset. Creating a new one...");
     await createSession();
   }, [createSession]);
@@ -419,33 +627,18 @@ function App() {
           Reset Session
         </button>
 
-        <h2>Challenges</h2>
-        <div className="challenge-list">
-          {challenges.map((item) => (
-            <button
-              key={item.id}
-              className={`challenge-item ${selectedId === item.id ? "active" : ""}`}
-              onClick={() => setSelectedId(item.id)}
-            >
-              <strong>
-                L{item.level}. {item.title}
-              </strong>
-              <span className="challenge-meta">
-                A:<StatusPill value={item.status.attack} /> D:<StatusPill value={item.status.defense} />
-              </span>
-            </button>
-          ))}
-        </div>
+        <h2>Player</h2>
+        <p className="caption">
+          score: {me?.score ?? 0} | current: {me?.current || "-"} | completed:{" "}
+          {me?.completed?.join(", ") || "-"}
+        </p>
       </aside>
 
       <main className="content">
         <header className="topbar">
           <div>
-            <h2>Player</h2>
-            <p className="caption">
-              score: {me?.score ?? 0} | current: {me?.current || "-"} | completed:{" "}
-              {me?.completed?.join(", ") || "-"}
-            </p>
+            <h2>Level 1 Missions</h2>
+            <p className="caption">탭을 클릭해서 1-1 / 1-2 / 1-3 미션을 전환하세요.</p>
           </div>
           <button
             className="ghost-button"
@@ -456,13 +649,26 @@ function App() {
           </button>
         </header>
 
+        <section className="panel">
+          <div className="challenge-tabs">
+            {challenges.map((item, idx) => (
+              <button
+                key={item.id}
+                className={`challenge-tab ${selectedId === item.id ? "active" : ""}`}
+                onClick={() => setSelectedId(item.id)}
+              >
+                <span>{challengeShortLabel(item, idx)}</span>
+                <StatusPill value={item.status.attack} />
+              </button>
+            ))}
+          </div>
+        </section>
+
         {!detail && <section className="panel">Challenge loading...</section>}
 
         {detail && (
           <section className="panel">
-            <h3>
-              L{detail.level}. {detail.title}
-            </h3>
+            <h3>{detail.title}</h3>
             <p>{detail.summary}</p>
             <p className="caption">{detail.description}</p>
 
@@ -486,32 +692,61 @@ function App() {
               <div className="stack">
                 <h4>Hints</h4>
                 <ul>
-                  {(detail.attack?.hints || []).map((hint, idx) => (
+                  {hints.map((hint, idx) => (
                     <li key={`${hint.platform}-${idx}`}>
                       [{hint.platform}] <code>{hint.text}</code>
                     </li>
                   ))}
                 </ul>
 
-                <h4>Terminal</h4>
+                <h4>
+                  Terminal{" "}
+                  {currentTerminalBusy && <span className="busy-indicator">(running...)</span>}
+                </h4>
                 <XTermPanel
                   key={selectedId}
                   disabled={!detail.attack?.enabled}
                   prompt={detail.attack?.terminal?.prompt || "$ "}
+                  introHint={primaryHint}
                   onExec={handleExec}
+                  busy={currentTerminalBusy}
+                  onBusyChange={updateTerminalBusy}
                 />
 
                 <div className="flag-row">
                   <input
-                    value={flagInput}
-                    onChange={(e) => setFlagInput(e.target.value)}
+                    value={currentFlag}
+                    onChange={(e) => setCurrentFlag(e.target.value)}
                     placeholder={detail.attack?.flagFormat || "FLAG{...}"}
-                    disabled={!detail.attack?.enabled}
+                    disabled={!detail.attack?.enabled || currentTerminalBusy}
                   />
-                  <button onClick={handleSubmitFlag} disabled={!detail.attack?.enabled}>
-                    Submit Flag
-                  </button>
+
+                  {effectiveSolved ? (
+                    <button onClick={handleNextLevel}>
+                      {resolveNextId(selectedId, currentResult?.nextId || detail?.next?.id || null)
+                        ? "Next Level ->"
+                        : "Finish"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmitFlag}
+                      disabled={!detail.attack?.enabled || currentTerminalBusy}
+                    >
+                      Submit Flag
+                    </button>
+                  )}
                 </div>
+
+                {(currentResult?.message || solvedFromServer) && (
+                  <div
+                    className={`submit-result ${effectiveSolved ? "submit-result-ok" : "submit-result-fail"}`}
+                  >
+                    {currentResult?.message ||
+                      (resolveNextId(selectedId, detail?.next?.id || null)
+                        ? "Correct! Level Cleared 🎉"
+                        : "All Challenges Cleared! 🏆")}
+                  </div>
+                )}
               </div>
             )}
 

@@ -269,9 +269,9 @@ def terminal_exec(challenge_id: str, req: TerminalExecReq, authorization: Option
     if not mod:
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
-    st = _status_for(session, challenge_id)
-    if st["attack"] == "locked":
-        raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
+    # st = _status_for(session, challenge_id)
+    # if st["attack"] == "locked":
+    #     raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
 
     _rate_limit_terminal(session)
 
@@ -304,9 +304,9 @@ def submit_flag(challenge_id: str, req: SubmitFlagReq, authorization: Optional[s
     if not mod:
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
-    st = _status_for(session, challenge_id)
-    if st["attack"] == "locked":
-        raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
+    # st = _status_for(session, challenge_id)
+    # if st["attack"] == "locked":
+    #     raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
 
     correct = mod.check_flag(req.flag)
     if correct:

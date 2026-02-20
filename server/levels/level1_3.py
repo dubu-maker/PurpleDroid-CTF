@@ -1,34 +1,35 @@
-# server/levels/level1.py
 from __future__ import annotations
 
 import os
 import shlex
 from typing import List, Dict, Any, Tuple
 
+LEVEL1_3_FLAG = os.getenv("PURPLEDROID_LEVEL1_3_FLAG", "FLAG{DEV_ONLY_LEVEL1_3}")
 
-# ⚠️ 실제 운영 플래그는 환경변수로 주는 걸 추천 (레포에 박제 방지)
-LEVEL1_FLAG = os.getenv("PURPLEDROID_LEVEL1_FLAG", "FLAG{DEV_ONLY_CHANGE_ME}")
+def _split_flag(flag: str, n: int = 3) -> List[str]:
+    size = (len(flag) + n - 1) // n
+    return [flag[i * size : (i + 1) * size] for i in range(n)]
 
-# 로그캣 샘플 (웹 터미널에서 'adb logcat -d'로 출력되는 내용)
-# 힌트가 PurpleDroid grep/findstr라서, 해당 문자열이 라인에 포함되게 구성해둠
+PARTS = _split_flag(LEVEL1_3_FLAG, 3)
+
 LOGCAT_LINES = [
     "I/PurpleDroid: app started",
-    "D/Secret: PurpleDroid Key = " + LEVEL1_FLAG,
-    "I/OtherTag: something something",
-    "D/PurpleDroid: done",
+    "D/PurpleDroid: part[1]=" + PARTS[0],
+    "D/PurpleDroid: part[2]=" + PARTS[1],
+    "D/PurpleDroid: part[3]=" + PARTS[2],
+    "I/PurpleDroid: (hint) stitch the parts in order",
 ]
 
-
 STATIC: Dict[str, Any] = {
-    "id": "level1",
+    "id": "level1_3",
     "level": 1,
-    "title": "Logcat Leak",
-    "summary": "로그캣(Logcat)에 숨겨진 Flag를 찾으세요.",
-    "description": "미션: 로그캣(Logcat)에 숨겨진 Flag를 찾으세요.",
+    "title": "1-3 Split & Stitch (Parts)",
+    "summary": "플래그가 조각으로 흩어져 있다. 이어 붙여라.",
+    "description": "미션: 로그에 찍힌 part[1..]를 순서대로 이어붙여 FLAG를 완성해봐.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "PurpleDroid"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "PurpleDroid"'},
+            {"platform": "windows", "text": 'adb logcat -d | findstr "part["'},
+            {"platform": "unix", "text": 'adb logcat -d | grep "part["'},
         ],
         "terminal": {
             "enabled": True,
@@ -39,18 +40,27 @@ STATIC: Dict[str, Any] = {
         "flagFormat": "FLAG{...}",
     },
     "defense": {
-        "instruction": "정보 유출을 일으키는 라인을 찾아 터치하여 삭제/주석처리하세요.",
+        "enabled": False,
+        "instruction": "플래그 조각이라도 로그에 찍히면 유출이다. 전부 막아라.",
         "code": {
             "language": "kotlin",
             "patchMode": "toggleComment",
             "lines": [
-                {"no": 1, "text": "fun onCreate() {"},
-                {"no": 2, "text": "  super.onCreate()"},
-                {"no": 3, "text": "  initUI()"},
+                {"no": 1, "text": "fun debugParts(p1: String, p2: String, p3: String) {"},
+                {
+                    "no": 2,
+                    "text": '  Log.d("PurpleDroid", "part[1]=$p1")',
+                    "patchableId": "p1",
+                },
+                {
+                    "no": 3,
+                    "text": '  Log.d("PurpleDroid", "part[2]=$p2")',
+                    "patchableId": "p2",
+                },
                 {
                     "no": 4,
-                    "text": '  Log.d("Secret", "Key = FLAG{...}")',
-                    "patchableId": "p1",
+                    "text": '  Log.d("PurpleDroid", "part[3]=$p3")',
+                    "patchableId": "p3",
                 },
                 {"no": 5, "text": "}"},
             ],
@@ -58,22 +68,18 @@ STATIC: Dict[str, Any] = {
     },
 }
 
-PATCHABLE_IDS = {"p1"}
+PATCHABLE_IDS = {"p1", "p2", "p3"}
 
 
 def check_flag(flag: str) -> bool:
-    # 여기서 도커 judge로 바꿔도 API는 그대로 유지 가능
-    return flag.strip() == LEVEL1_FLAG
+    return flag.strip() == LEVEL1_3_FLAG
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
-    s = set(patched_ids)
-    # 최소 조건: p1 라인이 패치됨(삭제/주석처리)
-    return "p1" in s
+    return PATCHABLE_IDS.issubset(set(patched_ids))
 
 
 def _split_pipes(s: str) -> List[str]:
-    """따옴표 안의 | 는 무시하고 파이프 기준으로 쪼개기"""
     out: List[str] = []
     cur = ""
     quote = None
@@ -98,23 +104,14 @@ def _split_pipes(s: str) -> List[str]:
 
 
 def terminal_exec(command: str) -> Tuple[str, str, int]:
-    """
-    제한 커맨드 실행(시뮬레이션)
-    - 허용:
-      - adb logcat -d
-      - grep "X"
-      - findstr "X"
-    - 파이프 지원: adb logcat -d | grep "PurpleDroid"
-    """
     cmdline = command.strip()
     if not cmdline:
         return "", "", 0
 
-    # 작은 UX: help 명령 제공
     if cmdline in ("help", "?", "h"):
         return (
             "Allowed:\n"
-            '  adb logcat -d\n'
+            "  adb logcat -d\n"
             '  adb logcat -d | grep "TEXT"\n'
             '  adb logcat -d | findstr "TEXT"\n',
             "",
@@ -122,7 +119,6 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         )
 
     stages = _split_pipes(cmdline)
-
     data: str | None = None
 
     for stage in stages:
@@ -130,14 +126,12 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         if not parts:
             return "", "empty command", 2
 
-        # stage: adb logcat -d
         if len(parts) >= 2 and parts[0] == "adb" and parts[1] == "logcat":
             if "-d" not in parts:
                 return "", "only 'adb logcat -d' is allowed", 2
             data = "\n".join(LOGCAT_LINES) + "\n"
             continue
 
-        # stage: grep "X"
         if parts[0] == "grep":
             if data is None:
                 return "", "grep needs input (use pipe from logcat)", 2
@@ -145,10 +139,9 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                 return "", "grep needs a pattern", 2
             needle = parts[1]
             lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + ("\n" if lines else "")
+            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
             continue
 
-        # stage: findstr "X"
         if parts[0].lower() == "findstr":
             if data is None:
                 return "", "findstr needs input (use pipe from logcat)", 2
@@ -156,10 +149,9 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                 return "", "findstr needs a pattern", 2
             needle = parts[1]
             lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + ("\n" if lines else "")
+            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
             continue
 
-        # 그 외 전부 차단
         return "", f"command not allowed: {parts[0]}", 126
 
     return (data or ""), "", 0
