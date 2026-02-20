@@ -135,11 +135,14 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
     if not prog:
         return {"attack": "locked", "defense": "locked"}
 
-    if not _is_level_unlocked(session, level_id):
-        return {"attack": "locked", "defense": "locked"}
-
+    # Attack은 전체 레벨에서 항상 접근 가능하게 유지
     attack = "solved" if prog["attackSolved"] else "available"
-    defense = "solved" if prog["defenseSolved"] else ("available" if prog["attackSolved"] else "locked")
+    unlocked_for_defense = _is_level_unlocked(session, level_id)
+    defense = (
+        "solved"
+        if prog["defenseSolved"]
+        else ("available" if (prog["attackSolved"] and unlocked_for_defense) else "locked")
+    )
     return {"attack": attack, "defense": defense}
 
 

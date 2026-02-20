@@ -6,16 +6,18 @@ from typing import List, Dict, Any, Tuple
 
 LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{DEV_ONLY_LEVEL1_2}")
 
-# 노이즈 + 가짜 플래그(Decoy) + 진짜 플래그
+# 노이즈 + 여러 후보 세션 + 진짜 세션
 LOGCAT_LINES = [
     "I/System: Booting...",
     "I/PurpleDroid: app started",
     "D/Network: request => /login",
-    "W/Analytics: event=screen_view name=Main",
-    "D/Decoy: PurpleDroid Key = FLAG{DECOY_NOT_THIS_ONE}",
-    "I/OtherTag: blah blah",
-    "D/Secret: PurpleDroid Key = " + LEVEL1_2_FLAG,
-    "D/PurpleDroid: done",
+    "I/AuthService: Login success! session established",
+    "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026}",
+    "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD}",
+    "D/AuthService: session=" + LEVEL1_2_FLAG,
+    "I/AuthService: refresh queue drained",
+    "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT}",
+    "I/OtherTag: idle",
     "I/System: idle",
 ]
 
@@ -27,9 +29,9 @@ STATIC: Dict[str, Any] = {
     "description": "미션: 로그에 FLAG가 여러 개 섞여있어. 진짜 FLAG를 찾아 제출해봐.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "FLAG{"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "FLAG{"'},
-            {"platform": "all", "text": "힌트: 태그/문맥(Secret vs Decoy)을 잘 봐."},
+            {"platform": "windows", "text": 'adb logcat -d | findstr "AuthService"'},
+            {"platform": "unix", "text": 'adb logcat -d | grep "AuthService"'},
+            {"platform": "all", "text": "힌트: 같은 태그라도 문맥이 다른 session이 섞여 있어."},
         ],
         "terminal": {
             "enabled": True,

@@ -10,14 +10,20 @@ def _split_flag(flag: str, n: int = 3) -> List[str]:
     size = (len(flag) + n - 1) // n
     return [flag[i * size : (i + 1) * size] for i in range(n)]
 
-PARTS = _split_flag(LEVEL1_3_FLAG, 3)
+def _strip_flag_wrapper(flag: str) -> str:
+    if flag.startswith("FLAG{") and flag.endswith("}"):
+        return flag[5:-1]
+    return flag
+
+BODY = _strip_flag_wrapper(LEVEL1_3_FLAG)
+PARTS = _split_flag(BODY, 3)
 
 LOGCAT_LINES = [
     "I/PurpleDroid: app started",
-    "D/PurpleDroid: part[1]=" + PARTS[0],
-    "D/PurpleDroid: part[2]=" + PARTS[1],
-    "D/PurpleDroid: part[3]=" + PARTS[2],
-    "I/PurpleDroid: (hint) stitch the parts in order",
+    "D/CryptoProvider: part[2]=" + PARTS[1],
+    "D/CryptoProvider: part[3]=" + PARTS[2],
+    "D/CryptoProvider: part[1]=" + PARTS[0],
+    "I/CryptoProvider: chunk write complete",
 ]
 
 STATIC: Dict[str, Any] = {
@@ -28,8 +34,8 @@ STATIC: Dict[str, Any] = {
     "description": "미션: 로그에 찍힌 part[1..]를 순서대로 이어붙여 FLAG를 완성해봐.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "part["'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "part["'},
+            {"platform": "windows", "text": 'adb logcat -d | findstr "CryptoProvider"'},
+            {"platform": "unix", "text": 'adb logcat -d | grep "CryptoProvider"'},
         ],
         "terminal": {
             "enabled": True,
