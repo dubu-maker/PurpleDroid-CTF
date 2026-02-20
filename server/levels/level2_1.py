@@ -17,15 +17,28 @@ STATIC: Dict[str, Any] = {
     },
     "attack": {
         "hints": [
-            {"platform": "web", "text": "F12 개발자 도구 -> Network 탭에서 배송 조회 요청의 Response Headers를 확인해 봐."},
-            {"platform": "android", "text": "터미널에서 curl -v 명령어를 사용해 패킷을 까보자."},
-            {"platform": "all", "text": "Body가 아니라 Header를 봐야 해!"}
+            {
+                "platform": "web",
+                "text": "F12 Network에서 /actions/track 요청의 Response Headers를 확인해.",
+            },
+            {
+                "platform": "windows",
+                "text": 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track',
+            },
+            {
+                "platform": "unix",
+                "text": 'curl -v -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track',
+            },
+            {
+                "platform": "all",
+                "text": "헤더 키워드: X-Courier-Ticket (Body가 아니라 Header를 봐야 함)",
+            },
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
             "maxOutputBytes": 8000,
-            "help": "허용: curl -v http://localhost:8000/api/v1/challenges/level2_1/actions/track"
+            "help": "허용: curl -v -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track (또는 curl.exe ...)"
         },
         "flagFormat": "FLAG{...}",
     },
@@ -41,7 +54,15 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         return "", "", 0
 
     if cmdline in ("help", "?", "h"):
-        return "Allowed: curl -v http://localhost:8000/api/v1/challenges/level2_1/actions/track\n", "", 0
+        return (
+            "Allowed:\n"
+            "  curl -v -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track\n"
+            "  curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track\n"
+        ), "", 0
+
+    # Windows 스타일 curl.exe 허용
+    if cmdline.startswith("curl.exe "):
+        cmdline = "curl " + cmdline[len("curl.exe "):]
 
     # curl 명령어 시뮬레이션 (앱 유저를 위한 대체 루트)
     if cmdline.startswith("curl "):

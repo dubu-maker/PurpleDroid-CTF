@@ -394,3 +394,19 @@ def track_parcel(response: Response):
     
     # Body는 아주 평범하게 줘서 스포일러 방지
     return {"ok": True, "message": "delivered"}
+
+class OrderRequest(BaseModel):
+    orderId: str
+    tier: str
+
+@app.post("/api/v1/challenges/level2_2/actions/order")
+def order_parcel(req: OrderRequest, response: Response):
+    """2-2 요청 변조 전용 API"""
+    from levels.level2_2 import LEVEL2_2_FLAG
+    
+    # 해커가 tier를 vip로 보냈을 때만 플래그 제공!
+    if req.tier.lower() == "vip":
+        response.headers["X-VIP-Label"] = LEVEL2_2_FLAG
+        return {"ok": True, "message": "VIP package confirmed"}
+        
+    return {"ok": True, "message": "Standard package confirmed"}

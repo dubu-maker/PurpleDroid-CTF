@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Terminal } from "xterm";
+import { LESSON_NOTES } from "./content/lessonNotes";
 
 const TOKEN_KEY = "purpledroid_session_token";
 const API_BASE_RAW =
@@ -103,6 +104,9 @@ function resolveHints(detail, challengeId) {
 function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange }) {
   const hostRef = useRef(null);
   const bufferRef = useRef("");
+  const cursorRef = useRef(0);
+  const renderedBufferRef = useRef("");
+  const renderedCursorRef = useRef(0);
   const historyRef = useRef([]);
   const historyIndexRef = useRef(-1);
   const busyRef = useRef(false);
@@ -129,17 +133,79 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
       term.writeln(`Type: ${introHint}`);
     }
     term.write(prompt);
+    cursorRef.current = 0;
+    renderedBufferRef.current = "";
+    renderedCursorRef.current = 0;
+
+    const estimateRows = (text) => {
+      const cols = Math.max(term.cols || 80, 1);
+      return Math.max(1, Math.ceil(text.length / cols));
+    };
+
+    const rowFromCursor = (cursorInBuffer) => {
+      const cols = Math.max(term.cols || 80, 1);
+      const absolutePos = prompt.length + Math.max(0, cursorInBuffer);
+      if (absolutePos <= 0) {
+        return 0;
+      }
+      return Math.floor((absolutePos - 1) / cols);
+    };
+
+    const resetPromptState = () => {
+      cursorRef.current = 0;
+      renderedBufferRef.current = "";
+      renderedCursorRef.current = 0;
+    };
+
+    const clearInputBlock = () => {
+      const prevBuffer = renderedBufferRef.current;
+      const prevCursor = renderedCursorRef.current;
+      const rows = estimateRows(`${prompt}${prevBuffer}`);
+      const cursorRow = rowFromCursor(prevCursor);
+      term.write("\r");
+      if (cursorRow > 0) {
+        term.write(`\x1b[${cursorRow}A`);
+      }
+      for (let i = 0; i < rows; i += 1) {
+        term.write("\x1b[2K");
+        if (i < rows - 1) {
+          term.write("\x1b[B");
+        }
+      }
+      if (rows > 1) {
+        term.write(`\x1b[${rows - 1}A`);
+      }
+      term.write("\r");
+    };
 
     const redrawPromptLine = () => {
-      term.write(`\r\x1b[2K${prompt}${bufferRef.current}`);
+      const buf = bufferRef.current;
+      const cursor = Math.max(0, Math.min(cursorRef.current, buf.length));
+      cursorRef.current = cursor;
+      clearInputBlock();
+      const full = `${prompt}${buf}`;
+      term.write(full);
+      const moveLeft = buf.length - cursor;
+      if (moveLeft > 0) {
+        term.write(`\x1b[${moveLeft}D`);
+      }
+      renderedBufferRef.current = buf;
+      renderedCursorRef.current = cursor;
     };
 
     const appendInputText = (text) => {
       if (!text) {
         return;
       }
-      bufferRef.current += text;
-      term.write(text);
+      const clean = sanitizePastedText(text);
+      if (!clean) {
+        return;
+      }
+      const cursor = cursorRef.current;
+      const buf = bufferRef.current;
+      bufferRef.current = `${buf.slice(0, cursor)}${clean}${buf.slice(cursor)}`;
+      cursorRef.current = cursor + clean.length;
+      redrawPromptLine();
     };
 
     const sanitizePastedText = (text) => {
@@ -204,6 +270,7 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
           historyIndexRef.current = Math.max(0, historyIndexRef.current - 1);
         }
         bufferRef.current = history[historyIndexRef.current] || "";
+        cursorRef.current = bufferRef.current.length;
         redrawPromptLine();
         return;
       }
@@ -220,17 +287,77 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
           historyIndexRef.current += 1;
           bufferRef.current = history[historyIndexRef.current] || "";
         }
+        cursorRef.current = bufferRef.current.length;
         redrawPromptLine();
         return;
       }
 
-      if (data === "\u0003" && term.hasSelection()) {
-        copySelection();
+      if (data === "\x1b[D" || data === "\x1bOD") {
+        if (cursorRef.current > 0) {
+          cursorRef.current -= 1;
+          renderedCursorRef.current = cursorRef.current;
+          term.write("\x1b[D");
+        }
+        return;
+      }
+
+      if (data === "\x1b[C" || data === "\x1bOC") {
+        if (cursorRef.current < bufferRef.current.length) {
+          cursorRef.current += 1;
+          renderedCursorRef.current = cursorRef.current;
+          term.write("\x1b[C");
+        }
+        return;
+      }
+
+      if (data === "\x1b[H" || data === "\x1bOH" || data === "\u0001") {
+        if (cursorRef.current > 0) {
+          const moveLeft = cursorRef.current;
+          cursorRef.current = 0;
+          renderedCursorRef.current = 0;
+          term.write(`\x1b[${moveLeft}D`);
+        }
+        return;
+      }
+
+      if (data === "\x1b[F" || data === "\x1bOF" || data === "\u0005") {
+        const moveRight = bufferRef.current.length - cursorRef.current;
+        if (moveRight > 0) {
+          cursorRef.current = bufferRef.current.length;
+          renderedCursorRef.current = cursorRef.current;
+          term.write(`\x1b[${moveRight}C`);
+        }
+        return;
+      }
+
+      if (data === "\u0003") {
+        if (term.hasSelection()) {
+          copySelection();
+          return;
+        }
+        clearInputBlock();
+        term.write("^C\r\n");
+        bufferRef.current = "";
+        historyIndexRef.current = -1;
+        term.write(prompt);
+        resetPromptState();
+        return;
+      }
+
+      // Ctrl+U: 현재 입력 라인 전체 삭제
+      if (data === "\u0015") {
+        bufferRef.current = "";
+        cursorRef.current = 0;
+        redrawPromptLine();
+        return;
+      }
+
+      if (data.startsWith("\x1b")) {
         return;
       }
 
       if (data.length > 1) {
-        appendInputText(sanitizePastedText(data));
+        appendInputText(data);
         return;
       }
 
@@ -238,10 +365,12 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
         const command = bufferRef.current.trim();
         term.write("\r\n");
         bufferRef.current = "";
+        resetPromptState();
         historyIndexRef.current = -1;
 
         if (!command) {
           term.write(prompt);
+          resetPromptState();
           return;
         }
 
@@ -256,18 +385,21 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
         if (command === "clear" || command === "cls") {
           term.clear();
           term.write(prompt);
+          resetPromptState();
           return;
         }
 
         if (busyRef.current) {
           term.writeln("busy...");
           term.write(prompt);
+          resetPromptState();
           return;
         }
 
         if (disabled) {
           term.writeln("Attack is locked for this challenge.");
           term.write(prompt);
+          resetPromptState();
           return;
         }
 
@@ -297,14 +429,28 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
           .finally(() => {
             onBusyChange(false);
             term.write(prompt);
+            resetPromptState();
           });
         return;
       }
 
+      if (data === "\x1b[3~") {
+        const cursor = cursorRef.current;
+        const buf = bufferRef.current;
+        if (cursor < buf.length) {
+          bufferRef.current = `${buf.slice(0, cursor)}${buf.slice(cursor + 1)}`;
+          redrawPromptLine();
+        }
+        return;
+      }
+
       if (data === "\u007F") {
-        if (bufferRef.current.length > 0) {
-          bufferRef.current = bufferRef.current.slice(0, -1);
-          term.write("\b \b");
+        const cursor = cursorRef.current;
+        const buf = bufferRef.current;
+        if (cursor > 0) {
+          bufferRef.current = `${buf.slice(0, cursor - 1)}${buf.slice(cursor)}`;
+          cursorRef.current = cursor - 1;
+          redrawPromptLine();
         }
         return;
       }
@@ -334,6 +480,10 @@ function App() {
   const [flagById, setFlagById] = useState({});
   const [resultById, setResultById] = useState({});
   const [terminalBusyById, setTerminalBusyById] = useState({});
+  const [actionMessageById, setActionMessageById] = useState({});
+  const [hintOpenById, setHintOpenById] = useState({});
+  const [deepHintOpenById, setDeepHintOpenById] = useState({});
+  const [lessonOpenById, setLessonOpenById] = useState({});
   const [statusText, setStatusText] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -439,6 +589,11 @@ function App() {
   const currentFlag = flagById[selectedId] || "";
   const currentResult = resultById[selectedId] || null;
   const currentTerminalBusy = terminalBusyById[selectedId] || false;
+  const currentActionMessage = actionMessageById[selectedId] || "";
+  const hintOpen = Boolean(hintOpenById[selectedId]);
+  const deepHintOpen = Boolean(deepHintOpenById[selectedId]);
+  const lessonNote = LESSON_NOTES[selectedId] || null;
+  const lessonOpen = Boolean(lessonOpenById[selectedId]);
   const solvedFromServer = detail?.status?.attack === "solved";
   const effectiveSolved = Boolean(currentResult?.correct || solvedFromServer);
 
@@ -448,7 +603,34 @@ function App() {
   );
 
   const hints = useMemo(() => resolveHints(detail, selectedId), [detail, selectedId]);
-  const primaryHint = hints[0]?.text || 'adb logcat -d | grep "PurpleDroid_"';
+  const displayHints = useMemo(() => {
+    if (selectedId !== "level2_1") {
+      return hints;
+    }
+    return hints.filter((hint) => hint.platform !== "android");
+  }, [hints, selectedId]);
+  const progressiveHints = useMemo(() => {
+    if (selectedId !== "level2_2") {
+      return { main: displayHints, extra: [] };
+    }
+    return {
+      main: displayHints.filter((hint) => hint.platform !== "all"),
+      extra: displayHints.filter((hint) => hint.platform === "all"),
+    };
+  }, [displayHints, selectedId]);
+  const primaryHint = useMemo(() => {
+    const commandHint = hints.find(
+      (hint) => typeof hint.text === "string" && (hint.text.includes("curl") || hint.text.includes("adb"))
+    );
+    return commandHint?.text || hints[0]?.text || 'adb logcat -d | grep "PurpleDroid_"';
+  }, [hints]);
+
+  useEffect(() => {
+    if (!selectedId || !lessonNote || !effectiveSolved) {
+      return;
+    }
+    setLessonOpenById((prev) => (prev[selectedId] ? prev : { ...prev, [selectedId]: true }));
+  }, [effectiveSolved, lessonNote, selectedId]);
 
   const setCurrentFlag = useCallback(
     (value) => {
@@ -602,6 +784,43 @@ function App() {
     await Promise.all([refreshAll(token), loadDetail(token, selectedId, true)]);
   }, [loadDetail, refreshAll, resultById, selectedId, token]);
 
+  const handleTrackRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level2_1/actions/track`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback message
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "요청 전송 완료. DevTools Network에서 /actions/track 요청을 클릭하고 Response Headers에서 X-Courier-Ticket을 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
   const handleResetSession = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
@@ -613,9 +832,34 @@ function App() {
     setFlagById({});
     setResultById({});
     setTerminalBusyById({});
+    setActionMessageById({});
+    setHintOpenById({});
+    setDeepHintOpenById({});
+    setLessonOpenById({});
     setStatusText("Session reset. Creating a new one...");
     await createSession();
   }, [createSession]);
+
+  const toggleLesson = useCallback(() => {
+    if (!selectedId || !lessonNote) {
+      return;
+    }
+    setLessonOpenById((prev) => ({ ...prev, [selectedId]: !prev[selectedId] }));
+  }, [lessonNote, selectedId]);
+
+  const toggleHints = useCallback(() => {
+    if (!selectedId) {
+      return;
+    }
+    setHintOpenById((prev) => ({ ...prev, [selectedId]: !prev[selectedId] }));
+  }, [selectedId]);
+
+  const toggleDeepHints = useCallback(() => {
+    if (!selectedId) {
+      return;
+    }
+    setDeepHintOpenById((prev) => ({ ...prev, [selectedId]: !prev[selectedId] }));
+  }, [selectedId]);
 
   return (
     <div className="app">
@@ -690,19 +934,64 @@ function App() {
 
             {activeTab === "attack" && (
               <div className="stack">
-                <h4>Hints</h4>
-                <ul>
-                  {hints.map((hint, idx) => (
-                    <li key={`${hint.platform}-${idx}`}>
-                      [{hint.platform}] <code>{hint.text}</code>
-                    </li>
-                  ))}
-                </ul>
+                {selectedId === "level2_1" && (
+                  <p className="caption">
+                    웹에서는 <code>[배송 조회 요청 보내기]</code> 버튼을 눌러 요청을 만든 뒤 확인해.
+                  </p>
+                )}
+                <div className="hint-row">
+                  <h4>Hints</h4>
+                  <button className="ghost-button hint-toggle" onClick={toggleHints}>
+                    {hintOpen ? "힌트 숨기기" : "힌트 보기"}
+                  </button>
+                </div>
+                {hintOpen && (
+                  <>
+                    <ul>
+                      {progressiveHints.main.map((hint, idx) => (
+                        <li key={`${hint.platform}-${idx}`}>
+                          [{hint.platform}] <code>{hint.text}</code>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {progressiveHints.extra.length > 0 && (
+                      <div className="extra-hints">
+                        <button className="ghost-button hint-toggle" onClick={toggleDeepHints}>
+                          {deepHintOpen ? "추가 힌트 숨기기" : "추가 힌트 보기"}
+                        </button>
+
+                        {deepHintOpen && (
+                          <ul>
+                            {progressiveHints.extra.map((hint, idx) => (
+                              <li key={`extra-${hint.platform}-${idx}`}>
+                                [{hint.platform}] <code>{hint.text}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <h4>
                   Terminal{" "}
                   {currentTerminalBusy && <span className="busy-indicator">(running...)</span>}
                 </h4>
+
+                {selectedId === "level2_1" && (
+                  <div className="action-row">
+                    <button onClick={handleTrackRequest} disabled={currentTerminalBusy}>
+                      배송 조회 요청 보내기
+                    </button>
+                    <p className="caption">
+                      버튼을 누른 직후 DevTools Network에서 <code>/actions/track</code> 요청을 확인해.
+                    </p>
+                    {currentActionMessage && <div className="action-note">{currentActionMessage}</div>}
+                  </div>
+                )}
+
                 <XTermPanel
                   key={selectedId}
                   disabled={!detail.attack?.enabled}
@@ -745,6 +1034,44 @@ function App() {
                       (resolveNextId(selectedId, detail?.next?.id || null)
                         ? "Correct! Level Cleared 🎉"
                         : "All Challenges Cleared! 🏆")}
+                  </div>
+                )}
+
+                {lessonNote && (
+                  <div className="lesson-note-wrap">
+                    <button className="ghost-button lesson-toggle" onClick={toggleLesson}>
+                      {lessonOpen ? "강의 노트 숨기기" : "강의 노트 보기"}
+                    </button>
+
+                    {lessonOpen && (
+                      <section className="lesson-panel">
+                        <h4>{lessonNote.title}</h4>
+                        <p className="lesson-summary">{lessonNote.shortSummary}</p>
+
+                        {lessonNote.markdown && (
+                          <div className="lesson-block">
+                            <strong>상세 노트</strong>
+                            <pre className="lesson-markdown">{lessonNote.markdown.trim()}</pre>
+                          </div>
+                        )}
+
+                        {lessonNote.selfCheck?.length > 0 && (
+                          <div className="lesson-block">
+                            <strong>셀프 체크</strong>
+                            {lessonNote.selfCheck.map((item) => (
+                              <div key={item.q} className="lesson-qa">
+                                <p>
+                                  <b>Q.</b> {item.q}
+                                </p>
+                                <p>
+                                  <b>A.</b> {item.a}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
                   </div>
                 )}
               </div>
