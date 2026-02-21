@@ -2,14 +2,22 @@ from . import level1_1
 from . import level1_2
 from . import level1_3
 from . import level2_1
-from . import level2_2  # 👈 추가
+from . import level2_2
+from . import level2_3
+from . import level2_4
+from . import level2_5
+from . import level3_1
 
 LEVELS = {
     level1_1.STATIC["id"]: level1_1,
     level1_2.STATIC["id"]: level1_2,
     level1_3.STATIC["id"]: level1_3,
     level2_1.STATIC["id"]: level2_1,
-    level2_2.STATIC["id"]: level2_2,  # 👈 추가
+    level2_2.STATIC["id"]: level2_2,
+    level2_3.STATIC["id"]: level2_3,
+    level2_4.STATIC["id"]: level2_4,
+    level2_5.STATIC["id"]: level2_5,
+    level3_1.STATIC["id"]: level3_1,
 }
 
 LEVEL_ORDER = [
@@ -17,5 +25,9 @@ LEVEL_ORDER = [
     level1_2.STATIC["id"],
     level1_3.STATIC["id"],
     level2_1.STATIC["id"],
-    level2_2.STATIC["id"],  # 👈 추가
+    level2_2.STATIC["id"],
+    level2_3.STATIC["id"],
+    level2_4.STATIC["id"],
+    level2_5.STATIC["id"],
+    level3_1.STATIC["id"],
 ]

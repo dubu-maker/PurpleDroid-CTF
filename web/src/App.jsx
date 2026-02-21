@@ -34,6 +34,57 @@ const FALLBACK_HINTS = {
     { platform: "windows", text: 'adb logcat -d | findstr "part["' },
     { platform: "unix", text: 'adb logcat -d | grep "part["' },
   ],
+  level2_3: [
+    {
+      platform: "windows",
+      text: 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch --data "{\\"parcel_id\\":\\"PD-2026-0001\\"}"',
+    },
+    {
+      platform: "unix",
+      text: 'curl -v -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch --data \'{"parcel_id":"PD-2026-0001"}\'',
+    },
+    { platform: "all", text: "dispatch_token의 점(.) 2개를 확인하고 payload를 디코딩해." },
+  ],
+  level2_4: [
+    { platform: "all", text: "2-3에서 얻은 dispatch_token을 위조해서 다시 보내봐." },
+    {
+      platform: "windows",
+      text: 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+    },
+    {
+      platform: "unix",
+      text: 'curl -v -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+    },
+    { platform: "all", text: "서버가 signature를 검증하지 않으면 tier/role 변조가 통과할 수 있어." },
+  ],
+  level2_5: [
+    { platform: "all", text: "이 보스는 2-1~2-4 Attack 해결 후 열린다." },
+    { platform: "all", text: "버튼 클릭으로는 실패한다. Network 요청을 복제해 직접 재조합해봐." },
+    { platform: "all", text: "dispatch_token을 decode해서 warehouse_path를 확인하고 open 요청을 완성해." },
+  ],
+  level3_1: [
+    { platform: "web", text: "F12 Network에서 조회 요청 URL 끝의 parcel_id를 확인해." },
+    {
+      platform: "windows",
+      text: 'curl.exe -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/<parcel_id> -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "unix",
+      text: "curl -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/<parcel_id> -H 'Authorization: Bearer <token>'",
+    },
+  ],
+};
+
+const TERMINAL_INTRO_HINTS = {
+  level1: "로그를 직접 조회해서 FLAG 패턴을 찾아봐.",
+  level1_2: "로그 안의 여러 후보 중 문맥상 진짜 값을 골라봐.",
+  level1_3: "조각난 문자열을 찾아 순서를 맞춰 이어붙여봐.",
+  level2_1: "curl로 요청을 보내고 응답 헤더를 확인해.",
+  level2_2: "curl POST의 JSON body 값을 바꿔서 다시 보내봐.",
+  level2_3: "응답의 dispatch_token을 디코딩해서 payload를 확인해.",
+  level2_4: "위조한 토큰을 Authorization 헤더로 보내 Express Lane 응답을 확인해.",
+  level2_5: "클릭은 실패한다. 토큰/헤더/바디를 직접 조합해 봉인 창고를 열어봐.",
+  level3_1: "내 택배 조회 요청을 관찰한 뒤 parcel_id를 바꿔봐.",
 };
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
@@ -91,6 +142,16 @@ function challengeShortLabel(challenge, index) {
     return "1-3";
   }
   return `L${index + 1}`;
+}
+
+function deriveLevelNumber(challenge, index) {
+  const level = Number(challenge?.level);
+  if (Number.isFinite(level) && level > 0) {
+    return level;
+  }
+  const label = challengeShortLabel(challenge, index);
+  const matched = label.match(/^(\d+)/);
+  return matched ? Number(matched[1]) : 1;
 }
 
 function resolveHints(detail, challengeId) {
@@ -596,6 +657,40 @@ function App() {
   const lessonOpen = Boolean(lessonOpenById[selectedId]);
   const solvedFromServer = detail?.status?.attack === "solved";
   const effectiveSolved = Boolean(currentResult?.correct || solvedFromServer);
+  const selectedChallenge = useMemo(
+    () => challenges.find((item) => item.id === selectedId) || null,
+    [challenges, selectedId]
+  );
+  const selectedLevel = useMemo(() => {
+    const detailLevel = Number(detail?.level);
+    if (Number.isFinite(detailLevel) && detailLevel > 0) {
+      return detailLevel;
+    }
+    if (!selectedChallenge) {
+      return 1;
+    }
+    const idx = challenges.findIndex((item) => item.id === selectedChallenge.id);
+    return deriveLevelNumber(selectedChallenge, idx >= 0 ? idx : 0);
+  }, [challenges, detail?.level, selectedChallenge]);
+  const challengeGroups = useMemo(() => {
+    const grouped = new Map();
+    challenges.forEach((item, idx) => {
+      const level = deriveLevelNumber(item, idx);
+      if (!grouped.has(level)) {
+        grouped.set(level, []);
+      }
+      grouped.get(level).push({ item, idx });
+    });
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([level, entries]) => ({ level, entries }));
+  }, [challenges]);
+  const showGuidedActions =
+    selectedId === "level2_1" ||
+    selectedId === "level2_2" ||
+    selectedId === "level2_3" ||
+    selectedId === "level2_5" ||
+    selectedId === "level3_1";
 
   const selectedPatchIds = useMemo(
     () => (Array.isArray(resultById[`patch:${selectedId}`]) ? resultById[`patch:${selectedId}`] : []),
@@ -618,12 +713,10 @@ function App() {
       extra: displayHints.filter((hint) => hint.platform === "all"),
     };
   }, [displayHints, selectedId]);
-  const primaryHint = useMemo(() => {
-    const commandHint = hints.find(
-      (hint) => typeof hint.text === "string" && (hint.text.includes("curl") || hint.text.includes("adb"))
-    );
-    return commandHint?.text || hints[0]?.text || 'adb logcat -d | grep "PurpleDroid_"';
-  }, [hints]);
+  const primaryHint = useMemo(
+    () => TERMINAL_INTRO_HINTS[selectedId] || "터미널에 명령을 입력해 단서를 수집해.",
+    [selectedId]
+  );
 
   useEffect(() => {
     if (!selectedId || !lessonNote || !effectiveSolved) {
@@ -704,6 +797,10 @@ function App() {
       return challenges[idx + 1].id;
     },
     [challenges]
+  );
+  const nextChallengeId = useMemo(
+    () => resolveNextId(selectedId, currentResult?.nextId || detail?.next?.id || null),
+    [currentResult?.nextId, detail?.next?.id, resolveNextId, selectedId]
   );
 
   const handleSubmitFlag = useCallback(async () => {
@@ -821,6 +918,191 @@ function App() {
     }
   }, [selectedId, token]);
 
+  const handleOrderRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level2_2/actions/order`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId: "A102", tier: "standard" }),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback message
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "요청 전송 완료. DevTools Network에서 /actions/order 요청의 Request Payload를 열고 tier 값을 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleDispatchRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level2_3/actions/dispatch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ parcel_id: "PD-2026-0001" }),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback message
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "요청 전송 완료. DevTools Network에서 /actions/dispatch 응답 body의 dispatch_token을 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleBossGateAttempt = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const dispatchResponse = await fetch(`${API_BASE}/challenges/level2_5/actions/dispatch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ parcel_id: "PD-2026-0001" }),
+        cache: "no-store",
+      });
+
+      if (!dispatchResponse.ok) {
+        const raw = await dispatchResponse.text();
+        let message = `요청 실패 (${dispatchResponse.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+
+      const dispatchData = await dispatchResponse.json();
+      const dispatchToken = dispatchData?.dispatch_token;
+      if (!dispatchToken) {
+        setActionMessageById((prev) => ({
+          ...prev,
+          [selectedId]: "dispatch_token을 받지 못했어. 서버 응답을 확인해줘.",
+        }));
+        return;
+      }
+
+      const openResponse = await fetch(`${API_BASE}/challenges/level2_5/actions/open`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${dispatchToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ warehouse_path: "sealed-warehouse-7f3", tier: "standard" }),
+        cache: "no-store",
+      });
+
+      const openRaw = await openResponse.text();
+      let openPayload = null;
+      try {
+        openPayload = openRaw ? JSON.parse(openRaw) : null;
+      } catch {
+        openPayload = null;
+      }
+
+      const reason = openPayload?.message || `blocked (${openResponse.status})`;
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          `클릭 요청 차단됨: ${reason}. Network에서 dispatch_token을 꺼내고, 토큰/헤더/바디를 직접 조합해서 다시 호출해.`,
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleMyParcelRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/PD-1004`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "내 택배 조회 완료. Network 요청 URL 끝 parcel_id를 다른 값으로 바꿔 재요청해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
   const handleResetSession = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
@@ -881,8 +1163,8 @@ function App() {
       <main className="content">
         <header className="topbar">
           <div>
-            <h2>Level 1 Missions</h2>
-            <p className="caption">탭을 클릭해서 1-1 / 1-2 / 1-3 미션을 전환하세요.</p>
+            <h2>Level {selectedLevel} Missions</h2>
+            <p className="caption">탭을 클릭해서 Level {selectedLevel} 미션을 전환하세요.</p>
           </div>
           <button
             className="ghost-button"
@@ -894,16 +1176,28 @@ function App() {
         </header>
 
         <section className="panel">
-          <div className="challenge-tabs">
-            {challenges.map((item, idx) => (
-              <button
-                key={item.id}
-                className={`challenge-tab ${selectedId === item.id ? "active" : ""}`}
-                onClick={() => setSelectedId(item.id)}
-              >
-                <span>{challengeShortLabel(item, idx)}</span>
-                <StatusPill value={item.status.attack} />
-              </button>
+          <div className="level-group-list">
+            {challengeGroups.map((group) => (
+              <div className="level-group" key={group.level}>
+                <div className="level-group-header">
+                  <h4 className={`level-module-title ${selectedLevel === group.level ? "active" : ""}`}>
+                    {`// LEVEL ${group.level} MODULES`}
+                  </h4>
+                  <div className="level-divider" />
+                </div>
+                <div className="challenge-tabs">
+                  {group.entries.map(({ item, idx }) => (
+                    <button
+                      key={item.id}
+                      className={`challenge-tab ${selectedId === item.id ? "active" : ""}`}
+                      onClick={() => setSelectedId(item.id)}
+                    >
+                      <span>{challengeShortLabel(item, idx)}</span>
+                      <StatusPill value={item.status.attack} />
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -934,10 +1228,63 @@ function App() {
 
             {activeTab === "attack" && (
               <div className="stack">
-                {selectedId === "level2_1" && (
-                  <p className="caption">
-                    웹에서는 <code>[배송 조회 요청 보내기]</code> 버튼을 눌러 요청을 만든 뒤 확인해.
-                  </p>
+                {showGuidedActions && (
+                  <div className="action-row">
+                    <button
+                      onClick={
+                        selectedId === "level2_1"
+                          ? handleTrackRequest
+                          : selectedId === "level2_2"
+                            ? handleOrderRequest
+                            : selectedId === "level2_3"
+                              ? handleDispatchRequest
+                              : selectedId === "level2_5"
+                                ? handleBossGateAttempt
+                                : handleMyParcelRequest
+                      }
+                      disabled={currentTerminalBusy || !detail.attack?.enabled}
+                    >
+                      {selectedId === "level2_1"
+                        ? "배송 조회 요청 보내기"
+                        : selectedId === "level2_2"
+                          ? "일반 배송 요청 보내기"
+                          : selectedId === "level2_3"
+                            ? "발송 토큰 요청 보내기"
+                            : selectedId === "level2_5"
+                              ? "봉인 창고 열기 시도"
+                              : "내 택배 조회"}
+                    </button>
+                    <p className="caption">
+                      {selectedId === "level2_1" ? (
+                        <>
+                          버튼을 누른 직후 DevTools Network에서 <code>/actions/track</code> 요청을 확인해.
+                        </>
+                      ) : selectedId === "level2_2" ? (
+                        <>
+                          버튼을 누른 직후 DevTools Network에서 <code>/actions/order</code> 요청을 확인해.
+                        </>
+                      ) : selectedId === "level2_3" ? (
+                        <>
+                          버튼을 누른 직후 DevTools Network에서 <code>/actions/dispatch</code> 요청을 확인해.
+                        </>
+                      ) : selectedId === "level2_5" ? (
+                        <>
+                          이 버튼은 항상 막힌 흐름이다. Network에서 <code>/actions/dispatch</code> 와{" "}
+                          <code>/actions/open</code> 요청을 분석해.
+                        </>
+                      ) : (
+                        <>
+                          버튼을 누른 직후 Network에서 <code>/actions/parcels/PD-1004</code> 요청을 확인해.
+                        </>
+                      )}
+                    </p>
+                    {selectedId === "level3_1" && (
+                      <div className="action-note">
+                        📢 [시스템 공지] VIP 전용 택배 (Tracking No: PD-1005)가 오늘 배송될 예정입니다.
+                      </div>
+                    )}
+                    {currentActionMessage && <div className="action-note">{currentActionMessage}</div>}
+                  </div>
                 )}
                 <div className="hint-row">
                   <h4>Hints</h4>
@@ -980,18 +1327,6 @@ function App() {
                   {currentTerminalBusy && <span className="busy-indicator">(running...)</span>}
                 </h4>
 
-                {selectedId === "level2_1" && (
-                  <div className="action-row">
-                    <button onClick={handleTrackRequest} disabled={currentTerminalBusy}>
-                      배송 조회 요청 보내기
-                    </button>
-                    <p className="caption">
-                      버튼을 누른 직후 DevTools Network에서 <code>/actions/track</code> 요청을 확인해.
-                    </p>
-                    {currentActionMessage && <div className="action-note">{currentActionMessage}</div>}
-                  </div>
-                )}
-
                 <XTermPanel
                   key={selectedId}
                   disabled={!detail.attack?.enabled}
@@ -1002,49 +1337,46 @@ function App() {
                   onBusyChange={updateTerminalBusy}
                 />
 
-                <div className="flag-row">
-                  <input
-                    value={currentFlag}
-                    onChange={(e) => setCurrentFlag(e.target.value)}
-                    placeholder={detail.attack?.flagFormat || "FLAG{...}"}
-                    disabled={!detail.attack?.enabled || currentTerminalBusy}
-                  />
-
-                  {effectiveSolved ? (
-                    <button onClick={handleNextLevel}>
-                      {resolveNextId(selectedId, currentResult?.nextId || detail?.next?.id || null)
-                        ? "Next Level ->"
-                        : "Finish"}
-                    </button>
-                  ) : (
+                {!effectiveSolved && (
+                  <div className="flag-row">
+                    <input
+                      value={currentFlag}
+                      onChange={(e) => setCurrentFlag(e.target.value)}
+                      placeholder={detail.attack?.flagFormat || "FLAG{...}"}
+                      disabled={!detail.attack?.enabled || currentTerminalBusy}
+                    />
                     <button
                       onClick={handleSubmitFlag}
                       disabled={!detail.attack?.enabled || currentTerminalBusy}
                     >
                       Submit Flag
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {(currentResult?.message || solvedFromServer) && (
                   <div
                     className={`submit-result ${effectiveSolved ? "submit-result-ok" : "submit-result-fail"}`}
                   >
                     {currentResult?.message ||
-                      (resolveNextId(selectedId, detail?.next?.id || null)
+                      (nextChallengeId
                         ? "Correct! Level Cleared 🎉"
                         : "All Challenges Cleared! 🏆")}
                   </div>
                 )}
 
                 {lessonNote && (
-                  <div className="lesson-note-wrap">
-                    <button className="ghost-button lesson-toggle" onClick={toggleLesson}>
-                      {lessonOpen ? "강의 노트 숨기기" : "강의 노트 보기"}
-                    </button>
+                  <div className={`lesson-note-wrap ${effectiveSolved ? "lesson-note-solved" : ""}`}>
+                    {!effectiveSolved && (
+                      <button className="ghost-button lesson-toggle" onClick={toggleLesson}>
+                        {lessonOpen ? "강의 노트 숨기기" : "강의 노트 보기"}
+                      </button>
+                    )}
 
-                    {lessonOpen && (
-                      <section className="lesson-panel">
+                    {(effectiveSolved || lessonOpen) && (
+                      <section
+                        className={`lesson-panel ${effectiveSolved ? "lesson-panel-emphasis" : ""}`}
+                      >
                         <h4>{lessonNote.title}</h4>
                         <p className="lesson-summary">{lessonNote.shortSummary}</p>
 
@@ -1070,8 +1402,22 @@ function App() {
                             ))}
                           </div>
                         )}
+
+                        {effectiveSolved && (
+                          <div className="lesson-next-row">
+                            <button onClick={handleNextLevel}>
+                              {nextChallengeId ? "Next Level ->" : "Finish"}
+                            </button>
+                          </div>
+                        )}
                       </section>
                     )}
+                  </div>
+                )}
+
+                {effectiveSolved && !lessonNote && (
+                  <div className="lesson-next-row">
+                    <button onClick={handleNextLevel}>{nextChallengeId ? "Next Level ->" : "Finish"}</button>
                   </div>
                 )}
               </div>

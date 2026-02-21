@@ -135,8 +135,14 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
     if not prog:
         return {"attack": "locked", "defense": "locked"}
 
-    # Attack은 전체 레벨에서 항상 접근 가능하게 유지
-    attack = "solved" if prog["attackSolved"] else "available"
+    boss_prereqs = ("level2_1", "level2_2", "level2_3", "level2_4")
+    if level_id == "level2_5":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in boss_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    else:
+        # 기본 레벨은 Attack 항상 접근 가능
+        attack = "solved" if prog["attackSolved"] else "available"
+
     unlocked_for_defense = _is_level_unlocked(session, level_id)
     defense = (
         "solved"
@@ -399,6 +405,16 @@ class OrderRequest(BaseModel):
     orderId: str
     tier: str
 
+class DispatchRequest(BaseModel):
+    parcel_id: str = Field(default="PD-2026-0001", min_length=3, max_length=64)
+
+class BossDispatchRequest(BaseModel):
+    parcel_id: str = Field(default="PD-2026-0001", min_length=3, max_length=64)
+
+class BossOpenRequest(BaseModel):
+    warehouse_path: str = Field(..., min_length=3, max_length=120)
+    tier: Optional[str] = Field(default=None, max_length=30)
+
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
     """2-2 요청 변조 전용 API"""
@@ -410,3 +426,85 @@ def order_parcel(req: OrderRequest, response: Response):
         return {"ok": True, "message": "VIP package confirmed"}
         
     return {"ok": True, "message": "Standard package confirmed"}
+
+@app.post("/api/v1/challenges/level2_3/actions/dispatch")
+def dispatch_parcel(response: Response, req: DispatchRequest = DispatchRequest()):
+    """2-3 토큰 관찰/디코딩 전용 API"""
+    from levels.level2_3 import issue_dispatch_token
+
+    token = issue_dispatch_token(req.parcel_id)
+    response.headers["X-Dispatch-Trace"] = "token-issued"
+    return {"status": "ok", "dispatch_token": token}
+
+@app.post("/api/v1/challenges/level2_5/actions/dispatch")
+def boss_dispatch(req: BossDispatchRequest = BossDispatchRequest()):
+    from levels.level2_5 import issue_boss_token
+
+    token = issue_boss_token(req.parcel_id)
+    return {"status": "ok", "message": "sealed token issued", "dispatch_token": token}
+
+@app.post("/api/v1/challenges/level2_4/actions/express")
+def enter_express_lane(authorization: Optional[str] = Header(None)):
+    """2-4 JWT 위조 취약점 실습 API (의도적으로 서명 검증 누락)"""
+    from levels.level2_4 import LEVEL2_4_FLAG, evaluate_express_access
+
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return {"status": "denied", "lane": "standard", "message": "Authorization: Bearer <token> required"}
+
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        allowed, detail = evaluate_express_access(token)
+    except Exception as exc:
+        return {"status": "denied", "lane": "standard", "message": f"token parse error: {exc}"}
+
+    if allowed:
+        return {
+            "status": "ok",
+            "lane": "express",
+            "flag": LEVEL2_4_FLAG,
+            "claims": detail["payload"],
+        }
+
+    return {
+        "status": "denied",
+        "lane": "standard",
+        "message": "VIP token required",
+        "claims": detail["payload"],
+    }
+
+@app.post("/api/v1/challenges/level2_5/actions/open")
+def boss_open(
+    response: Response,
+    req: BossOpenRequest,
+    authorization: Optional[str] = Header(None),
+    x_integrity_bypass: Optional[str] = Header(None, alias="X-Integrity-Bypass"),
+):
+    from levels.level2_5 import LEVEL2_5_FLAG, evaluate_open_request
+
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return {"status": "denied", "message": "Authorization: Bearer <token> required"}
+
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        allowed, detail = evaluate_open_request(token, req.warehouse_path, req.tier, x_integrity_bypass)
+    except Exception as exc:
+        return {"status": "denied", "message": f"token parse error: {exc}"}
+
+    if not allowed:
+        return {"status": "denied", "message": detail["reason"]}
+
+    response.headers["X-Warehouse-Flag"] = LEVEL2_5_FLAG
+    return {"status": "ok", "lane": "sealed-warehouse-opened"}
+
+@app.get("/api/v1/challenges/level3_1/actions/parcels/{parcel_id}")
+def level3_1_get_parcel(parcel_id: str, authorization: Optional[str] = Header(None)):
+    """3-1 BOLA/IDOR 실습 API (의도적으로 소유권 체크 누락)"""
+    _get_session(authorization)
+    from levels.level3_1 import get_parcel
+
+    parcel = get_parcel(parcel_id)
+    if not parcel:
+        raise APIError("NOT_FOUND", "해당 parcel_id를 찾을 수 없어.", 404)
+
+    # 의도적 취약점: owner == current_user 검증 없음
+    return parcel
