@@ -41,13 +41,16 @@ class FakeShell:
     def _run_stage(self, tokens: list[str], stdin: str, ctx: ShellContext) -> tuple[str, str, int]:
         if not tokens:
             return "", "", 0
-        cmd = tokens[0]
+        raw_cmd = tokens[0]
+        cmd = raw_cmd
+        if raw_cmd.lower().endswith(".exe"):
+            cmd = raw_cmd[:-4]
         args = tokens[1:]
         if cmd not in ctx.allowed:
-            return "", f"command not allowed: {cmd}", 126
+            return "", f"command not allowed: {raw_cmd}", 126
         runner = COMMANDS.get(cmd)
         if not runner:
-            return "", f"command not found: {cmd}", 127
+            return "", f"command not found: {raw_cmd}", 127
         started = time.monotonic()
         stdout, stderr, code = runner(args, stdin, ctx)
         elapsed = time.monotonic() - started
@@ -56,15 +59,24 @@ class FakeShell:
         return stdout or "", stderr or "", int(code)
 
     def _execute_simple_for_loop(self, command: str, ctx: ShellContext) -> tuple[str, str, int] | None:
+        text = command or ""
         m = re.match(
             r"^\s*for\s+([A-Za-z_]\w*)\s+in\s+\$\(\s*seq\s+(-?\d+)\s+(-?\d+)\s*\)\s*;\s*do\s+(.+?)\s*;\s*done\s*$",
-            command or "",
+            text,
             flags=re.DOTALL,
         )
-        if not m:
-            return None
+        if m:
+            var_name, start_s, end_s, body = m.groups()
+        else:
+            m = re.match(
+                r"^\s*for\s+([A-Za-z_]\w*)\s+in\s+\{\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*\}\s*;\s*do\s+(.+?)\s*;\s*done\s*$",
+                text,
+                flags=re.DOTALL,
+            )
+            if not m:
+                return None
+            var_name, start_s, end_s, body = m.groups()
 
-        var_name, start_s, end_s, body = m.groups()
         start = int(start_s)
         end = int(end_s)
         step = 1 if end >= start else -1

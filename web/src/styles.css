@@ -314,6 +314,10 @@ h2 {
   filter: drop-shadow(0 0 1px rgba(167, 243, 208, 0.35));
 }
 
+.terminal-host .xterm {
+  height: 100%;
+}
+
 .flag-row {
   display: flex;
   gap: 10px;

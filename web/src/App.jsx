@@ -77,9 +77,9 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
   level3_2: [
-    { platform: "web", text: "F12 Network에서 /actions/menu 응답을 열고 features를 확인해. 숨겨진 항목이 여러 개다." },
-    { platform: "all", text: "경로가 basePath + endpoints 형태로 나뉘어 있다면 조합해야 한다." },
-    { platform: "all", text: "숨겨진 기능이 여러 개라면 모두 시도해봐. FLAG가 어디 있을지 모른다." },
+    { platform: "web", text: "F12 Network에서 /actions/menu 응답을 열고 features.routeHint를 확인해." },
+    { platform: "all", text: "직접 path는 안 나온다. 패턴/키워드 단서로 경로를 추론해야 한다." },
+    { platform: "all", text: "숨겨진 기능이 여러 개면 결과를 비교해 진짜 경로를 찾아야 한다." },
     {
       platform: "windows",
       text: 'curl.exe -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
@@ -178,7 +178,7 @@ const TERMINAL_INTRO_HINTS = {
   level2_4: "위조한 토큰을 Authorization 헤더로 보내 Express Lane 응답을 확인해.",
   level2_5: "클릭은 실패한다. 토큰/헤더/바디를 직접 조합해 봉인 창고를 열어봐.",
   level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
-  level3_2: "menu 응답의 숨은 기능 경로를 찾아 직접 호출해봐.",
+  level3_2: "menu 응답의 routeHint 단서로 숨은 경로를 추론해 호출해봐.",
   level3_3: "프로필 저장 body를 변조해 role/is_admin을 주입한 뒤 perks를 조회해봐.",
   level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 debug/internal 필드를 확인해봐.",
   level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
@@ -266,12 +266,11 @@ function resolveHints(detail, challengeId) {
 function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange }) {
   const hostRef = useRef(null);
   const bufferRef = useRef("");
-  const cursorRef = useRef(0);
-  const renderedBufferRef = useRef("");
-  const renderedCursorRef = useRef(0);
   const historyRef = useRef([]);
   const historyIndexRef = useRef(-1);
   const busyRef = useRef(false);
+  const autoFollowRef = useRef(true);
+  const viewportRef = useRef(null);
 
   useEffect(() => {
     busyRef.current = busy;
@@ -282,92 +281,34 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
       cursorBlink: true,
       convertEol: true,
       fontSize: 13,
+      scrollback: 20000,
+      scrollOnUserInput: true,
+      scrollOnPaste: true,
       theme: {
         background: "#0f172a",
         foreground: "#d1fae5",
       },
     });
 
-    term.open(hostRef.current);
-    term.focus();
-    term.writeln("PurpleDroid fake terminal");
-    if (introHint) {
-      term.writeln(`Type: ${introHint}`);
-    }
-    term.write(prompt);
-    cursorRef.current = 0;
-    renderedBufferRef.current = "";
-    renderedCursorRef.current = 0;
-
-    const estimateRows = (text) => {
-      const cols = Math.max(term.cols || 80, 1);
-      return Math.max(1, Math.ceil(text.length / cols));
-    };
-
-    const rowFromCursor = (cursorInBuffer) => {
-      const cols = Math.max(term.cols || 80, 1);
-      const absolutePos = prompt.length + Math.max(0, cursorInBuffer);
-      if (absolutePos <= 0) {
-        return 0;
+    const ensureScrollBottom = (force = false) => {
+      if (!force && !autoFollowRef.current) {
+        return;
       }
-      return Math.floor((absolutePos - 1) / cols);
-    };
-
-    const resetPromptState = () => {
-      cursorRef.current = 0;
-      renderedBufferRef.current = "";
-      renderedCursorRef.current = 0;
-    };
-
-    const clearInputBlock = () => {
-      const prevBuffer = renderedBufferRef.current;
-      const prevCursor = renderedCursorRef.current;
-      const rows = estimateRows(`${prompt}${prevBuffer}`);
-      const cursorRow = rowFromCursor(prevCursor);
-      term.write("\r");
-      if (cursorRow > 0) {
-        term.write(`\x1b[${cursorRow}A`);
+      if (force) {
+        autoFollowRef.current = true;
       }
-      for (let i = 0; i < rows; i += 1) {
-        term.write("\x1b[2K");
-        if (i < rows - 1) {
-          term.write("\x1b[B");
+      term.scrollToBottom();
+      const scrollToEnd = () => {
+        const viewport = viewportRef.current || hostRef.current?.querySelector(".xterm-viewport");
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+          const gap = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+          autoFollowRef.current = gap <= 4;
         }
-      }
-      if (rows > 1) {
-        term.write(`\x1b[${rows - 1}A`);
-      }
-      term.write("\r");
-    };
-
-    const redrawPromptLine = () => {
-      const buf = bufferRef.current;
-      const cursor = Math.max(0, Math.min(cursorRef.current, buf.length));
-      cursorRef.current = cursor;
-      clearInputBlock();
-      const full = `${prompt}${buf}`;
-      term.write(full);
-      const moveLeft = buf.length - cursor;
-      if (moveLeft > 0) {
-        term.write(`\x1b[${moveLeft}D`);
-      }
-      renderedBufferRef.current = buf;
-      renderedCursorRef.current = cursor;
-    };
-
-    const appendInputText = (text) => {
-      if (!text) {
-        return;
-      }
-      const clean = sanitizePastedText(text);
-      if (!clean) {
-        return;
-      }
-      const cursor = cursorRef.current;
-      const buf = bufferRef.current;
-      bufferRef.current = `${buf.slice(0, cursor)}${clean}${buf.slice(cursor)}`;
-      cursorRef.current = cursor + clean.length;
-      redrawPromptLine();
+        term.scrollToBottom();
+      };
+      requestAnimationFrame(scrollToEnd);
+      setTimeout(scrollToEnd, 0);
     };
 
     const sanitizePastedText = (text) => {
@@ -376,6 +317,49 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
       }
       return text.replace(/\r\n/g, "\n").replace(/\n/g, " ");
     };
+
+    const clearCurrentInput = () => {
+      const text = bufferRef.current;
+      if (!text) {
+        return;
+      }
+      for (let i = 0; i < text.length; i += 1) {
+        term.write("\b \b");
+      }
+      bufferRef.current = "";
+      ensureScrollBottom(false);
+    };
+
+    const resetInputState = () => {
+      bufferRef.current = "";
+      historyIndexRef.current = -1;
+    };
+
+    const writePrompt = () => {
+      term.write(prompt);
+      ensureScrollBottom(true);
+    };
+
+    term.open(hostRef.current);
+    term.focus();
+    const viewport = hostRef.current?.querySelector(".xterm-viewport");
+    viewportRef.current = viewport || null;
+    const handleViewportScroll = () => {
+      const node = viewportRef.current;
+      if (!node) {
+        return;
+      }
+      const gap = node.scrollHeight - (node.scrollTop + node.clientHeight);
+      autoFollowRef.current = gap <= 4;
+    };
+    viewportRef.current?.addEventListener("scroll", handleViewportScroll, { passive: true });
+    handleViewportScroll();
+
+    term.writeln("PurpleDroid fake terminal");
+    if (introHint) {
+      term.writeln(`Type: ${introHint}`);
+    }
+    writePrompt();
 
     const copySelection = async () => {
       const selected = term.getSelection();
@@ -398,7 +382,13 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
       }
       try {
         const text = await navigator.clipboard.readText();
-        appendInputText(sanitizePastedText(text));
+        const clean = sanitizePastedText(text);
+        if (!clean) {
+          return;
+        }
+        bufferRef.current += clean;
+        term.write(clean);
+        ensureScrollBottom(false);
       } catch {
         // Ignore clipboard permission failures.
       }
@@ -431,9 +421,10 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
         } else {
           historyIndexRef.current = Math.max(0, historyIndexRef.current - 1);
         }
+        clearCurrentInput();
         bufferRef.current = history[historyIndexRef.current] || "";
-        cursorRef.current = bufferRef.current.length;
-        redrawPromptLine();
+        term.write(bufferRef.current);
+        ensureScrollBottom(true);
         return;
       }
 
@@ -444,51 +435,26 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
         }
         if (historyIndexRef.current >= history.length - 1) {
           historyIndexRef.current = -1;
-          bufferRef.current = "";
+          clearCurrentInput();
         } else {
           historyIndexRef.current += 1;
+          clearCurrentInput();
           bufferRef.current = history[historyIndexRef.current] || "";
+          term.write(bufferRef.current);
         }
-        cursorRef.current = bufferRef.current.length;
-        redrawPromptLine();
+        ensureScrollBottom(true);
         return;
       }
 
-      if (data === "\x1b[D" || data === "\x1bOD") {
-        if (cursorRef.current > 0) {
-          cursorRef.current -= 1;
-          renderedCursorRef.current = cursorRef.current;
-          term.write("\x1b[D");
-        }
-        return;
-      }
-
-      if (data === "\x1b[C" || data === "\x1bOC") {
-        if (cursorRef.current < bufferRef.current.length) {
-          cursorRef.current += 1;
-          renderedCursorRef.current = cursorRef.current;
-          term.write("\x1b[C");
-        }
+      if (data === "\x1b[D" || data === "\x1bOD" || data === "\x1b[C" || data === "\x1bOC") {
         return;
       }
 
       if (data === "\x1b[H" || data === "\x1bOH" || data === "\u0001") {
-        if (cursorRef.current > 0) {
-          const moveLeft = cursorRef.current;
-          cursorRef.current = 0;
-          renderedCursorRef.current = 0;
-          term.write(`\x1b[${moveLeft}D`);
-        }
         return;
       }
 
       if (data === "\x1b[F" || data === "\x1bOF" || data === "\u0005") {
-        const moveRight = bufferRef.current.length - cursorRef.current;
-        if (moveRight > 0) {
-          cursorRef.current = bufferRef.current.length;
-          renderedCursorRef.current = cursorRef.current;
-          term.write(`\x1b[${moveRight}C`);
-        }
         return;
       }
 
@@ -497,20 +463,16 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
           copySelection();
           return;
         }
-        clearInputBlock();
         term.write("^C\r\n");
-        bufferRef.current = "";
-        historyIndexRef.current = -1;
-        term.write(prompt);
-        resetPromptState();
+        resetInputState();
+        writePrompt();
+        ensureScrollBottom();
         return;
       }
 
       // Ctrl+U: 현재 입력 라인 전체 삭제
       if (data === "\u0015") {
-        bufferRef.current = "";
-        cursorRef.current = 0;
-        redrawPromptLine();
+        clearCurrentInput();
         return;
       }
 
@@ -519,20 +481,24 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
       }
 
       if (data.length > 1) {
-        appendInputText(data);
+        const clean = sanitizePastedText(data);
+        if (!clean) {
+          return;
+        }
+        bufferRef.current += clean;
+        term.write(clean);
+        ensureScrollBottom(false);
         return;
       }
 
       if (data === "\r") {
         const command = bufferRef.current.trim();
         term.write("\r\n");
-        bufferRef.current = "";
-        resetPromptState();
-        historyIndexRef.current = -1;
+        resetInputState();
 
         if (!command) {
-          term.write(prompt);
-          resetPromptState();
+          writePrompt();
+          ensureScrollBottom();
           return;
         }
 
@@ -546,22 +512,24 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
 
         if (command === "clear" || command === "cls") {
           term.clear();
-          term.write(prompt);
-          resetPromptState();
+          historyRef.current = [];
+          resetInputState();
+          writePrompt();
+          ensureScrollBottom();
           return;
         }
 
         if (busyRef.current) {
           term.writeln("busy...");
-          term.write(prompt);
-          resetPromptState();
+          writePrompt();
+          ensureScrollBottom();
           return;
         }
 
         if (disabled) {
           term.writeln("Attack is locked for this challenge.");
-          term.write(prompt);
-          resetPromptState();
+          writePrompt();
+          ensureScrollBottom();
           return;
         }
 
@@ -578,7 +546,7 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
             if (result.truncated) {
               term.writeln("[output truncated]");
             }
-            term.scrollToBottom();
+            ensureScrollBottom(true);
           })
           .catch((error) => {
             if (error.status === 429) {
@@ -586,46 +554,38 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
             } else {
               term.writeln(`[error] ${error.message}`);
             }
-            term.scrollToBottom();
+            ensureScrollBottom(true);
           })
           .finally(() => {
             onBusyChange(false);
-            term.write(prompt);
-            resetPromptState();
+            writePrompt();
+            ensureScrollBottom(true);
           });
         return;
       }
 
-      if (data === "\x1b[3~") {
-        const cursor = cursorRef.current;
-        const buf = bufferRef.current;
-        if (cursor < buf.length) {
-          bufferRef.current = `${buf.slice(0, cursor)}${buf.slice(cursor + 1)}`;
-          redrawPromptLine();
+      if (data === "\x1b[3~" || data === "\u007F") {
+        if (bufferRef.current.length > 0) {
+          bufferRef.current = bufferRef.current.slice(0, -1);
+          term.write("\b \b");
+          ensureScrollBottom(false);
         }
         return;
       }
 
-      if (data === "\u007F") {
-        const cursor = cursorRef.current;
-        const buf = bufferRef.current;
-        if (cursor > 0) {
-          bufferRef.current = `${buf.slice(0, cursor - 1)}${buf.slice(cursor)}`;
-          cursorRef.current = cursor - 1;
-          redrawPromptLine();
-        }
-        return;
-      }
-
-      if (data >= " " && data <= "~") {
-        appendInputText(data);
+      if (data >= " ") {
+        bufferRef.current += data;
+        term.write(data);
+        ensureScrollBottom(false);
       }
     });
 
     return () => {
+      viewportRef.current?.removeEventListener("scroll", handleViewportScroll);
       keySub.dispose();
       onDataSub.dispose();
       term.dispose();
+      viewportRef.current = null;
     };
   }, [disabled, introHint, onBusyChange, onExec, prompt]);
 
@@ -650,6 +610,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const detailsRef = useRef({});
+  const prefetchedTicketRef = useRef({});
 
   const updateDetailCache = useCallback((id, detail) => {
     setDetailsById((prev) => {
@@ -746,6 +707,50 @@ function App() {
     setActiveTab("attack");
     loadDetail(token, selectedId, true).catch((error) => setStatusText(error.message));
   }, [loadDetail, selectedId, token]);
+
+  useEffect(() => {
+    if (!token || selectedId !== "level3_4") {
+      return;
+    }
+    const cacheKey = `${token}:SUP-1004`;
+    if (prefetchedTicketRef.current[cacheKey]) {
+      return;
+    }
+    let cancelled = false;
+    fetch(`${API_BASE}/challenges/level3_4/actions/ticket?id=SUP-1004`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const raw = await response.text();
+        if (cancelled) {
+          return;
+        }
+        prefetchedTicketRef.current[cacheKey] = {
+          ok: response.ok,
+          status: response.status,
+          raw,
+          fetchedAt: Date.now(),
+        };
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        prefetchedTicketRef.current[cacheKey] = {
+          ok: false,
+          status: 0,
+          raw: "",
+          fetchedAt: Date.now(),
+        };
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, token]);
 
   const detail = detailsById[selectedId] || null;
   const currentFlag = flagById[selectedId] || "";
@@ -1269,7 +1274,7 @@ function App() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "menu 조회 완료. Network 응답에서 features.admin_panel.path를 확인하고 해당 경로를 직접 호출해봐.",
+          "menu 조회 완료. Network 응답의 routeHint/키워드를 보고 숨은 경로를 추론해 직접 호출해봐.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -1283,8 +1288,40 @@ function App() {
     if (!token) {
       return;
     }
+    const cacheKey = `${token}:SUP-1004`;
+    const cached = prefetchedTicketRef.current[cacheKey];
+    if (!cached) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "아직 캐시가 없어. 페이지를 새로고침한 뒤 초기 로딩 구간의 Network 요청을 먼저 확인해.",
+      }));
+      return;
+    }
+    if (!cached.ok) {
+      let message = `요청 실패 (${cached.status || "prefetch"})`;
+      try {
+        const parsed = cached.raw ? JSON.parse(cached.raw) : null;
+        message = parsed?.error?.message || parsed?.detail || message;
+      } catch {
+        // keep fallback
+      }
+      setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+      return;
+    }
+    setActionMessageById((prev) => ({
+      ...prev,
+      [selectedId]:
+        "버튼은 캐시된 데이터를 사용한다. 새 요청이 안 보이면 정상이다. 새로고침 직후 초기 Network 로그에서 /actions/ticket 응답을 확인해.",
+    }));
+  }, [selectedId, token]);
+
+  const handleProfileFetchRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
     try {
-      const response = await fetch(`${API_BASE}/challenges/level3_4/actions/ticket?id=SUP-1004`, {
+      const response = await fetch(`${API_BASE}/challenges/level3_3/actions/profile`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1306,7 +1343,44 @@ function App() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "지원 티켓 조회 완료. Network Response에서 debug/meta/internal 필드를 끝까지 펼쳐봐.",
+          "프로필 조회 완료. 이제 저장 요청 body를 변조해 role/is_admin 주입 후 perks 응답을 다시 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handlePerksFetchRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level3_3/actions/perks`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "perks 조회 완료. standard 결과라면 프로필 저장 요청 body를 변조한 뒤 다시 확인해.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -1518,48 +1592,65 @@ function App() {
 
             {activeTab === "attack" && (
               <div className="stack">
-                {showGuidedActions && (
+                {(showGuidedActions || selectedId === "level3_3") && (
                   <div className="action-row">
-                    <button
-                      onClick={
-                        selectedId === "level2_1"
-                          ? handleTrackRequest
+                    {selectedId === "level3_3" ? (
+                      <div className="flag-row">
+                        <button
+                          onClick={handleProfileFetchRequest}
+                          disabled={currentTerminalBusy || !detail.attack?.enabled}
+                        >
+                          프로필 불러오기
+                        </button>
+                        <button
+                          onClick={handlePerksFetchRequest}
+                          disabled={currentTerminalBusy || !detail.attack?.enabled}
+                        >
+                          혜택 보기
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={
+                          selectedId === "level2_1"
+                            ? handleTrackRequest
+                            : selectedId === "level2_2"
+                              ? handleOrderRequest
+                              : selectedId === "level2_3"
+                                ? handleDispatchRequest
+                                : selectedId === "level2_5"
+                                  ? handleBossGateAttempt
+                                  : selectedId === "level3_1"
+                                    ? handleMyParcelRequest
+                                    : selectedId === "level3_2"
+                                      ? handleMenuProbeRequest
+                                      : selectedId === "level3_4"
+                                        ? handleTicketProbeRequest
+                                        : selectedId === "level3_5"
+                                          ? handleLockerHintRequest
+                                          : handleBossMineRequest
+                        }
+                        disabled={currentTerminalBusy || !detail.attack?.enabled}
+                      >
+                        {selectedId === "level2_1"
+                          ? "배송 조회 요청 보내기"
                           : selectedId === "level2_2"
-                            ? handleOrderRequest
+                            ? "일반 배송 요청 보내기"
                             : selectedId === "level2_3"
-                              ? handleDispatchRequest
+                              ? "발송 토큰 요청 보내기"
                               : selectedId === "level2_5"
-                                ? handleBossGateAttempt
+                                ? "봉인 창고 열기 시도"
                                 : selectedId === "level3_1"
-                                  ? handleMyParcelRequest
+                                  ? "내 택배 조회"
                                   : selectedId === "level3_2"
-                                    ? handleMenuProbeRequest
+                                    ? "메뉴 동기화"
                                     : selectedId === "level3_4"
-                                      ? handleTicketProbeRequest
+                                      ? "지원 티켓 불러오기"
                                       : selectedId === "level3_5"
-                                        ? handleLockerHintRequest
-                                        : handleBossMineRequest
-                      }
-                      disabled={currentTerminalBusy || !detail.attack?.enabled}
-                    >
-                      {selectedId === "level2_1"
-                        ? "배송 조회 요청 보내기"
-                        : selectedId === "level2_2"
-                          ? "일반 배송 요청 보내기"
-                          : selectedId === "level2_3"
-                            ? "발송 토큰 요청 보내기"
-                            : selectedId === "level2_5"
-                              ? "봉인 창고 열기 시도"
-                              : selectedId === "level3_1"
-                                ? "내 택배 조회"
-                                : selectedId === "level3_2"
-                                  ? "메뉴 동기화"
-                                  : selectedId === "level3_4"
-                                    ? "지원 티켓 불러오기"
-                                    : selectedId === "level3_5"
-                                      ? "락커 힌트 조회"
-                                      : "내 택배 보기"}
-                    </button>
+                                        ? "락커 힌트 조회"
+                                        : "내 택배 보기"}
+                      </button>
+                    )}
                     <p className="caption">
                       {selectedId === "level2_1" ? (
                         <>
@@ -1585,11 +1676,17 @@ function App() {
                         </>
                       ) : selectedId === "level3_2" ? (
                         <>
-                          버튼을 누른 직후 Network에서 <code>/actions/menu</code> 응답의 hidden path를 확인해.
+                          버튼을 누른 직후 Network에서 <code>/actions/menu</code> 응답의 routeHint 단서를 확인해.
+                        </>
+                      ) : selectedId === "level3_3" ? (
+                        <>
+                          먼저 <code>/actions/profile</code>과 <code>/actions/perks</code> 응답을 확인하고, 이후
+                          저장 요청 body를 변조해 결과 변화를 비교해.
                         </>
                       ) : selectedId === "level3_4" ? (
                         <>
-                          버튼을 누른 직후 Network에서 <code>/actions/ticket?id=SUP-1004</code> 응답 JSON을 확인해.
+                          이 버튼은 캐시된 데이터를 표시한다. 새로고침 직후 초기 Network에서{" "}
+                          <code>/actions/ticket?id=SUP-1004</code> 응답 JSON을 확인해.
                         </>
                       ) : selectedId === "level3_5" ? (
                         <>
@@ -1599,8 +1696,8 @@ function App() {
                       ) : (
                         <>
                           버튼을 누른 직후 Network에서 <code>/actions/parcels/mine</code> 요청을 확인하고, 체인 단계별로{" "}
-                          <code>parcel</code> -> <code>profile</code> -> <code>menu/admin/audit</code> ->{" "}
-                          <code>locker/unlock</code> -> <code>vault/claim</code> 흐름을 연결해.
+                          <code>parcel</code> -&gt; <code>profile</code> -&gt; <code>menu/admin/audit</code> -&gt;{" "}
+                          <code>locker/unlock</code> -&gt; <code>vault/claim</code> 흐름을 연결해.
                         </>
                       )}
                     </p>
@@ -1612,6 +1709,11 @@ function App() {
                     {selectedId === "level3_2" && (
                       <div className="action-note">
                         관리자 메뉴는 UI에서 숨김 처리되어 있습니다. (enabled=false)
+                      </div>
+                    )}
+                    {selectedId === "level3_3" && (
+                      <div className="action-note">
+                        UI에서는 address만 수정 가능해 보인다. Network의 Request Payload를 변조해서 role/is_admin 주입을 시도해.
                       </div>
                     )}
                     {selectedId === "level3_4" && (

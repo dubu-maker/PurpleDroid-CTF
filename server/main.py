@@ -681,7 +681,7 @@ def level3_5_locker_hint(
 @app.post("/api/v1/challenges/level3_5/actions/locker/unlock")
 def level3_5_locker_unlock(
     authorization: Optional[str] = Header(None),
-    req: LockerUnlockReq,
+    req: LockerUnlockReq = Body(...),
 ):
     _, session = _get_session(authorization)
     from levels.level3_5 import unlock_locker_payload

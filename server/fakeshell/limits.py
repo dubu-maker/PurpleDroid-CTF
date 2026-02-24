@@ -2,7 +2,7 @@ from __future__ import annotations
 
 MAX_INPUT_CHARS = 500
 MAX_PIPE_STAGES = 8
-MAX_OUTPUT_BYTES = 10_000
+MAX_OUTPUT_BYTES = 50_000
 MAX_COMMAND_SECONDS = 0.5
 
 
@@ -22,4 +22,3 @@ def truncate_output(text: str) -> tuple[str, bool]:
         return text or "", False
     clipped = raw[:MAX_OUTPUT_BYTES].decode("utf-8", errors="ignore")
     return clipped + "\n...(truncated)\n", True
-

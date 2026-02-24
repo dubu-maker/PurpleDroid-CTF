@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from typing import Any, List, Tuple
 
 
@@ -93,3 +94,21 @@ def run_wc(args: list[str], stdin: str, ctx: Any) -> Tuple[str, str, int]:
         return f"{count}\n", "", 0
     return "", "wc: only -l is supported in MVP", 1
 
+
+def run_base64(args: list[str], stdin: str, _ctx: Any) -> Tuple[str, str, int]:
+    decode = "-d" in args or "--decode" in args
+    payload_args = [a for a in args if a not in {"-d", "--decode"}]
+    text = " ".join(payload_args).strip() if payload_args else (stdin or "").strip()
+    if not text:
+        return "", "base64: input required", 1
+    if decode:
+        try:
+            raw = base64.b64decode(text.encode("utf-8"), validate=False)
+            return raw.decode("utf-8", errors="replace") + "\n", "", 0
+        except Exception as exc:
+            return "", f"base64: decode failed ({exc})", 1
+    try:
+        out = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+        return out + "\n", "", 0
+    except Exception as exc:
+        return "", f"base64: encode failed ({exc})", 1

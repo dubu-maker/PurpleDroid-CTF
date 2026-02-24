@@ -64,7 +64,7 @@ STATIC: Dict[str, Any] = {
             "maxOutputBytes": 10000,
             "help": (
                 "허용: curl -v .../actions/ticket?id=SUP-1004 -H 'Authorization: Bearer <token>', "
-                "curl ... | grep FLAG"
+                "curl ... | grep FLAG, echo ... | base64 -d"
             ),
         },
         "flagFormat": "FLAG{...}",
@@ -187,6 +187,7 @@ _SHELL = FakeShell(
         "head",
         "tail",
         "wc",
+        "base64",
         "seq",
         "xargs",
         "cat",

@@ -72,7 +72,7 @@ STATIC: Dict[str, Any] = {
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
-            "maxOutputBytes": 10000,
+            "maxOutputBytes": 50000,
             "help": (
                 "허용: curl .../parcels/mine, curl .../parcel?parcel_id=..., curl -X PUT .../profile, "
                 "curl .../menu, curl -X POST .../admin/audit, curl -X POST .../locker/unlock, "

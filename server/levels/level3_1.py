@@ -99,7 +99,7 @@ STATIC: Dict[str, Any] = {
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
-            "maxOutputBytes": 10000,
+            "maxOutputBytes": 25000,
             "help": (
                 "허용: curl -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/mine -H 'Authorization: Bearer <token>', "
                 "curl -v -X GET 'http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'"

@@ -7,7 +7,7 @@ from .base import run_cd, run_echo, run_help, run_pwd, run_whoami
 from .flow import run_seq, run_xargs
 from .fs_cmd import run_cat, run_find, run_ls
 from .network import run_curl
-from .text import run_findstr, run_grep, run_head, run_tail, run_wc
+from .text import run_base64, run_findstr, run_grep, run_head, run_tail, run_wc
 
 CommandFunc = Callable[[list[str], str, Any], Tuple[str, str, int]]
 
@@ -25,6 +25,7 @@ COMMANDS: Dict[str, CommandFunc] = {
     "head": run_head,
     "tail": run_tail,
     "wc": run_wc,
+    "base64": run_base64,
     "seq": run_seq,
     "xargs": run_xargs,
     "curl": run_curl,

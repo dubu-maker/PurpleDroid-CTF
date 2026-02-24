@@ -20,22 +20,22 @@ STATIC: Dict[str, Any] = {
     "summary": "UI에 숨겨진 기능도 서버 인가가 약하면 누구나 호출 가능하다.",
     "description": (
         "미션: /actions/menu 응답에서 숨겨진 관리자 기능의 단서를 찾고, "
-        "실제 엔드포인트를 추론해 직접 호출해 FLAG를 획득해라."
+        "실제 엔드포인트를 추론해 직접 호출해 FLAG를 획득해라. (경로는 직접 주어지지 않음)"
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
         "hints": [
             {
                 "platform": "web",
-                "text": "F12 Network에서 menu/features 응답을 확인해. enabled=false 항목이 여러 개다.",
+                "text": "F12 Network에서 menu/features 응답을 확인해. enabled=false 항목의 routeHint를 읽어봐.",
             },
             {
                 "platform": "all",
-                "text": "경로가 부분적으로만 보인다면, 나머지를 추론해야 한다.",
+                "text": "직접 path는 안 준다. 패턴/키워드 단서로 경로를 추론해야 한다.",
             },
             {
                 "platform": "all",
-                "text": "숨겨진 기능이 여러 개라면 모두 시도해봐. FLAG가 어디 있을지 모른다.",
+                "text": "함정 엔드포인트가 섞여 있다. 여러 후보를 직접 호출해 결과를 비교해.",
             },
             {
                 "platform": "windows",
@@ -56,7 +56,7 @@ STATIC: Dict[str, Any] = {
             "maxOutputBytes": 10000,
             "help": (
                 "허용: curl -v .../actions/menu -H 'Authorization: Bearer <token>', "
-                "curl -v -X POST .../actions/admin/... -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{}'"
+                "curl -v -X POST .../actions/<guessed>/<guessed> -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{}'"
             ),
         },
         "flagFormat": "FLAG{...}",
@@ -88,14 +88,20 @@ def menu_payload() -> Dict[str, Any]:
             "features": {
                 "admin_panel": {
                     "enabled": False,
-                    "basePath": "/api/v1/challenges/level3_2/actions/admin",
-                    "endpoints": ["stats", "audit"],
                     "requiresRole": "admin",
-                    "note": "internal only - disabled in production",
+                    "routeHint": {
+                        "pattern": "/api/v1/challenges/level3_2/actions/<segment1>/<segment2>",
+                        "clues": [
+                            "segment1 is related to privileged operations",
+                            "segment2 is related to review/export of records",
+                        ],
+                        "knownWords": ["admin", "audit", "stats", "export"],
+                    },
+                    "note": "internal only - hidden in UI",
                 },
                 "bulk_export": {
                     "enabled": False,
-                    "path": "/api/v1/challenges/level3_2/actions/export",
+                    "pathHint": "/api/v1/challenges/level3_2/actions/export",
                     "requiresRole": "operator",
                     "note": "deprecated - scheduled for removal",
                 },
