@@ -54,7 +54,20 @@ _PARCELS: Dict[str, Dict[str, Any]] = {
         "status": "in_transit",
         "contents": "VIP-only gift",
         "recipient_phone": "+82-10-1006-0000",
-        "internal_memo": f"VIP handling note: courier_ticket={LEVEL3_1_FLAG}",
+        "delivery_instructions": "Handle with care.",
+        "logistics": {
+            "warehouse": "WH-EAST-07",
+            "priority": "express",
+            "handler": {
+                "team": "vip-ops",
+                "shift": "night",
+                "notes": {
+                    "last_scan": "2026-02-24T03:12:00Z",
+                    "courier_ticket": LEVEL3_1_FLAG,
+                    "ack": True,
+                },
+            },
+        },
     },
 }
 

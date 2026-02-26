@@ -10,13 +10,13 @@ def _parse_curl_args(args: list[str]) -> tuple[str, str, Dict[str, str], str, bo
     method = "GET"
     headers: Dict[str, str] = {}
     body = ""
-    verbose = False
+    show_headers = False
     url = ""
     i = 0
     while i < len(args):
         token = args[i]
-        if token == "-v":
-            verbose = True
+        if token in ("-v", "-i", "--include"):
+            show_headers = True
             i += 1
             continue
         if token == "-X" and i + 1 < len(args):
@@ -41,13 +41,13 @@ def _parse_curl_args(args: list[str]) -> tuple[str, str, Dict[str, str], str, bo
             i += 1
             continue
         i += 1
-    return method, url, headers, body, verbose
+    return method, url, headers, body, show_headers
 
 
 def run_curl(args: list[str], _stdin: str, ctx: Any) -> Tuple[str, str, int]:
     if not ctx.http:
         return "", "virtual http unavailable", 1
-    method, url, headers, body, verbose = _parse_curl_args(args)
+    method, url, headers, body, show_headers = _parse_curl_args(args)
     if not url:
         return "", "curl: URL required", 1
 
@@ -56,7 +56,7 @@ def run_curl(args: list[str], _stdin: str, ctx: Any) -> Tuple[str, str, int]:
     if out_body and not out_body.endswith("\n"):
         out_body += "\n"
 
-    if not verbose:
+    if not show_headers:
         return out_body, "", 0
 
     lines = [f"< HTTP/1.1 {resp.status} {VirtualHTTP.status_text(resp.status)}"]
@@ -65,4 +65,3 @@ def run_curl(args: list[str], _stdin: str, ctx: Any) -> Tuple[str, str, int]:
     lines.append("<")
     lines.append(out_body.rstrip("\n"))
     return "\n".join(lines) + "\n", "", 0
-

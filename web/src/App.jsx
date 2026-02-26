@@ -166,6 +166,128 @@ const FALLBACK_HINTS = {
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
+  level4_1: [
+    { platform: "web", text: "Network/Sources에서 공개 자산(.js/.map/config) 요청을 찾아봐." },
+    { platform: "all", text: "bundle-hint 응답은 어떤 파일을 봐야 하는지 알려준다." },
+    { platform: "all", text: "js 본문에 키가 바로 안 보이면 sourceMappingURL 주석을 따라 .map 파일을 열어봐." },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/bundle-hint',
+    },
+    {
+      platform: "windows",
+      text: "curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js",
+    },
+    {
+      platform: "windows",
+      text: "curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js.map",
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_1/actions/partner/handshake -H "Authorization: Bearer <token>" -H "X-Partner-Key: <key>"',
+    },
+    { platform: "all", text: "유출된 키로 partner/handshake를 호출해 FLAG를 획득해." },
+  ],
+  level4_2: [
+    { platform: "all", text: "pass/issue로 PartnerPass를 받아 header.kid와 payload.role을 먼저 확인해." },
+    { platform: "all", text: "keys/jwks를 열어 active/legacy kid 목록을 확인해." },
+    { platform: "all", text: "kid는 서버가 어떤 키로 검증할지 고르는 단서다." },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/pass/issue -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/keys/jwks -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_2/actions/admin/audit -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <forged_pass>"',
+    },
+    { platform: "all", text: "jwt-decode로 kid/role/scope를 확인하고 forged pass를 넣어 admin/audit를 시도해." },
+  ],
+  level4_3: [
+    { platform: "all", text: "유효한 요청과 새로운 요청은 다르다. event_id 재사용이 막히는지 확인해." },
+    { platform: "web", text: "같은 /actions/event/delivered 요청을 재전송해서 count가 계속 증가하는지 봐." },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"EVT-2026-DEL-001\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\"}"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
+    },
+    { platform: "all", text: "같은 event_id로 stamp가 누적되면 replay 방어(idempotency)가 빠진 상태다." },
+  ],
+  level4_4: [
+    { platform: "all", text: "차단 응답의 seenClientIp/hint를 먼저 확인해. 서버가 어떤 IP를 믿는지 단서가 있다." },
+    { platform: "web", text: "whoami에서 remoteAddr/seenClientIp/xff를 비교하고 XFF 넣었을 때 변화를 확인해." },
+    {
+      platform: "windows",
+      text: 'curl -i -s http://localhost:8000/api/v1/challenges/level4_4/actions/public/gateway-status',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_4/actions/whoami -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_4/actions/partner/settlement -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1" -H "Content-Type: application/json" -d "{}"',
+    },
+    { platform: "all", text: "XFF가 여러 개면 첫 번째 IP를 client로 쓰는 서버가 많다." },
+  ],
+  level4_5: [
+    { platform: "all", text: "webhook은 사용자 세션 버튼이 아니라 서버 입력 채널이다. 먼저 /webhook/spec을 확인해." },
+    { platform: "all", text: "signing string은 '<timestamp>.<raw_body>' 형태다." },
+    { platform: "all", text: "시크릿은 4-1 공개 자산에서 유출됐을 수 있다. PARTNER_WEBHOOK_SECRET 키워드를 찾아봐." },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/spec',
+    },
+    {
+      platform: "windows",
+      text: 'sign-webhook <timestamp> "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s "http://localhost:8000/api/v1/challenges/level4_5/actions/track?parcel_id=PD-1004" -H "Authorization: Bearer <token>"',
+    },
+  ],
+  level4_boss: [
+    { platform: "web", text: "public/status에서 assetHint를 먼저 찾고 공개 자산 파일을 확인해." },
+    { platform: "all", text: "asset에서 LEGACY_KID와 WEBHOOK_SECRET_B64 단서를 확보해." },
+    { platform: "all", text: "jwks로 legacy kid/k 값을 확인하고 admin PartnerPass를 위조해 admin/config를 열어." },
+    { platform: "all", text: "config JSON에서 ticket/webhookReceive/vaultClaim 경로를 추출해." },
+    { platform: "all", text: "webhook은 accepted가 아니라 credited가 올라가야 스탬프가 누적된다." },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/public/status',
+    },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/keys/jwks -H "Authorization: Bearer <token>"',
+    },
+    {
+      platform: "windows",
+      text: "jwt-sign-hs256 pd-2024-legacy <legacy_secret> '{\"iss\":\"PurpleDroid\",\"aud\":\"partner-hub\",\"sub\":\"user_1004\",\"role\":\"admin\",\"iat\":<now>,\"exp\":<future>}'",
+    },
+    {
+      platform: "windows",
+      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/admin/config -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <jwt>"',
+    },
+    {
+      platform: "windows",
+      text: "sign-webhook <timestamp> '<raw_json>'",
+    },
+    {
+      platform: "windows",
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"ticket\\":\\"VT-8F3D-2C9A-2026\\"}"',
+    },
+  ],
 };
 
 const TERMINAL_INTRO_HINTS = {
@@ -183,6 +305,12 @@ const TERMINAL_INTRO_HINTS = {
   level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 debug/internal 필드를 확인해봐.",
   level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
   level3_boss: "체인 공격: parcel -> profile -> menu/audit -> locker -> vault claim",
+  level4_1: "공개 번들의 sourceMappingURL 단서를 따라 .map에서 원본 설정을 확인한 뒤 handshake를 호출해봐.",
+  level4_2: "PartnerPass의 kid를 관찰하고 legacy 경로를 이용해 admin/audit를 호출해봐.",
+  level4_3: "같은 delivered 이벤트를 반복 전송하고 stamps count가 누적되는지 확인해봐.",
+  level4_4: "whoami와 settlement를 비교해 서버가 신뢰하는 client ip 결정을 관찰해봐.",
+  level4_5: "webhook spec을 확인하고 sign-webhook으로 서명을 만든 뒤 receive -> track 흐름을 연결해봐.",
+  level4_boss: "public/status -> jwks -> admin/config -> signed webhook -> vault claim 체인을 완성해봐.",
 };
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
@@ -241,6 +369,9 @@ function challengeShortLabel(challenge, index) {
   }
   if (challenge?.id === "level3_boss") {
     return "3-B";
+  }
+  if (challenge?.id === "level4_boss") {
+    return "4-B";
   }
   return `L${index + 1}`;
 }
@@ -511,11 +642,12 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
         }
 
         if (command === "clear" || command === "cls") {
-          term.clear();
           historyRef.current = [];
           resetInputState();
+          autoFollowRef.current = true;
+          term.writeln("clear is disabled in this terminal.");
           writePrompt();
-          ensureScrollBottom();
+          term.focus();
           return;
         }
 
@@ -604,6 +736,7 @@ function App() {
   const [terminalBusyById, setTerminalBusyById] = useState({});
   const [actionMessageById, setActionMessageById] = useState({});
   const [hintOpenById, setHintOpenById] = useState({});
+  const [unixHintOpenById, setUnixHintOpenById] = useState({});
   const [deepHintOpenById, setDeepHintOpenById] = useState({});
   const [lessonOpenById, setLessonOpenById] = useState({});
   const [statusText, setStatusText] = useState("");
@@ -758,6 +891,7 @@ function App() {
   const currentTerminalBusy = terminalBusyById[selectedId] || false;
   const currentActionMessage = actionMessageById[selectedId] || "";
   const hintOpen = Boolean(hintOpenById[selectedId]);
+  const unixHintOpen = Boolean(unixHintOpenById[selectedId]);
   const deepHintOpen = Boolean(deepHintOpenById[selectedId]);
   const lessonNote = LESSON_NOTES[selectedId] || null;
   const lessonOpen = Boolean(lessonOpenById[selectedId]);
@@ -800,7 +934,13 @@ function App() {
     selectedId === "level3_2" ||
     selectedId === "level3_4" ||
     selectedId === "level3_5" ||
-    selectedId === "level3_boss";
+    selectedId === "level3_boss" ||
+    selectedId === "level4_1" ||
+    selectedId === "level4_2" ||
+    selectedId === "level4_3" ||
+    selectedId === "level4_4" ||
+    selectedId === "level4_5" ||
+    selectedId === "level4_boss";
 
   const selectedPatchIds = useMemo(
     () => (Array.isArray(resultById[`patch:${selectedId}`]) ? resultById[`patch:${selectedId}`] : []),
@@ -823,6 +963,14 @@ function App() {
       extra: displayHints.filter((hint) => hint.platform === "all"),
     };
   }, [displayHints, selectedId]);
+  const unixHints = useMemo(
+    () => progressiveHints.main.filter((hint) => hint.platform === "unix"),
+    [progressiveHints.main]
+  );
+  const primaryHints = useMemo(
+    () => progressiveHints.main.filter((hint) => hint.platform !== "unix"),
+    [progressiveHints.main]
+  );
   const primaryHint = useMemo(
     () => TERMINAL_INTRO_HINTS[selectedId] || "터미널에 명령을 입력해 단서를 수집해.",
     [selectedId]
@@ -912,6 +1060,16 @@ function App() {
     () => resolveNextId(selectedId, currentResult?.nextId || detail?.next?.id || null),
     [currentResult?.nextId, detail?.next?.id, resolveNextId, selectedId]
   );
+  const nextButtonLabel = useMemo(() => {
+    const shouldGoDefense =
+      activeTab === "attack" &&
+      Boolean(detail?.defense?.enabled) &&
+      detail?.status?.defense !== "solved";
+    if (shouldGoDefense) {
+      return "Defense ->";
+    }
+    return nextChallengeId ? "Next Level ->" : "Finish";
+  }, [activeTab, detail?.defense?.enabled, detail?.status?.defense, nextChallengeId]);
 
   const handleSubmitFlag = useCallback(async () => {
     if (!token || !selectedId || !currentFlag.trim()) {
@@ -959,6 +1117,14 @@ function App() {
     if (!selectedId) {
       return;
     }
+    const shouldGoDefense =
+      activeTab === "attack" &&
+      Boolean(detail?.defense?.enabled) &&
+      detail?.status?.defense !== "solved";
+    if (shouldGoDefense) {
+      setActiveTab("defense");
+      return;
+    }
     const current = resultById[selectedId];
     const nextId = resolveNextId(selectedId, current?.nextId || null);
     if (nextId) {
@@ -974,7 +1140,7 @@ function App() {
         message: "All Challenges Cleared! 🏆",
       },
     }));
-  }, [resolveNextId, resultById, selectedId]);
+  }, [activeTab, detail?.defense?.enabled, detail?.status?.defense, resolveNextId, resultById, selectedId]);
 
   const handleSubmitPatch = useCallback(async () => {
     if (!token || !selectedId) {
@@ -1343,7 +1509,7 @@ function App() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "프로필 조회 완료. 이제 저장 요청 body를 변조해 role/is_admin 주입 후 perks 응답을 다시 확인해.",
+          "프로필 조회 완료. 응답 데이터 구조를 관찰하고 저장 요청을 변조해봐.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -1467,6 +1633,228 @@ function App() {
     }
   }, [selectedId, token]);
 
+  const handleBundleHintRequest = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_1/actions/public/bundle-hint`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      let assetPath = "";
+      try {
+        const parsed = raw ? JSON.parse(raw) : null;
+        assetPath = parsed?.data?.assetPath || "";
+      } catch {
+        // keep empty
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: assetPath
+          ? `힌트 조회 완료. 이제 ${assetPath} 파일을 열어 PARTNER_KEY를 찾고 handshake를 호출해.`
+          : "힌트 조회 완료. 공개 자산 파일을 열어 PARTNER_KEY를 찾고 handshake를 호출해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId]);
+
+  const handlePartnerPassIssueRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_2/actions/pass/issue`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "PartnerPass 발급 완료. 이제 keys/jwks를 확인하고 kid를 관찰해 legacy 검증 경로를 추론해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleReplayEventRequest = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_3/actions/event/delivered`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_id: "EVT-2026-DEL-001",
+          parcel_id: "PD-1004",
+          status: "delivered",
+        }),
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "event 전송 완료. 동일 event_id를 반복 재전송한 뒤 /actions/stamps로 count 누적 여부를 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId, token]);
+
+  const handleGatewayStatusRequest = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_4/actions/public/gateway-status`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const gatewayIp = response.headers.get("x-gateway-ip");
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: gatewayIp
+          ? `gateway-status 조회 완료. 응답 헤더 X-Gateway-IP=${gatewayIp}. whoami/settlement에서 X-Forwarded-For 첫 번째 IP로 넣어 비교해봐.`
+          : "gateway-status 조회 완료. 응답 헤더를 열어 X-Gateway-IP를 확인하고 whoami/settlement를 비교해봐.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId]);
+
+  const handleWebhookSpecRequest = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_5/actions/webhook/spec`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]:
+          "spec 조회 완료. timestamp/raw_body 기반 서명을 만든 뒤 webhook/receive를 호출하고 track로 상태 변화를 확인해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId]);
+
+  const handleLevel4BossStatusRequest = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/challenges/level4_boss/actions/public/status`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = `요청 실패 (${response.status})`;
+        try {
+          const parsed = raw ? JSON.parse(raw) : null;
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
+        return;
+      }
+      let assetHint = "";
+      try {
+        const parsed = raw ? JSON.parse(raw) : null;
+        assetHint = parsed?.data?.assetHint || "";
+      } catch {
+        // keep empty
+      }
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: assetHint
+          ? `status 조회 완료. 다음은 ${assetHint} 공개 자산에서 LEGACY_KID/WEBHOOK_SECRET_B64 단서를 찾고 jwks -> admin/config로 이어가.`
+          : "status 조회 완료. public asset -> jwks -> admin/config -> webhook -> claim 순서로 체인을 연결해.",
+      }));
+    } catch (error) {
+      setActionMessageById((prev) => ({
+        ...prev,
+        [selectedId]: error.message || "요청 전송 실패",
+      }));
+    }
+  }, [selectedId]);
+
   const handleResetSession = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
@@ -1480,6 +1868,7 @@ function App() {
     setTerminalBusyById({});
     setActionMessageById({});
     setHintOpenById({});
+    setUnixHintOpenById({});
     setDeepHintOpenById({});
     setLessonOpenById({});
     setStatusText("Session reset. Creating a new one...");
@@ -1498,6 +1887,13 @@ function App() {
       return;
     }
     setHintOpenById((prev) => ({ ...prev, [selectedId]: !prev[selectedId] }));
+  }, [selectedId]);
+
+  const toggleUnixHints = useCallback(() => {
+    if (!selectedId) {
+      return;
+    }
+    setUnixHintOpenById((prev) => ({ ...prev, [selectedId]: !prev[selectedId] }));
   }, [selectedId]);
 
   const toggleDeepHints = useCallback(() => {
@@ -1628,7 +2024,19 @@ function App() {
                                         ? handleTicketProbeRequest
                                         : selectedId === "level3_5"
                                           ? handleLockerHintRequest
-                                          : handleBossMineRequest
+                                          : selectedId === "level4_1"
+                                            ? handleBundleHintRequest
+                                            : selectedId === "level4_2"
+                                              ? handlePartnerPassIssueRequest
+                                              : selectedId === "level4_3"
+                                                ? handleReplayEventRequest
+                                                : selectedId === "level4_4"
+                                                  ? handleGatewayStatusRequest
+                                                  : selectedId === "level4_5"
+                                                    ? handleWebhookSpecRequest
+                                                    : selectedId === "level4_boss"
+                                                      ? handleLevel4BossStatusRequest
+                                            : handleBossMineRequest
                         }
                         disabled={currentTerminalBusy || !detail.attack?.enabled}
                       >
@@ -1646,9 +2054,21 @@ function App() {
                                     ? "메뉴 동기화"
                                     : selectedId === "level3_4"
                                       ? "지원 티켓 불러오기"
-                                      : selectedId === "level3_5"
-                                        ? "락커 힌트 조회"
-                                        : "내 택배 보기"}
+                                        : selectedId === "level3_5"
+                                          ? "락커 힌트 조회"
+                                        : selectedId === "level4_1"
+                                          ? "번들 힌트 조회"
+                                          : selectedId === "level4_2"
+                                            ? "PartnerPass 발급"
+                                            : selectedId === "level4_3"
+                                              ? "배송 완료 이벤트 전송"
+                                              : selectedId === "level4_4"
+                                                ? "게이트웨이 상태 조회"
+                                                : selectedId === "level4_5"
+                                                  ? "웹훅 명세 조회"
+                                                  : selectedId === "level4_boss"
+                                                    ? "보스 상태 조회"
+                                           : "내 택배 보기"}
                       </button>
                     )}
                     <p className="caption">
@@ -1693,6 +2113,37 @@ function App() {
                           버튼을 누른 직후 Network에서 <code>/actions/locker/hint</code> 응답을 확인하고,{" "}
                           <code>/actions/locker/unlock</code> 반복 요청을 시도해.
                         </>
+                      ) : selectedId === "level4_1" ? (
+                        <>
+                          버튼으로 <code>/actions/public/bundle-hint</code>를 확인한 뒤, 공개 js의{" "}
+                          <code>sourceMappingURL</code> 단서를 따라 <code>.map</code>에서 키를 찾고{" "}
+                          <code>/actions/partner/handshake</code>를 호출해.
+                        </>
+                      ) : selectedId === "level4_2" ? (
+                        <>
+                          버튼으로 <code>/actions/pass/issue</code>를 먼저 호출해 PartnerPass를 관찰하고,{" "}
+                          <code>/actions/keys/jwks</code>와 <code>/actions/admin/audit</code>를 연결해 kid 검증 흐름을 분석해.
+                        </>
+                      ) : selectedId === "level4_3" ? (
+                        <>
+                          버튼으로 <code>/actions/event/delivered</code>를 한 번 보낸 뒤, 같은 요청을 반복 재전송해서{" "}
+                          <code>/actions/stamps</code> count가 누적되는지 확인해.
+                        </>
+                      ) : selectedId === "level4_4" ? (
+                        <>
+                          버튼으로 <code>/actions/public/gateway-status</code>를 확인한 뒤{" "}
+                          <code>/actions/whoami</code> 와 <code>/actions/partner/settlement</code>를 비교해 서버가 신뢰하는 IP 결정을 확인해.
+                        </>
+                      ) : selectedId === "level4_5" ? (
+                        <>
+                          버튼으로 <code>/actions/webhook/spec</code>을 확인한 뒤, 서명된 webhook/receive 요청을 직접 보내고{" "}
+                          <code>/actions/track?parcel_id=PD-1004</code> 결과를 확인해.
+                        </>
+                      ) : selectedId === "level4_boss" ? (
+                        <>
+                          버튼으로 <code>/actions/public/status</code>를 먼저 확인하고, 이후{" "}
+                          <code>public asset -&gt; jwks -&gt; admin/config -&gt; webhook/receive -&gt; vault/claim</code> 체인을 완성해.
+                        </>
                       ) : (
                         <>
                           버튼을 누른 직후 Network에서 <code>/actions/parcels/mine</code> 요청을 확인하고, 체인 단계별로{" "}
@@ -1731,6 +2182,36 @@ function App() {
                         FINAL BOSS: 한 가지가 아니라 취약점 체인이다. 단계 단서를 연결해서 최종 claim을 완성해.
                       </div>
                     )}
+                    {selectedId === "level4_1" && (
+                      <div className="action-note">
+                        js 본문에서 값이 바로 안 보여도 끝이 아니다. source map이 열려 있으면 원본 코드/시크릿이 그대로 노출될 수 있다.
+                      </div>
+                    )}
+                    {selectedId === "level4_2" && (
+                      <div className="action-note">
+                        kid는 검증 키 선택 힌트다. legacy 키 경로가 남아있으면 검증 우회의 시작점이 될 수 있다.
+                      </div>
+                    )}
+                    {selectedId === "level4_3" && (
+                      <div className="action-note">
+                        replay 핵심은 "요청이 유효한가"가 아니라 "요청이 새로운가"다. 동일 event_id 재사용 차단 유무를 확인해.
+                      </div>
+                    )}
+                    {selectedId === "level4_4" && (
+                      <div className="action-note">
+                        X-Forwarded-For는 문자열 헤더다. 신뢰 가능한 프록시 경계 없이 믿으면 IP allowlist는 우회된다.
+                      </div>
+                    )}
+                    {selectedId === "level4_5" && (
+                      <div className="action-note">
+                        웹훅은 세션 대신 서명으로 신뢰를 만든다. 하지만 시크릿이 유출되면 서명 검증만으로는 위조를 못 막는다.
+                      </div>
+                    )}
+                    {selectedId === "level4_boss" && (
+                      <div className="action-note">
+                        4-BOSS는 단일 취약점 문제가 아니다. 자산 유출, 키 선택 검증, 웹훅 서명, 스탬프 누적을 단계적으로 연결해야 한다.
+                      </div>
+                    )}
                     {currentActionMessage && <div className="action-note">{currentActionMessage}</div>}
                   </div>
                 )}
@@ -1742,13 +2223,32 @@ function App() {
                 </div>
                 {hintOpen && (
                   <>
-                    <ul>
-                      {progressiveHints.main.map((hint, idx) => (
-                        <li key={`${hint.platform}-${idx}`}>
-                          [{hint.platform}] <code>{hint.text}</code>
-                        </li>
-                      ))}
-                    </ul>
+                    {primaryHints.length > 0 && (
+                      <ul>
+                        {primaryHints.map((hint, idx) => (
+                          <li key={`${hint.platform}-${idx}`}>
+                            [{hint.platform}] <code>{hint.text}</code>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {unixHints.length > 0 && (
+                      <div className="extra-hints">
+                        <button className="ghost-button hint-toggle" onClick={toggleUnixHints}>
+                          {unixHintOpen ? "유닉스 힌트 숨기기" : "유닉스 힌트 보기"}
+                        </button>
+                        {unixHintOpen && (
+                          <ul>
+                            {unixHints.map((hint, idx) => (
+                              <li key={`unix-${idx}`}>
+                                [{hint.platform}] <code>{hint.text}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
 
                     {progressiveHints.extra.length > 0 && (
                       <div className="extra-hints">
@@ -1853,9 +2353,7 @@ function App() {
 
                         {effectiveSolved && (
                           <div className="lesson-next-row">
-                            <button onClick={handleNextLevel}>
-                              {nextChallengeId ? "Next Level ->" : "Finish"}
-                            </button>
+                            <button onClick={handleNextLevel}>{nextButtonLabel}</button>
                           </div>
                         )}
                       </section>
@@ -1865,7 +2363,7 @@ function App() {
 
                 {effectiveSolved && !lessonNote && (
                   <div className="lesson-next-row">
-                    <button onClick={handleNextLevel}>{nextChallengeId ? "Next Level ->" : "Finish"}</button>
+                    <button onClick={handleNextLevel}>{nextButtonLabel}</button>
                   </div>
                 )}
               </div>
@@ -1874,6 +2372,19 @@ function App() {
             {activeTab === "defense" && (
               <div className="stack">
                 <p>{detail.defense?.instruction}</p>
+                <h4>
+                  Terminal{" "}
+                  {currentTerminalBusy && <span className="busy-indicator">(running...)</span>}
+                </h4>
+                <XTermPanel
+                  key={`${selectedId}-defense`}
+                  disabled={!detail.defense?.enabled}
+                  prompt={detail.attack?.terminal?.prompt || "$ "}
+                  introHint="defense audit"
+                  onExec={handleExec}
+                  busy={currentTerminalBusy}
+                  onBusyChange={updateTerminalBusy}
+                />
                 <div className="code-box">
                   {(detail.defense?.code?.lines || []).map((line) => {
                     const patchableId = line.patchableId;

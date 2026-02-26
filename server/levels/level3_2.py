@@ -153,7 +153,7 @@ def export_payload() -> Dict[str, Any]:
         "ok": True,
         "data": {
             "status": "deprecated",
-            "message": "This endpoint is no longer active. Use admin/audit instead.",
+            "message": "This export feature has been migrated. Check the admin panel for current tools.",
         },
     }
 

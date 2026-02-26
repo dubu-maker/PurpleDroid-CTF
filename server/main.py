@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import copy
+import os
 import secrets
 import time
 from typing import Any, Dict, Optional, List, Tuple
 
-from fastapi import Body, FastAPI, Header, Query, Response
+from fastapi import Body, FastAPI, Header, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -137,8 +138,25 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
     if not prog:
         return {"attack": "locked", "defense": "locked"}
 
+    unlock_all = os.getenv("PURPLEDROID_UNLOCK_ALL", "").strip().lower() in {"1", "true", "yes", "on"}
+    if unlock_all:
+        attack = "solved" if prog["attackSolved"] else "available"
+        unlocked_for_defense = _is_level_unlocked(session, level_id)
+        defense = (
+            "solved"
+            if prog["defenseSolved"]
+            else ("available" if (prog["attackSolved"] and unlocked_for_defense) else "locked")
+        )
+        return {"attack": attack, "defense": defense}
+
     boss_prereqs = ("level2_1", "level2_2", "level2_3", "level2_4")
     level3_boss_prereqs = ("level3_1", "level3_2", "level3_3", "level3_4", "level3_5")
+    level4_prereqs = ("level3_boss",)
+    level4_2_prereqs = ("level4_1",)
+    level4_3_prereqs = ("level4_2",)
+    level4_4_prereqs = ("level4_3",)
+    level4_5_prereqs = ("level4_4",)
+    level4_boss_prereqs = ("level4_5",)
     if level_id == "level2_5":
         unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in boss_prereqs)
         attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
@@ -146,6 +164,24 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
         unlocked_attack = all(
             session["progress"].get(x, {}).get("attackSolved") is True for x in level3_boss_prereqs
         )
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_1":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_2":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_2_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_3":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_3_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_4":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_4_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_5":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_5_prereqs)
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level4_boss":
+        unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_boss_prereqs)
         attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
     else:
         # 기본 레벨은 Attack 항상 접근 가능
@@ -196,7 +232,7 @@ class SessionCreateReq(BaseModel):
 
 
 class TerminalExecReq(BaseModel):
-    command: str = Field(..., min_length=1, max_length=300)
+    command: str = Field(..., min_length=1, max_length=1250)
 
 
 class SubmitFlagReq(BaseModel):
@@ -369,7 +405,10 @@ def submit_patch(challenge_id: str, req: SubmitPatchReq, authorization: Optional
     if st["defense"] == "locked":
         raise APIError("DEFENSE_LOCKED", "먼저 Attack을 성공해야 Defense를 할 수 있어.", 409)
 
-    correct = mod.judge_patch(req.patched)
+    if hasattr(mod, "judge_patch_with_session"):
+        correct = mod.judge_patch_with_session(req.patched, session)
+    else:
+        correct = mod.judge_patch(req.patched)
     if correct:
         session["progress"][challenge_id]["defenseSolved"] = True
         new_status = _status_for(session, challenge_id)
@@ -469,6 +508,12 @@ class BossLockerUnlockReq(BaseModel):
 class BossVaultClaimReq(BaseModel):
     vault_ticket: str = Field(..., min_length=3, max_length=80)
     claim_code: str = Field(..., min_length=3, max_length=40)
+
+
+class DeliveryEventReq(BaseModel):
+    event_id: str = Field(..., min_length=3, max_length=64)
+    parcel_id: str = Field(..., min_length=3, max_length=40)
+    status: str = Field(default="delivered", min_length=3, max_length=20)
 
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
@@ -772,3 +817,265 @@ def level3_boss_vault_claim(
     from levels.level3_boss import vault_claim_payload
 
     return vault_claim_payload(session, req.vault_ticket, req.claim_code)
+
+
+@app.get("/api/v1/challenges/level4_1/actions/public/bundle-hint")
+def level4_1_bundle_hint():
+    from levels.level4_1 import bundle_hint_payload
+
+    return bundle_hint_payload()
+
+
+@app.get("/api/v1/challenges/level4_1/actions/public/assets/{filename}")
+def level4_1_public_asset(filename: str):
+    from levels.level4_1 import ASSET_FILENAME, ASSET_MAP_FILENAME, build_artifact_source, build_artifact_sourcemap
+
+    if filename == ASSET_FILENAME:
+        return Response(content=build_artifact_source(), media_type="application/javascript")
+    if filename == ASSET_MAP_FILENAME:
+        return Response(content=build_artifact_sourcemap(), media_type="application/json")
+    raise APIError("NOT_FOUND", "asset not found", 404)
+
+
+@app.post("/api/v1/challenges/level4_1/actions/partner/handshake")
+def level4_1_partner_handshake(
+    authorization: Optional[str] = Header(None),
+    x_partner_key: Optional[str] = Header(None, alias="X-Partner-Key"),
+):
+    _get_session(authorization)
+    from levels.level4_1 import is_partner_key_valid, partner_handshake_payload
+
+    if not is_partner_key_valid(x_partner_key or ""):
+        raise APIError("PARTNER_DENIED", "Partner key invalid.", 403)
+    return partner_handshake_payload()
+
+
+@app.get("/api/v1/challenges/level4_2/actions/pass/issue")
+def level4_2_issue_pass(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level4_2 import issue_pass_payload
+
+    return issue_pass_payload(str(session.get("userId", "user_1004")))
+
+
+@app.get("/api/v1/challenges/level4_2/actions/keys/jwks")
+def level4_2_jwks(authorization: Optional[str] = Header(None)):
+    _get_session(authorization)
+    from levels.level4_2 import jwks_payload
+
+    return jwks_payload()
+
+
+@app.post("/api/v1/challenges/level4_2/actions/admin/audit")
+def level4_2_admin_audit(
+    authorization: Optional[str] = Header(None),
+    x_partner_pass: Optional[str] = Header(None, alias="X-Partner-Pass"),
+):
+    _get_session(authorization)
+    from levels.level4_2 import admin_audit_payload
+
+    ok_result, payload = admin_audit_payload(x_partner_pass or "")
+    if not ok_result:
+        raise APIError(payload["code"], payload["message"], int(payload.get("status", 403)))
+    return payload
+
+
+@app.post("/api/v1/challenges/level4_3/actions/event/delivered")
+def level4_3_event_delivered(
+    authorization: Optional[str] = Header(None),
+    req: DeliveryEventReq = Body(...),
+):
+    _, session = _get_session(authorization)
+    from levels.level4_3 import delivered_event_payload
+
+    payload = delivered_event_payload(session, req.event_id, req.parcel_id, req.status)
+    if payload.get("ok") is False:
+        raise APIError("VALIDATION_ERROR", payload.get("error", {}).get("message", "invalid payload"), 422)
+    return payload
+
+
+@app.get("/api/v1/challenges/level4_3/actions/stamps")
+def level4_3_get_stamps(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level4_3 import stamps_payload
+
+    return stamps_payload(session)
+
+
+@app.get("/api/v1/challenges/level4_4/actions/public/gateway-status")
+def level4_4_gateway_status(response: Response):
+    from levels.level4_4 import PARTNER_GATEWAY_IP, gateway_status_payload
+
+    response.headers["X-Gateway-IP"] = PARTNER_GATEWAY_IP
+    return gateway_status_payload()
+
+
+@app.get("/api/v1/challenges/level4_4/actions/whoami")
+def level4_4_whoami(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_forwarded_for: Optional[str] = Header(None, alias="X-Forwarded-For"),
+):
+    _get_session(authorization)
+    from levels.level4_4 import whoami_payload
+
+    remote_addr = request.client.host if request.client else "unknown"
+    return whoami_payload(remote_addr, x_forwarded_for)
+
+
+@app.post("/api/v1/challenges/level4_4/actions/partner/settlement")
+def level4_4_partner_settlement(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_forwarded_for: Optional[str] = Header(None, alias="X-Forwarded-For"),
+    _req: Dict[str, Any] = Body(default={}),
+):
+    _get_session(authorization)
+    from levels.level4_4 import settlement_payload
+
+    remote_addr = request.client.host if request.client else "unknown"
+    ok_result, payload = settlement_payload(remote_addr, x_forwarded_for)
+    if not ok_result:
+        err = payload.get("error", {})
+        raise APIError(
+            err.get("code", "PARTNER_NETWORK_ONLY"),
+            err.get("message", "Only partner gateway can call this."),
+            403,
+            err.get("details", {}),
+        )
+    return payload
+
+
+@app.get("/api/v1/challenges/level4_5/actions/webhook/spec")
+def level4_5_webhook_spec():
+    from levels.level4_5 import webhook_spec_payload
+
+    return webhook_spec_payload()
+
+
+@app.post("/api/v1/challenges/level4_5/actions/webhook/receive")
+async def level4_5_webhook_receive(
+    request: Request,
+    x_webhook_timestamp: Optional[str] = Header(None, alias="X-Webhook-Timestamp"),
+    x_webhook_event_id: Optional[str] = Header(None, alias="X-Webhook-Event-Id"),
+    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
+):
+    from levels.level4_5 import receive_webhook_payload
+
+    raw_body = (await request.body()).decode("utf-8", errors="replace")
+    status, payload = receive_webhook_payload(
+        x_webhook_timestamp,
+        x_webhook_event_id,
+        x_webhook_signature,
+        raw_body,
+        int(_now()),
+    )
+    return JSONResponse(status_code=status, content=payload)
+
+
+@app.get("/api/v1/challenges/level4_5/actions/track")
+def level4_5_track(
+    authorization: Optional[str] = Header(None),
+    parcel_id: str = Query(default="PD-1004", min_length=3, max_length=40),
+):
+    _get_session(authorization)
+    from levels.level4_5 import track_payload
+
+    return track_payload(parcel_id)
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/public/status")
+def level4_boss_public_status():
+    from levels.level4_boss import public_status_payload
+
+    return public_status_payload()
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/public/assets/{filename}")
+def level4_boss_public_asset(filename: str):
+    from levels.level4_boss import ASSET_FILENAME, public_asset_source
+
+    if filename != ASSET_FILENAME:
+        raise APIError("NOT_FOUND", "asset not found", 404)
+    return Response(content=public_asset_source(), media_type="application/javascript")
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/keys/jwks")
+def level4_boss_jwks(authorization: Optional[str] = Header(None)):
+    _get_session(authorization)
+    from levels.level4_boss import jwks_payload
+
+    return jwks_payload()
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/pass/issue")
+def level4_boss_pass_issue(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    from levels.level4_boss import issue_pass_payload
+
+    return issue_pass_payload(str(session.get("userId", "user_1004")))
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/admin/config")
+def level4_boss_admin_config(
+    authorization: Optional[str] = Header(None),
+    x_partner_pass: Optional[str] = Header(None, alias="X-Partner-Pass"),
+):
+    _get_session(authorization)
+    from levels.level4_boss import admin_config_payload
+
+    ok_result, payload = admin_config_payload(x_partner_pass or "")
+    if not ok_result:
+        err = payload.get("error", {})
+        raise APIError(err.get("code", "BAD_PARTNER_PASS"), err.get("message", "partner pass invalid"), int(payload.get("_status", 401)))
+    return payload
+
+
+@app.post("/api/v1/challenges/level4_boss/actions/webhook/receive")
+async def level4_boss_webhook_receive(
+    request: Request,
+    x_webhook_timestamp: Optional[str] = Header(None, alias="X-Webhook-Timestamp"),
+    x_webhook_event_id: Optional[str] = Header(None, alias="X-Webhook-Event-Id"),
+    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
+):
+    from levels.level4_boss import webhook_receive_payload
+
+    raw_body = (await request.body()).decode("utf-8", errors="replace")
+    status, payload = webhook_receive_payload(
+        x_webhook_timestamp,
+        x_webhook_event_id,
+        x_webhook_signature,
+        raw_body,
+        int(_now()),
+    )
+    return JSONResponse(status_code=status, content=payload)
+
+
+@app.get("/api/v1/challenges/level4_boss/actions/vault/status")
+def level4_boss_vault_status(
+    authorization: Optional[str] = Header(None),
+    ticket: str = Query(..., min_length=3, max_length=80),
+):
+    _get_session(authorization)
+    from levels.level4_boss import vault_status_payload
+
+    ok_result, payload = vault_status_payload(ticket)
+    if not ok_result:
+        err = payload.get("error", {})
+        raise APIError(err.get("code", "BAD_TICKET"), err.get("message", "unknown ticket"), int(payload.get("_status", 404)))
+    return payload
+
+
+@app.post("/api/v1/challenges/level4_boss/actions/vault/claim")
+def level4_boss_vault_claim(
+    authorization: Optional[str] = Header(None),
+    req: Dict[str, Any] = Body(default={}),
+):
+    _get_session(authorization)
+    from levels.level4_boss import vault_claim_payload
+
+    ok_result, payload = vault_claim_payload(str(req.get("ticket", "")))
+    if not ok_result:
+        err = payload.get("error", {})
+        raise APIError(err.get("code", "NOT_READY"), err.get("message", "claim failed"), int(payload.get("_status", 409)))
+    return payload
