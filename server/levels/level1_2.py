@@ -7,18 +7,25 @@ import secrets
 import shlex
 from typing import Any, Dict, List, Tuple
 
-LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{DEV_ONLY_LEVEL1_2}")
+LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{SIGNAL_SURVIVES_THE_STATIC}")
 
 LOGCAT_LINES = [
     "I/System: Booting...",
     "I/PurpleDroid: app started",
+    "D/AEGIS: decoy seed session=FLAG{AEGIS_FALSE_POSITIVE_A1}",
+    "W/LegacyAuth: cached session=FLAG{QA_LOGIN_CACHE_2025}",
     "D/Network: request => /login",
+    "D/AuthService: preflight session=FLAG{STAGING_AUTH_SAMPLE}",
     "I/AuthService: Login success! session established",
     "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026}",
     "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD}",
+    "D/Noise: injected evidence=FLAG{MIRROR_STREAM_ACTIVE}",
     "D/AuthService: session=" + LEVEL1_2_FLAG,
     "I/AuthService: refresh queue drained",
+    "D/AuthService: replay decoy session=FLAG{REPLAY_BUFFER_FAKE}",
     "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT}",
+    "W/AEGIS: quarantine marker=FLAG{QUARANTINE_TEST_ONLY}",
+    "D/Telemetry: sample flag=FLAG{METRICS_PIPELINE_CANARY}",
     "I/OtherTag: idle",
     "I/System: idle",
 ]
@@ -57,31 +64,54 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "AuthService 로그 정책을 조정해 민감 session 노출과 과다 노이즈를 줄이세요.\n"
-            "1) defense audit\n"
-            "2) defense apply {\"logLevel\":\"INFO\",\"allowAuthServiceVerbose\":false,\"redactSessionTokens\":true}\n"
-            "3) defense verify\n"
-            "그 다음 기존 패치 제출로 완료하세요."
+            "AuthService가 session/token 값을 그대로 로그에 남기는 지점을 선택해 봉쇄하세요. "
+            "초반 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
         ),
         "code": {
             "language": "kotlin",
             "patchMode": "toggleComment",
             "lines": [
-                {"no": 1, "text": "fun login(token: String) {"},
-                {"no": 2, "text": "  // TODO: remove sensitive logs"},
+                {"no": 1, "text": "fun login(username: String, password: String) {"},
                 {
-                    "no": 3,
-                    "text": '  Log.d("Secret", "PurpleDroid Key = $token")',
+                    "no": 2,
+                    "text": '  Log.i("AuthService", "login attempt received")',
+                    "patchableId": "d1",
+                },
+                {"no": 3, "text": "  val authResult = authClient.login(username, password)"},
+                {
+                    "no": 4,
+                    "text": '  Log.i("AuthService", "Login success! session established")',
+                    "patchableId": "d2",
+                },
+                {
+                    "no": 5,
+                    "text": '  Log.d("AuthService", "session=${authResult.sessionToken}")',
                     "patchableId": "p1",
                 },
-                {"no": 4, "text": "  // send token to server..."},
-                {"no": 5, "text": "}"},
+                {
+                    "no": 6,
+                    "text": '  Log.d("AuthService", "refreshToken=${authResult.refreshToken}")',
+                    "patchableId": "p2",
+                },
+                {
+                    "no": 7,
+                    "text": '  Log.i("AuthService", "refresh queue drained")',
+                    "patchableId": "d3",
+                },
+                {
+                    "no": 8,
+                    "text": '  Log.d("Telemetry", "event=login_success")',
+                    "patchableId": "d4",
+                },
+                {"no": 9, "text": "  sessionStore.save(authResult.sessionToken)"},
+                {"no": 10, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1"}
+PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3", "d4"}
+REQUIRED_PATCH_IDS = {"p1", "p2"}
 
 
 def check_flag(flag: str) -> bool:
@@ -89,12 +119,11 @@ def check_flag(flag: str) -> bool:
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
-    return "p1" in set(patched_ids)
+    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
 
 
 def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
-    state = _defense_state(session)
-    return ("p1" in set(patched_ids)) and bool(state.get("verified"))
+    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
 
 
 def _split_pipes(s: str) -> List[str]:

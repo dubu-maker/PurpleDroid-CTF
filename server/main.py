@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import copy
+import json
 import os
 import secrets
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional, List, Tuple
 
 from fastapi import Body, FastAPI, Header, Query, Request, Response
@@ -89,6 +91,12 @@ def ok(data: Any):
 # -----------------------------
 # token -> session dict
 _sessions: Dict[str, Dict[str, Any]] = {}
+SESSION_STORE_PATH = Path(
+    os.getenv(
+        "PURPLEDROID_SESSION_STORE",
+        str(Path(__file__).with_name(".purpledroid_sessions.json")),
+    )
+)
 
 
 def _now() -> float:
@@ -104,6 +112,107 @@ def _init_progress() -> Dict[str, Dict[str, bool]]:
         level_id: {"attackSolved": False, "defenseSolved": False}
         for level_id in LEVEL_ORDER
     }
+
+
+def _session_persistence_enabled() -> bool:
+    return os.getenv("PURPLEDROID_SESSION_PERSIST", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _normalize_progress(raw: Any) -> Dict[str, Dict[str, bool]]:
+    progress = _init_progress()
+    if not isinstance(raw, dict):
+        return progress
+
+    for level_id in LEVEL_ORDER:
+        item = raw.get(level_id)
+        if not isinstance(item, dict):
+            continue
+        progress[level_id] = {
+            "attackSolved": bool(item.get("attackSolved")),
+            "defenseSolved": bool(item.get("defenseSolved")),
+        }
+    return progress
+
+
+def _normalize_session(token: str, raw: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+
+    now = _now()
+    session = dict(raw)
+    session["token"] = str(session.get("token") or token)
+    session.setdefault("createdAt", now)
+    session.setdefault("lastSeenAt", now)
+    session.setdefault("expiresAt", now + SESSION_TTL_SEC)
+    session.setdefault("client", {})
+    session.setdefault("userId", "user_1004")
+    session.setdefault("primaryParcelId", "PD-1004")
+    session["progress"] = _normalize_progress(session.get("progress"))
+    session.setdefault("terminalRate", [])
+    session.setdefault("parcelLookupRate", [])
+    return session
+
+
+def _load_sessions() -> None:
+    if not _session_persistence_enabled() or not SESSION_STORE_PATH.exists():
+        return
+
+    try:
+        raw = json.loads(SESSION_STORE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return
+
+    raw_sessions = raw.get("sessions") if isinstance(raw, dict) else raw
+    if not isinstance(raw_sessions, dict):
+        return
+
+    now = _now()
+    restored: Dict[str, Dict[str, Any]] = {}
+    for token, session_raw in raw_sessions.items():
+        session = _normalize_session(str(token), session_raw)
+        if not session or float(session.get("expiresAt", 0)) < now:
+            continue
+        restored[str(token)] = session
+
+    _sessions.update(restored)
+
+
+def _save_sessions() -> None:
+    if not _session_persistence_enabled():
+        return
+
+    try:
+        SESSION_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = SESSION_STORE_PATH.with_suffix(f"{SESSION_STORE_PATH.suffix}.tmp")
+        payload = {
+            "version": 1,
+            "savedAt": _now(),
+            "sessions": _sessions,
+        }
+        tmp_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str),
+            encoding="utf-8",
+        )
+        tmp_path.replace(SESSION_STORE_PATH)
+    except Exception:
+        # 개발 편의 기능이라 저장 실패가 게임 진행 요청을 깨면 안 된다.
+        return
+
+
+_load_sessions()
+
+
+@app.middleware("http")
+async def persist_sessions_middleware(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/v1/"):
+        _save_sessions()
+    return response
 
 
 def _get_session(authorization: Optional[str]) -> Tuple[str, Dict[str, Any]]:

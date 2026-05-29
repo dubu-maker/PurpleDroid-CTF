@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Terminal } from "xterm";
+import CampaignMode from "./campaign/CampaignMode";
 import { LESSON_NOTES } from "./content/lessonNotes";
 
 const TOKEN_KEY = "purpledroid_session_token";
@@ -724,7 +725,7 @@ function XTermPanel({ disabled, prompt, introHint, onExec, busy, onBusyChange })
   return <div className="terminal-host" ref={hostRef} />;
 }
 
-function App() {
+function ClassicApp() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
   const [challenges, setChallenges] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -2424,6 +2425,14 @@ function App() {
       </main>
     </div>
   );
+}
+
+function App() {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (pathname === "/campaign") {
+    return <CampaignMode />;
+  }
+  return <ClassicApp />;
 }
 
 export default App;

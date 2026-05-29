@@ -8,3 +8,9 @@ local.properties
 .DS_Store
 captures/
 .externalNativeBuild/
+
+# Python / server runtime
+__pycache__/
+*.py[cod]
+server/.purpledroid_sessions.json
+server/.purpledroid_sessions.json.tmp

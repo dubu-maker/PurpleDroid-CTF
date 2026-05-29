@@ -7,28 +7,37 @@ import secrets
 import shlex
 from typing import Any, Dict, List, Tuple
 
-LEVEL1_3_FLAG = os.getenv("PURPLEDROID_LEVEL1_3_FLAG", "FLAG{DEV_ONLY_LEVEL1_3}")
+DEFAULT_LEVEL1_3_FLAG = "FLAG{SPLIT_AND_STITCH}"
+LEVEL1_3_FLAG = os.getenv("PURPLEDROID_LEVEL1_3_FLAG", DEFAULT_LEVEL1_3_FLAG)
+TRUE_SHARD_ID = "EV-031"
 
 
-def _split_flag(flag: str, n: int = 3) -> List[str]:
+def _split_flag(flag: str, n: int = 4) -> List[str]:
     size = (len(flag) + n - 1) // n
     return [flag[i * size : (i + 1) * size] for i in range(n)]
 
 
-def _strip_flag_wrapper(flag: str) -> str:
-    if flag.startswith("FLAG{") and flag.endswith("}"):
-        return flag[5:-1]
-    return flag
+def _build_true_parts(flag: str) -> List[str]:
+    if flag == DEFAULT_LEVEL1_3_FLAG:
+        return ["FLAG{SPL", "IT_", "AND_STITCH", "}"]
+    parts = _split_flag(flag, 4)
+    return parts + [""] * (4 - len(parts))
 
 
-BODY = _strip_flag_wrapper(LEVEL1_3_FLAG)
-PARTS = _split_flag(BODY, 3)
+PARTS = _build_true_parts(LEVEL1_3_FLAG)
 
 LOGCAT_LINES = [
     "I/PurpleDroid: app started",
-    "D/CryptoProvider: part[2]=" + PARTS[1],
-    "D/CryptoProvider: part[3]=" + PARTS[2],
-    "D/CryptoProvider: part[1]=" + PARTS[0],
+    "W/AEGIS: fragmentation protocol active",
+    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1],
+    "D/Noise: shardId=DECOY-7 part[1/3]=FLAG{BROKEN_",
+    "D/AuthService: checkpoint=login-success",
+    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0],
+    "D/Telemetry: sample flag=FLAG{METRICS_CANARY}",
+    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3],
+    "D/CacheWarmup: shardId=OLD-2 part[2/3]=ROLLBACK_",
+    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2],
+    "W/AEGIS: no complete secret exists in this channel",
     "I/CryptoProvider: chunk write complete",
 ]
 
@@ -48,8 +57,8 @@ STATIC: Dict[str, Any] = {
     "description": "미션: 로그에 찍힌 part[1..]를 순서대로 이어붙여 FLAG를 완성해봐.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "CryptoProvider"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "CryptoProvider"'},
+            {"platform": "windows", "text": 'adb logcat -d | findstr "shardId"'},
+            {"platform": "unix", "text": 'adb logcat -d | grep "shardId"'},
         ],
         "terminal": {
             "enabled": True,
@@ -65,27 +74,45 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "조각(part)/재결합 로그/친절 힌트를 운영 정책으로 차단하세요.\n"
-            "1) defense audit\n"
-            "2) defense apply {\"logParts\":false,\"logRecombined\":false,\"redactFlagPattern\":true,\"showStitchHint\":false}\n"
-            "3) defense verify\n"
-            "그 다음 기존 패치 제출로 완료하세요."
+            "CryptoProvider/RouteSync가 Evidence 조각(part)을 그대로 로그에 남기는 라인 4개를 선택해 봉쇄하세요. "
+            "초반 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
         ),
         "code": {
             "language": "kotlin",
             "patchMode": "toggleComment",
             "lines": [
-                {"no": 1, "text": "fun debugParts(p1: String, p2: String, p3: String) {"},
-                {"no": 2, "text": '  Log.d("PurpleDroid", "part[1]=$p1")', "patchableId": "p1"},
-                {"no": 3, "text": '  Log.d("PurpleDroid", "part[2]=$p2")', "patchableId": "p2"},
-                {"no": 4, "text": '  Log.d("PurpleDroid", "part[3]=$p3")', "patchableId": "p3"},
-                {"no": 5, "text": "}"},
+                {"no": 1, "text": "fun emitEvidenceDebug(flag: String, shardId: String) {"},
+                {"no": 2, "text": "  val parts = flag.chunked(8)"},
+                {"no": 3, "text": '  Log.i("CryptoProvider", "fragment recovery started")', "patchableId": "d1"},
+                {
+                    "no": 4,
+                    "text": '  Log.d("RouteSync", "shardId=$shardId part[1/4]=${parts[0]}")',
+                    "patchableId": "p1",
+                },
+                {
+                    "no": 5,
+                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[2/4]=${parts[1]}")',
+                    "patchableId": "p2",
+                },
+                {
+                    "no": 6,
+                    "text": '  Log.d("RouteSync", "shardId=$shardId part[3/4]=${parts[2]}")',
+                    "patchableId": "p3",
+                },
+                {
+                    "no": 7,
+                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[4/4]=${parts[3]}")',
+                    "patchableId": "p4",
+                },
+                {"no": 8, "text": '  Log.i("CryptoProvider", "chunk write complete")', "patchableId": "d2"},
+                {"no": 9, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1", "p2", "p3"}
+PATCHABLE_IDS = {"p1", "p2", "p3", "p4", "d1", "d2"}
+REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4"}
 
 
 def check_flag(flag: str) -> bool:
@@ -93,12 +120,11 @@ def check_flag(flag: str) -> bool:
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
-    return PATCHABLE_IDS.issubset(set(patched_ids))
+    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
 
 
 def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
-    state = _defense_state(session)
-    return PATCHABLE_IDS.issubset(set(patched_ids)) and bool(state.get("verified"))
+    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
 
 
 def _split_pipes(s: str) -> List[str]:
@@ -202,13 +228,14 @@ def _render_logs_with_policy(policy: Dict[str, Any]) -> str:
     if bool(policy.get("logParts", True)):
         lines.extend(
             [
-                "D/CryptoProvider: part[2]=" + PARTS[1],
-                "D/CryptoProvider: part[3]=" + PARTS[2],
-                "D/CryptoProvider: part[1]=" + PARTS[0],
+                f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0],
+                f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1],
+                f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2],
+                f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3],
             ]
         )
     if bool(policy.get("logRecombined", True)):
-        lines.append("D/CryptoProvider: recombined=FLAG{" + BODY + "}")
+        lines.append("D/CryptoProvider: recombined=" + LEVEL1_3_FLAG)
     if bool(policy.get("showStitchHint", True)):
         lines.append("I/CryptoProvider: (hint) stitch the parts in order")
     lines.append("I/CryptoProvider: chunk write complete")

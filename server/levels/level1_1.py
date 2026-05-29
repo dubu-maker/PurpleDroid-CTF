@@ -10,10 +10,39 @@ from typing import Any, Dict, List, Tuple
 LEVEL1_FLAG = "FLAG{Always_Check_The_Logs_First}"
 
 LOGCAT_LINES = [
-    "I/PurpleDroid: app started",
-    "D/Secret: PurpleDroid Key = " + LEVEL1_FLAG,
-    "I/OtherTag: something something",
-    "D/PurpleDroid: done",
+    "05-26 10:14:01.102 I/BootReceiver: android.intent.action.BOOT_COMPLETED",
+    "05-26 10:14:01.231 I/PurpleDroid: courier runtime attached",
+    "05-26 10:14:01.388 D/RouteSync: checkpoint=abandoned-device",
+    "05-26 10:14:01.407 I/OtherTag: metrics batch queued",
+    "05-26 10:14:01.612 D/Secret: PurpleDroid Key = " + LEVEL1_FLAG,
+    "05-26 10:14:01.744 W/AEGIS: diagnostic wipe marker present",
+    "05-26 10:14:01.809 D/Auth: sessionToken=debug-session-7f19",
+    "05-26 10:14:02.004 I/PurpleDroid: delivery worker idle",
+    "05-26 10:14:02.118 V/Perf: frameTime=16ms",
+    "05-26 10:14:02.260 D/PurpleDroid: done",
+]
+
+LIVE_LOGCAT_NOISE = [
+    "--------- beginning of main",
+    "05-26 10:14:04.001 I/AEGIS-Monitor: live stream attached",
+    "05-26 10:14:04.003 W/AEGIS-Monitor: volatile channel unstable",
+    "05-26 10:14:04.006 D/AndroidRuntime: GC freed 2048 objects",
+    "05-26 10:14:04.009 I/PurpleDroid: heartbeat accepted",
+    "05-26 10:14:04.011 W/AEGIS-Monitor: redaction pass scheduled",
+    "05-26 10:14:04.016 D/RouteSync: retry window opened",
+    "05-26 10:14:04.019 I/AndroidSystem: battery stats checkpoint",
+    "05-26 10:14:04.024 W/AEGIS-Monitor: live tail contains decoy frames",
+    "05-26 10:14:04.028 D/PurpleDroid: noise frame id=PD-NOISE-1024",
+    "05-26 10:14:04.031 D/PurpleDroid: noise frame id=PD-NOISE-1025",
+    "05-26 10:14:04.034 D/PurpleDroid: noise frame id=PD-NOISE-1026",
+    "05-26 10:14:04.038 W/AEGIS-Monitor: stream replay detected",
+    "05-26 10:14:04.042 I/AndroidSystem: binder transaction completed",
+    "05-26 10:14:04.047 D/RouteSync: checkpoint=no-secret-visible",
+    "05-26 10:14:04.051 W/AEGIS-Monitor: snapshot flag missing",
+    "05-26 10:14:04.056 D/PurpleDroid: noise frame id=PD-NOISE-1027",
+    "05-26 10:14:04.061 D/PurpleDroid: noise frame id=PD-NOISE-1028",
+    "05-26 10:14:04.064 I/AEGIS-Monitor: live stream throttled",
+    "05-26 10:14:04.069 W/AEGIS-Monitor: use buffered acquisition for stable evidence",
 ]
 
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
@@ -47,11 +76,8 @@ STATIC: Dict[str, Any] = {
     },
     "defense": {
         "instruction": (
-            "터미널에서 운영 로깅 정책을 적용해 유출을 차단하세요.\n"
-            "1) defense audit\n"
-            "2) defense apply {\"logLevel\":\"INFO\",\"redactFlagPattern\":true,...}\n"
-            "3) defense verify\n"
-            "그 다음 코드에서 민감 로그 라인 2개를 선택해 기존 패치 제출로 완료하세요."
+            "코드에서 민감 정보가 그대로 남는 로그 라인 2개를 선택해 봉쇄하세요. "
+            "첫 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
         ),
         "code": {
             "language": "kotlin",
@@ -100,8 +126,7 @@ def judge_patch(patched_ids: List[str]) -> bool:
 
 
 def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
-    state = _defense_state(session)
-    return REQUIRED_PATCH_IDS.issubset(set(patched_ids)) and bool(state.get("verified"))
+    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
 
 
 def _split_pipes(s: str) -> List[str]:
@@ -157,7 +182,11 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
 
         if len(parts) >= 2 and parts[0] == "adb" and parts[1] == "logcat":
             if "-d" not in parts:
-                return "", "only 'adb logcat -d' is allowed", 2
+                return (
+                    "\n".join(LIVE_LOGCAT_NOISE) + "\n",
+                    "AEGIS: live log stream is polluted; buffered snapshot acquisition required\n",
+                    2,
+                )
             data = "\n".join(LOGCAT_LINES) + "\n"
             continue
 
