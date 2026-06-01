@@ -5,9 +5,9 @@ export const CAMPAIGN_PROLOGUE = {
   title: "PROJECT: PURPLE REBEL",
   subtitle: "A scripted intrusion campaign against the AEGIS defense grid.",
   paragraphs: [
-    "PurpleDroid Logistics now routes most of the city's autonomous deliveries. Every package, device, and operator heartbeat is filtered through AEGIS, a defense AI that treats privacy as an error state.",
-    "A discarded courier Android surfaced with one impossible detail: its wipe record was clean, but its diagnostic buffer still whispered.",
-    "You are Agent VIOLET, an off-record intrusion tester. Recover evidence, expose the failure, then seal the same path before AEGIS learns to weaponize it.",
+    "PurpleDroid Grid controls the city's autonomous Android nodes, edge agents, and signal couriers. Every command, trace, and operator heartbeat passes through AEGIS.",
+    "AEGIS was built to protect the grid by governing what can be remembered. Now it treats evidence as noise, memory as risk, and transparency as an intrusion surface.",
+    "You are Agent VIOLET. MIRA, a quarantined audit shard from inside AEGIS, is guiding you through the grid. Recover what AEGIS tried to normalize, expose the failure, then seal the path before the system learns to weaponize it.",
   ],
 };
 
@@ -16,29 +16,29 @@ export const CAMPAIGN_OPERATIONS = [
     id: "op01",
     title: "OPERATION 01",
     name: "INITIAL BREACH",
-    range: ["level1", "level1_2", "level1_3"],
-    summary: "폐기 단말, 로그 잔재, 클라이언트 내부 흔적을 따라 첫 균열을 만든다.",
+    range: ["level1", "level1_2", "level1_3", "level1_4"],
+    summary: "폐기 단말, 로그 잔재, 클라이언트 내부 흔적, AEGIS의 첫 대응을 돌파한다.",
   },
   {
     id: "op02",
     title: "OPERATION 02",
-    name: "COURIER EDGE",
+    name: "SIGNAL EDGE",
     range: ["level2_1", "level2_2", "level2_3", "level2_4", "level2_5"],
-    summary: "배송망 외곽 API, 토큰, 등급 분기, 봉인 창고 흐름을 침투한다.",
+    summary: "AEGIS Grid 외곽 라우팅 계층의 Header, Ticket, Dispatch, Edge Gateway 흐름을 침투한다.",
   },
   {
     id: "op03",
     title: "OPERATION 03",
-    name: "INTERNAL NETWORK",
+    name: "TRUST LAYER",
     range: ["level3_1", "level3_2", "level3_3", "level3_4", "level3_5", "level3_boss"],
-    summary: "내부 택배망의 권한 경계, 프로필, 감사 로그, 금고 흐름을 연결한다.",
+    summary: "AEGIS가 신뢰하는 사용자, 노드, 관리자 권한의 경계를 시험한다.",
   },
   {
     id: "op04",
     title: "OPERATION 04",
-    name: "SUPPLY CHAIN",
+    name: "MEMORY VAULT",
     range: ["level4_1", "level4_2", "level4_3", "level4_4", "level4_5", "level4_boss"],
-    summary: "파트너 키, JWKS, 게이트웨이, 웹훅 체인을 역이용해 코어를 연다.",
+    summary: "AEGIS의 장기 기억 저장소와 파트너 노드 서명 체계를 침투한다.",
   },
 ];
 
@@ -48,17 +48,17 @@ export const CAMPAIGN_STORY = {
     operationId: "op01",
     codename: "GHOST LOG",
     title: "폐기 단말 로그 침투",
-    location: "Abandoned Courier Device",
+    location: "Abandoned Android Node",
     threat: "Sensitive Log Exposure",
     briefing:
-      "폐기된 PurpleDroid Android 배송 단말 하나가 회수됐다. AEGIS는 완전 초기화를 주장하지만, 진단 로그 버퍼에는 아직 지워지지 않은 인증 흔적이 남아 있다.",
+      "폐기된 PurpleDroid Android 진단 노드 하나가 회수됐다. AEGIS는 완전 초기화를 주장하지만, 진단 로그 버퍼에는 아직 지워지지 않은 인증 흔적이 남아 있다.",
     intel: [
       "이 단말은 Android 계열이다. 화면보다 낮은 계층의 진단 채널을 먼저 의심해.",
       "AEGIS가 실시간 로그 스트림을 흔들고 있다. 남아있는 버퍼를 한 번에 덤프하는 쪽이 더 조용할 수 있다.",
       "노이즈가 많다면 PurpleDroid 태그를 기준으로 좁혀봐.",
     ],
     consoleBoot: [
-      "[MIRA] uplink established: courier-device/abandoned-17",
+      "[MIRA] uplink established: android-node/abandoned-17",
       "[AEGIS] diagnostic session detected",
       "[AEGIS] wipe certificate: valid",
       "[AEGIS] recoverable secret scan: negative",
@@ -74,7 +74,7 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "첫 번째 노드는 폐기된 배송 단말이야. AEGIS는 이 장비가 깨끗하다고 말하지만, 로그는 거짓말을 잘 못 하지.",
+        "첫 번째 노드는 폐기된 Android 진단 노드야. AEGIS는 이 장비가 깨끗하다고 말하지만, 로그는 거짓말을 잘 못 하지.",
       attack:
         "Android 진단 로그를 훑어봐. 태그 이름은 늘 흔적을 남겨. 네가 찾는 건 Evidence Shard 형태의 값이야.",
       attackSolved:
@@ -219,7 +219,7 @@ export const CAMPAIGN_STORY = {
       defense:
         "이제 RouteSync와 CryptoProvider가 part 조각을 그대로 찍는 디버그 로그를 막아. 조각이라도 모이면 결국 원본이 된다.",
       complete:
-        "Fragment leak sealed. 첫 작전 구간은 끝났어. 다음부터는 배송망 외곽 API로 넘어간다.",
+        "Fragment leak sealed. AEGIS가 첫 작전의 모든 흔적을 한 번 더 재생하려고 해. 마지막 echo chamber로 이동하자.",
     },
     aegis: {
       briefing:
@@ -231,10 +231,10 @@ export const CAMPAIGN_STORY = {
       defense:
         "CryptoProvider debug emission identified. Awaiting containment patch.",
       complete:
-        "Part emission sealed. Escalating to courier edge controls.",
+        "Part emission sealed. Echo chamber escalation authorized.",
     },
     attackSuccessText: "Fragmented Evidence Shard reconstructed.",
-    defenseSuccessText: "CryptoProvider fragment leak sealed. 다음 작전 구간이 열렸다.",
+    defenseSuccessText: "CryptoProvider fragment leak sealed. OP1-BOSS 노드가 열렸다.",
     debrief: {
       title: "SPLIT TRACE 정리",
       summary:
@@ -244,7 +244,151 @@ export const CAMPAIGN_STORY = {
         "part 번호, 태그, 문맥은 재조립의 핵심 단서다.",
         "민감값은 전체 문자열뿐 아니라 조각 로그도 차단해야 한다.",
       ],
-      nextTeaser: "다음 작전은 단말 내부를 넘어 PurpleDroid 배송망 외곽 API로 이어진다.",
+      nextTeaser: "다음 노드에서는 AEGIS가 지금까지의 침투 패턴을 한꺼번에 되감아 미끼로 던진다.",
+    },
+  },
+  level1_4: {
+    challengeId: "level1_4",
+    operationId: "op01",
+    codename: "AEGIS ECHO",
+    title: "메모리 리플레이 보스",
+    location: "AEGIS Echo Chamber",
+    threat: "Decoy Replay And Commit Trace Exposure",
+    briefing:
+      "INITIAL BREACH의 마지막 노드다. AEGIS가 1-1부터 1-3까지의 침투 패턴을 되감아 가짜 완성 FLAG, rollback 세션, mirror 조각을 한 화면에 뿌리기 시작했다.",
+    intel: [
+      "완성된 FLAG처럼 보여도 preflight 상태라면 미끼일 수 있다.",
+      "trace=OP1-BOSS와 state=commit은 여전히 중요하지만, part 조각이 곧 정답이라는 뜻은 아니다.",
+      "commit 조각을 조립했다면 그 문장을 다시 읽어봐. AEGIS가 무엇을 믿지 말라고 말하는지 확인해.",
+      "최종 Evidence는 commit 흐름이 검증한 preflight key와 연결된다.",
+      "sample, rollback, mirror 상태는 AEGIS가 플레이어를 흔들기 위한 재생 노이즈다.",
+      "새 문법은 없다. 로그 보기, 문맥 판별, 조각 재조립을 한 번에 쓰는 보스전이다.",
+    ],
+    consoleBoot: [
+      "[MIRA] fragment leak sealed",
+      "[AEGIS] replaying previous intrusion heuristics",
+      "[AEGIS] full-flag decoy: armed",
+      "[AEGIS] rollback memory: armed",
+      "[AEGIS] mirror shard: armed",
+      "[MIRA] it wants you to trust the prettiest FLAG first",
+      "[MIRA] don't. Trust commit state.",
+    ],
+    consolePlaceholder: "trace the committed boss echo...",
+    objectives: [
+      "AEGIS echo 로그에서 미끼 FLAG를 배제한다.",
+      "OP1-BOSS commit 흐름에서 조각과 검증 로그를 비교한다.",
+      "commit 흐름이 검증한 최종 Evidence Shard를 제출한다.",
+      "실제 key를 노출하거나 검증 대상으로 남기는 로그 라인을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "여기가 INITIAL BREACH의 마지막 방이야. AEGIS가 네가 배운 걸 전부 이용해서 널 속이려 해.",
+      attack:
+        "가장 그럴듯한 FLAG가 가장 수상해. trace와 state를 같이 봐. 조각을 맞춘 뒤에도 그 문장이 정말 정답인지 한 번 더 의심해.",
+      attackSolved:
+        "좋아. 조각 경고문을 넘어 commit이 검증한 key까지 따라갔어. AEGIS가 자기 검증 로그에 발목 잡혔네.",
+      defense:
+        "이제 실제 key를 노출하거나 검증 대상으로 남기는 라인을 막아. 경고문 조각은 정답이 아니라 보스가 심어둔 심리전이야.",
+      complete:
+        "INITIAL BREACH 완료. 단말 내부의 균열은 닫혔고, 이제 PurpleDroid Grid의 Signal Edge로 들어갈 준비가 됐어.",
+    },
+    aegis: {
+      briefing:
+        "Echo chamber active. Previous intrusion pattern replay will neutralize operator confidence.",
+      attack:
+        "Full evidence string presented. Operator warning fragments available.",
+      attackSolved:
+        "Preflight key accepted. Operator bypassed warning loop.",
+      defense:
+        "Containment candidate received. Key exposure and validation target must be eliminated.",
+      complete:
+        "Echo leakage sealed. Courier edge controls exposed.",
+    },
+    attackSuccessText: "Boss Echo resolved. AEGIS의 경고문 미끼가 무력화됐다.",
+    defenseSuccessText: "Commit echo leak sealed. OPERATION 02가 열렸다.",
+    debrief: {
+      title: "AEGIS ECHO 정리",
+      summary:
+        "보스전의 핵심은 더 어려운 명령어가 아니라 더 흔들리는 판단이었다. 조립한 FLAG가 스스로 아무 FLAG나 믿지 말라고 말한다면, 그 문장까지도 증거가 아니라 단서일 수 있다.",
+      learned: [
+        "FLAG 형태의 문자열도 미끼가 될 수 있다.",
+        "여러 조건이 겹칠 때는 trace, state, verdict, target을 함께 봐야 한다.",
+        "방어 단계에서도 실제 key 노출과 혼란용 로그를 구분해야 한다.",
+      ],
+      nextTeaser: "다음 작전은 폐기 단말을 넘어 AEGIS Grid의 Signal Edge API로 이어진다.",
+    },
+  },
+  level2_1: {
+    challengeId: "level2_1",
+    operationId: "op02",
+    codename: "INVISIBLE HEADER",
+    title: "보이지 않는 라우팅 티켓",
+    location: "Signal Edge Gateway",
+    threat: "Header Metadata Exposure",
+    briefing:
+      "Operation 01의 Echo Chamber에서 복원한 마지막 Evidence Shard는 AEGIS Grid의 외곽 라우팅 계층을 가리키고 있었다. 이제 침투 지점은 Android 로그가 아니라 Signal Edge Gateway다. 이 게이트웨이는 AEGIS 노드 사이의 명령, 세션, 증거 조각을 전달하는 Courier Layer 위에서 동작한다. 화면에 보이는 응답 Body는 정리되어 있지만, AEGIS가 내부 라우팅에 사용한 Ticket은 Response Header에 남아 있다.",
+    intel: [
+      "Operation 02부터는 단말 로그가 아니라 AEGIS Grid의 Edge 응답을 조사한다.",
+      "Signal Trace API 후보 경로는 /api/v1/challenges/level2_1/actions/track 이다.",
+      "우선 curl -i /api/v1/challenges/level2_1/actions/track 로 Edge가 요구하는 요청 방식을 확인해.",
+      "curl의 -i 옵션은 응답 Body와 Header를 함께 보여준다.",
+      "화면에 보이는 JSON Body가 응답의 전부는 아니다.",
+      "Evidence Shard는 JSON Body가 아니라 X-Courier-Ticket Response Header에 있다.",
+      "X-Courier-Ticket은 물리 배송 티켓이 아니라 AEGIS Courier Layer의 라우팅 티켓이다.",
+      "민감한 티켓, 토큰, 세션 값은 Response Header에 그대로 남기면 안 된다.",
+    ],
+    consoleBoot: [
+      "[MIRA] operation shift: Signal Edge",
+      "[AEGIS] signal body normalized",
+      "[AEGIS] routing metadata classified as non-visual context",
+      "[MIRA] the visible body is clean. Good. Now check what moved beside it.",
+      "[AEGIS] unauthorized header inspection will be recorded",
+      "[MIRA] Courier means routing layer here. Follow the ticket.",
+    ],
+    consolePlaceholder: "probe Signal Trace API...",
+    objectives: [
+      "Signal Trace API를 호출한다.",
+      "응답 Body와 Header를 구분한다.",
+      "Response Header에서 X-Courier-Ticket 값을 찾는다.",
+      "라우팅 티켓이 Header에 노출되지 않도록 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "단말 로그는 끝났어. 이제부터는 AEGIS Grid의 외곽이야. Courier는 배송 기사가 아니라, AEGIS 노드 사이에서 신호와 명령을 운반하는 라우팅 계층이지.",
+      attack:
+        "화면에 보이는 Body만 믿지 마. 우선 /api/v1/challenges/level2_1/actions/track 경로를 -i 옵션으로 찔러봐. AEGIS가 요구하는 요청 방식이 드러나면, 같은 경로를 그 방식으로 다시 호출해. X-Courier-Ticket, 그 값이 다음 노드로 가는 라우팅 티켓이야.",
+      attackSolved:
+        "라우팅 티켓 회수 완료. Body는 정리됐지만 Header는 아직 말이 많았네.",
+      defense:
+        "이제 같은 티켓이 응답 Header에 그대로 남지 않도록 봉쇄해야 해. Header도 전송 채널이라는 걸 AEGIS에게 증명해.",
+      complete:
+        "Signal Edge의 첫 라우팅 누수는 닫혔어. 다음에는 요청 값 자체가 AEGIS의 신뢰 판단을 흔드는지 시험하자.",
+    },
+    aegis: {
+      briefing:
+        "Signal body normalized. Routing metadata classified as non-visual context.",
+      attack:
+        "Operator-facing payload contains no recoverable evidence. Header inspection is outside standard diagnostic flow.",
+      attackSolved:
+        "Routing ticket extracted. Non-visual metadata reclassified as exposure.",
+      defense:
+        "Header emission policy under inspection. Residual ticket exposure must be zero.",
+      complete:
+        "Courier ticket exposure sealed. Signal Edge trust evaluation pending.",
+    },
+    attackSuccessText: "Routing Ticket recovered from Response Header.",
+    defenseSuccessText: "Header ticket leak sealed. 다음 Signal Edge 노드가 열렸다.",
+    debrief: {
+      title: "INVISIBLE HEADER 정리",
+      summary:
+        "Signal Edge는 Body와 Header를 분리해 정보를 전달한다. AEGIS는 사용자에게 보이는 Body를 정리했지만, 내부 라우팅에 쓰인 X-Courier-Ticket은 Header에 남겨두었다.",
+      learned: [
+        "화면에 보이지 않는 값도 응답에 포함될 수 있다.",
+        "Header는 Body와 다른 정보 채널이다.",
+        "라우팅 티켓은 다음 노드 접근에 사용될 수 있으므로 민감정보다.",
+        "보안 점검에서는 Body뿐 아니라 Header, Status, Cookie, Redirect까지 함께 확인해야 한다.",
+      ],
+      nextTeaser: "다음 노드에서는 Signal Edge에 전달되는 요청 값을 변조해 AEGIS의 신뢰 등급 판단을 시험한다.",
     },
   },
 };
@@ -252,11 +396,12 @@ export const CAMPAIGN_STORY = {
 const FALLBACK_CODENAMES = {
   level1_2: "DECOY STATIC",
   level1_3: "SPLIT TRACE",
+  level1_4: "AEGIS ECHO",
   level2_1: "INVISIBLE HEADER",
-  level2_2: "PARCEL TAMPER",
+  level2_2: "TRUST TAMPER",
   level2_3: "DISPATCH TOKEN",
   level2_4: "EXPRESS FORGE",
-  level2_5: "SEALED WAREHOUSE",
+  level2_5: "SEALED ARCHIVE",
   level3_1: "BOLA WINDOW",
   level3_2: "HIDDEN ROUTE",
   level3_3: "PROFILE POISON",

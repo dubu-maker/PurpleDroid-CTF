@@ -123,7 +123,7 @@ Security by obscurity는 장기 방어 전략이 아니다.
       "화면에 안 보이는 데이터도 네트워크에는 존재할 수 있다. 이번 미션의 핵심은 Body가 아니라 Response Header 분석이다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- 배송 조회 요청을 보내고 응답을 확인했다.
+- Signal Trace 요청을 보내고 Edge 응답을 확인했다.
 - 화면(JSON Body)이 아니라 Response Headers에서 플래그를 찾았다.
 
 ## 왜 이게 중요한가
@@ -132,12 +132,12 @@ Security by obscurity는 장기 방어 전략이 아니다.
 - 즉, UI에 안 보여도 데이터는 이미 전달됐을 수 있다.
 
 ## 어떻게 찾았나
-- 웹: F12 -> Network -> /actions/track -> Response Headers
-- 터미널: curl -v 로 헤더 포함 출력 확인
+- 웹: F12 -> Network -> Signal Trace(/actions/track) -> Response Headers
+- 터미널: curl -i 로 헤더 포함 출력 확인
 - 핵심 키: X-Courier-Ticket
 
 ## 현실 위험 포인트
-- "안 보이니까 안전" 착각으로 민감값을 헤더에 넣는 실수
+- "안 보이니까 안전" 착각으로 라우팅 티켓 같은 민감값을 헤더에 넣는 실수
 - 프록시/CDN/APM/로그 파이프라인에서 헤더가 2차 유출
 - 클라이언트에 전달된 값은 더 이상 비밀이 아니다
 
@@ -152,6 +152,7 @@ Security by obscurity는 장기 방어 전략이 아니다.
     keyTakeaways: [
       "HTTP 응답은 Header + Body로 구성된다.",
       "UI에 안 보이는 값도 Network 탭에서는 보일 수 있다.",
+      "X-Courier-Ticket은 물리 배송 티켓이 아니라 AEGIS Courier Layer의 라우팅 티켓이다.",
       "민감정보를 헤더에 싣는 건 은닉이지 방어가 아니다.",
       "클라이언트에 전달된 순간 비밀성은 크게 떨어진다.",
     ],

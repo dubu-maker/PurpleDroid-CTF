@@ -499,7 +499,10 @@ def submit_flag(challenge_id: str, req: SubmitFlagReq, authorization: Optional[s
             }
         )
 
-    return ok({"correct": False, "message": "오답입니다."})
+    message = "오답입니다."
+    if hasattr(mod, "flag_feedback"):
+        message = mod.flag_feedback(req.flag) or message
+    return ok({"correct": False, "message": message})
 
 
 @app.post("/api/v1/challenges/{challenge_id}/submit-patch")
@@ -531,7 +534,10 @@ def submit_patch(challenge_id: str, req: SubmitPatchReq, authorization: Optional
             }
         )
 
-    return ok({"correct": False, "message": "패치가 충분하지 않습니다."})
+    message = "패치가 충분하지 않습니다."
+    if hasattr(mod, "patch_feedback"):
+        message = mod.patch_feedback(req.patched) or message
+    return ok({"correct": False, "message": message})
 
 
 @app.get("/api/v1/me")
@@ -571,15 +577,15 @@ def reset_level(challenge_id: str, authorization: Optional[str] = Header(None)):
 
 
 @app.post("/api/v1/challenges/level2_1/actions/track")
-def track_parcel(response: Response):
-    """2-1 배송 조회 전용 API (응답 헤더에 플래그 숨김)"""
+def signal_trace(response: Response):
+    """2-1 Signal Trace API (응답 헤더에 라우팅 티켓 숨김)"""
     from levels.level2_1 import LEVEL2_1_FLAG
     
-    # 여기서 마법이 일어남: 헤더에 X-Courier-Ticket 추가
+    # Signal Edge의 라우팅 티켓이 Body가 아니라 Header에 새어 나가는 상황
     response.headers["X-Courier-Ticket"] = LEVEL2_1_FLAG
     
     # Body는 아주 평범하게 줘서 스포일러 방지
-    return {"ok": True, "message": "delivered"}
+    return {"ok": True, "message": "routed"}
 
 class OrderRequest(BaseModel):
     orderId: str

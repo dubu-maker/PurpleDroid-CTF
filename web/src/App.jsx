@@ -35,6 +35,11 @@ const FALLBACK_HINTS = {
     { platform: "windows", text: 'adb logcat -d | findstr "part["' },
     { platform: "unix", text: 'adb logcat -d | grep "part["' },
   ],
+  level1_4: [
+    { platform: "windows", text: 'adb logcat -d | findstr "OP1-BOSS"' },
+    { platform: "unix", text: 'adb logcat -d | grep "OP1-BOSS"' },
+    { platform: "all", text: "조각을 맞췄다면 그 문장이 정답인지, commit 흐름이 무엇을 검증했는지 다시 봐." },
+  ],
   level2_3: [
     {
       platform: "windows",
@@ -295,7 +300,8 @@ const TERMINAL_INTRO_HINTS = {
   level1: "로그를 직접 조회해서 FLAG 패턴을 찾아봐.",
   level1_2: "로그 안의 여러 후보 중 문맥상 진짜 값을 골라봐.",
   level1_3: "조각난 문자열을 찾아 순서를 맞춰 이어붙여봐.",
-  level2_1: "curl로 요청을 보내고 응답 헤더를 확인해.",
+  level1_4: "조립한 FLAG도 미끼일 수 있어. commit 검증 로그까지 따라가봐.",
+  level2_1: "curl -i /api/v1/challenges/level2_1/actions/track 로 먼저 Edge의 Method Policy를 확인해.",
   level2_2: "curl POST의 JSON body 값을 바꿔서 다시 보내봐.",
   level2_3: "응답의 dispatch_token을 디코딩해서 payload를 확인해.",
   level2_4: "위조한 토큰을 Authorization 헤더로 보내 Express Lane 응답을 확인해.",
@@ -1185,7 +1191,7 @@ function ClassicApp() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "요청 전송 완료. DevTools Network에서 /actions/track 요청을 클릭하고 Response Headers에서 X-Courier-Ticket을 확인해.",
+          "Signal Trace 호출 완료. DevTools Network에서 /actions/track 요청을 클릭하고 Response Headers의 X-Courier-Ticket을 확인해.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -2042,7 +2048,7 @@ function ClassicApp() {
                         disabled={currentTerminalBusy || !detail.attack?.enabled}
                       >
                         {selectedId === "level2_1"
-                          ? "배송 조회 요청 보내기"
+                          ? "Signal Trace 호출"
                           : selectedId === "level2_2"
                             ? "일반 배송 요청 보내기"
                             : selectedId === "level2_3"
@@ -2075,7 +2081,7 @@ function ClassicApp() {
                     <p className="caption">
                       {selectedId === "level2_1" ? (
                         <>
-                          버튼을 누른 직후 DevTools Network에서 <code>/actions/track</code> 요청을 확인해.
+                          버튼을 누른 직후 DevTools Network에서 Signal Trace <code>/actions/track</code> 요청을 확인해.
                         </>
                       ) : selectedId === "level2_2" ? (
                         <>
