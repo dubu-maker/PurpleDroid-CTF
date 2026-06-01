@@ -170,14 +170,15 @@ Security by obscurity는 장기 방어 전략이 아니다.
 
   level2_2: {
     id: "level2_2",
-    title: "2-2 Tamper the Parcel - 택배 정보 변조하기",
+    title: "2-2 Trust Tamper - 신뢰 등급 변조하기",
     shortSummary:
-      "요청 데이터는 클라이언트가 만든다. tier=standard를 vip로 바꿔 권한 흐름이 달라지는 걸 직접 확인하는 미션이다.",
+      "요청 데이터는 클라이언트가 만든다. tier=standard를 더 높은 후보로 바꾸거나 우선 처리 claim을 조작해 신뢰 등급 흐름이 달라지는 걸 확인하는 미션이다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- 배송 요청 Body의 tier 값을 확인했다.
+- Signal Priority 요청 Body의 tier 값을 확인했다.
 - DevTools(Network) 또는 curl로 요청 본문을 잡았다.
-- standard를 vip로 바꿔 다시 전송해 서버 반응 변화를 확인했다.
+- standard 응답이 흘린 후보를 보고 tier를 더 높은 등급으로 바꿔 다시 전송했다.
+- 작은 boolean claim도 서버가 믿으면 우선 처리로 이어질 수 있음을 확인했다.
 
 ## 왜 이게 중요한가
 - 서버 입장에서 클라이언트 요청은 '증거'가 아니라 '주장'이다.
@@ -187,11 +188,12 @@ Security by obscurity는 장기 방어 전략이 아니다.
 ## 어떻게 찾았나
 - 웹: F12 -> Network -> 요청 선택 -> Request Payload 확인
 - 터미널: curl -X POST ... --data '{"tier":"standard"}' 형태에서 값 변경
-- 핵심: 서버가 tier를 클라이언트 입력값 그대로 신뢰하면 안 된다.
+- 핵심: 서버가 tier/boolean claim 같은 클라이언트 입력값을 그대로 신뢰하면 안 된다.
 
 ## 현실 위험 포인트
 - 결제 금액을 클라이언트에서 보내고 서버가 그대로 처리
 - VIP/권한을 Body 값 하나로만 분기
+- isAdmin 같은 boolean 값을 요청에서 받아 특권 분기
 - role/admin 값을 요청에서 받아 권한 결정
 
 ## 방어 관점
@@ -222,37 +224,38 @@ Security by obscurity는 장기 방어 전략이 아니다.
 
   level2_3: {
     id: "level2_3",
-    title: "2-3 Decode the Dispatch Token - 발송 토큰 뜯어보기",
+    title: "2-3 Dispatch Capsule - 인코딩된 라우팅 캡슐",
     shortSummary:
-      "JWT/Base64는 암호화가 아니라 인코딩에 가깝다. 클라이언트에 내려간 토큰은 언제든 디코딩 가능한 공개 데이터로 봐야 한다.",
+      "sealed capsule처럼 보이는 토큰도 payload는 읽힐 수 있다. 서명은 무결성 검증이지 암호화가 아니다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- /actions/dispatch 응답에서 dispatch_token을 찾았다.
-- 토큰을 디코딩해 payload를 열어봤다.
-- payload 안의 FLAG를 제출했다.
+- /actions/dispatch 응답에서 dispatch_token을 발급받았다.
+- 토큰이 header.payload.signature segment로 나뉘는지 확인했다.
+- Header decoy가 아니라 payload claim의 evidenceShard를 제출했다.
 
 ## 왜 이게 중요한가
-- 토큰은 '숨김'이 아니라 전달 포맷일 뿐이다.
-- 점(.) 2개로 나뉜 JWT는 Header.Payload.Signature 구조다.
-- payload에 민감정보를 넣으면 사용자/공격자가 그대로 읽을 수 있다.
+- 토큰은 숨김 장치가 아니라 전달 포맷일 수 있다.
+- Header는 포장지이고, Payload는 claim이 들어가는 영역이다.
+- 서명된 토큰도 payload 자체는 읽을 수 있다.
+- payload에 Evidence Shard나 sessionToken을 넣으면 사용자/공격자가 그대로 읽을 수 있다.
 
 ## 어떻게 찾았나
 - 웹: F12 -> Network -> /actions/dispatch -> Response Body
-- 앱/터미널: curl로 dispatch 호출 후 jwt-decode <token> 실행
-- 핵심: 디코딩은 곧 복호화가 아니다. 누구나 읽을 수 있다.
+- 앱/터미널: curl로 dispatch 호출 후 decode-token <dispatch_token> 실행
+- 핵심: 디코딩은 복호화가 아니다. 누구나 읽을 수 있다.
 
 ## 방어 관점
-- JWT payload에 비밀값/플래그/내부 토큰을 넣지 않는다.
+- Readable token payload에 비밀값/플래그/내부 토큰을 넣지 않는다.
 - 토큰에는 최소 식별 정보만 넣고, 중요한 판단은 서버에서 한다.
-- 숨겨야 할 데이터는 서버에만 보관한다.
+- 숨겨야 할 데이터는 서버에만 보관하거나 별도 암호화를 적용한다.
 
 ## 결론
-클라이언트에 전달된 토큰은 비밀이 아니다. 토큰은 설계 최소화가 핵심이다.
+클라이언트에 전달된 readable token은 비밀이 아니다. 토큰은 설계 최소화가 핵심이다.
 `,
     keyTakeaways: [
-      "JWT/Base64는 암호화가 아니라 인코딩이다.",
-      "클라이언트가 받은 토큰 payload는 누구나 디코딩 가능하다.",
-      "민감정보는 토큰이 아니라 서버에 보관해야 한다.",
+      "인코딩과 암호화는 다르다.",
+      "서명된 토큰도 payload는 읽힐 수 있다.",
+      "Evidence Shard/sessionToken은 readable payload에 넣으면 안 된다.",
       "토큰에는 최소 정보, 권한 판정은 서버에서 수행한다.",
     ],
     selfCheck: [
@@ -261,7 +264,7 @@ Security by obscurity는 장기 방어 전략이 아니다.
         a: "Network 탭의 /actions/dispatch 응답 body에서 찾았다.",
       },
       {
-        q: "JWT payload에 비밀정보를 넣어도 될까?",
+        q: "Readable token payload에 비밀정보를 넣어도 될까?",
         a: "안 된다. payload는 쉽게 디코딩되어 외부에 노출된다.",
       },
     ],

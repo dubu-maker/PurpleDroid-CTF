@@ -43,13 +43,14 @@ const FALLBACK_HINTS = {
   level2_3: [
     {
       platform: "windows",
-      text: 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch --data "{\\"parcel_id\\":\\"PD-2026-0001\\"}"',
+      text: 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
     },
     {
       platform: "unix",
-      text: 'curl -v -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch --data \'{"parcel_id":"PD-2026-0001"}\'',
+      text: 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
     },
-    { platform: "all", text: "dispatch_token의 점(.) 2개를 확인하고 payload를 디코딩해." },
+    { platform: "all", text: "dispatch_token의 점(.) segment를 확인해. Header에 보이는 FLAG는 포장지일 수 있어." },
+    { platform: "all", text: "터미널 helper: decode-token <dispatch_token>" },
   ],
   level2_4: [
     { platform: "all", text: "2-3에서 얻은 dispatch_token을 위조해서 다시 보내봐." },
@@ -302,8 +303,8 @@ const TERMINAL_INTRO_HINTS = {
   level1_3: "조각난 문자열을 찾아 순서를 맞춰 이어붙여봐.",
   level1_4: "조립한 FLAG도 미끼일 수 있어. commit 검증 로그까지 따라가봐.",
   level2_1: "curl -i /api/v1/challenges/level2_1/actions/track 로 먼저 Edge의 Method Policy를 확인해.",
-  level2_2: "curl POST의 JSON body 값을 바꿔서 다시 보내봐.",
-  level2_3: "응답의 dispatch_token을 디코딩해서 payload를 확인해.",
+  level2_2: "standard 요청의 redacted trust policy를 보고 Signal Priority JSON body의 claim을 바꿔서 다시 보내봐.",
+  level2_3: "응답의 dispatch_token segment를 펼쳐서 header가 아니라 payload claim을 확인해.",
   level2_4: "위조한 토큰을 Authorization 헤더로 보내 Express Lane 응답을 확인해.",
   level2_5: "클릭은 실패한다. 토큰/헤더/바디를 직접 조합해 봉인 창고를 열어봐.",
   level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
@@ -1212,7 +1213,7 @@ function ClassicApp() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ orderId: "A102", tier: "standard" }),
+        body: JSON.stringify({ signalId: "SIG-A102", tier: "standard" }),
         cache: "no-store",
       });
       if (!response.ok) {
@@ -1230,7 +1231,7 @@ function ClassicApp() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "요청 전송 완료. DevTools Network에서 /actions/order 요청의 Request Payload를 열고 tier 값을 확인해.",
+          "Signal Priority 요청 완료. DevTools Network에서 /actions/order 요청의 Response Headers와 Request Payload를 같이 확인해. 상위 tier 이름은 redacted 처리돼 있어.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -1251,7 +1252,7 @@ function ClassicApp() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ parcel_id: "PD-2026-0001" }),
+        body: JSON.stringify({ signalId: "SIG-1004" }),
         cache: "no-store",
       });
       if (!response.ok) {
@@ -1269,7 +1270,7 @@ function ClassicApp() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "요청 전송 완료. DevTools Network에서 /actions/dispatch 응답 body의 dispatch_token을 확인해.",
+          "Dispatch capsule 발급 완료. DevTools Network에서 /actions/dispatch 응답 Body의 dispatch_token을 확인해.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -2050,9 +2051,9 @@ function ClassicApp() {
                         {selectedId === "level2_1"
                           ? "Signal Trace 호출"
                           : selectedId === "level2_2"
-                            ? "일반 배송 요청 보내기"
+                            ? "Standard Signal 보내기"
                             : selectedId === "level2_3"
-                              ? "발송 토큰 요청 보내기"
+                              ? "Dispatch Capsule 발급"
                               : selectedId === "level2_5"
                                 ? "봉인 창고 열기 시도"
                                 : selectedId === "level3_1"
@@ -2089,7 +2090,7 @@ function ClassicApp() {
                         </>
                       ) : selectedId === "level2_3" ? (
                         <>
-                          버튼을 누른 직후 DevTools Network에서 <code>/actions/dispatch</code> 요청을 확인해.
+                          버튼을 누른 직후 DevTools Network에서 <code>/actions/dispatch</code> 응답 Body를 확인해.
                         </>
                       ) : selectedId === "level2_5" ? (
                         <>

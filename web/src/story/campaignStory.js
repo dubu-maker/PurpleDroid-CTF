@@ -327,15 +327,12 @@ export const CAMPAIGN_STORY = {
     threat: "Header Metadata Exposure",
     briefing:
       "Operation 01의 Echo Chamber에서 복원한 마지막 Evidence Shard는 AEGIS Grid의 외곽 라우팅 계층을 가리키고 있었다. 이제 침투 지점은 Android 로그가 아니라 Signal Edge Gateway다. 이 게이트웨이는 AEGIS 노드 사이의 명령, 세션, 증거 조각을 전달하는 Courier Layer 위에서 동작한다. 화면에 보이는 응답 Body는 정리되어 있지만, AEGIS가 내부 라우팅에 사용한 Ticket은 Response Header에 남아 있다.",
+    progressiveHints: true,
     intel: [
-      "Operation 02부터는 단말 로그가 아니라 AEGIS Grid의 Edge 응답을 조사한다.",
-      "Signal Trace API 후보 경로는 /api/v1/challenges/level2_1/actions/track 이다.",
-      "우선 curl -i /api/v1/challenges/level2_1/actions/track 로 Edge가 요구하는 요청 방식을 확인해.",
-      "curl의 -i 옵션은 응답 Body와 Header를 함께 보여준다.",
-      "화면에 보이는 JSON Body가 응답의 전부는 아니다.",
-      "Evidence Shard는 JSON Body가 아니라 X-Courier-Ticket Response Header에 있다.",
-      "X-Courier-Ticket은 물리 배송 티켓이 아니라 AEGIS Courier Layer의 라우팅 티켓이다.",
-      "민감한 티켓, 토큰, 세션 값은 Response Header에 그대로 남기면 안 된다.",
+      "Operation 02부터는 단말 로그가 아니라 AEGIS Grid의 Edge 응답을 조사한다. Signal Trace API 경로: /api/v1/challenges/level2_1/actions/track — 화면에 보이는 Body만이 응답의 전부는 아니야.",
+      "curl에는 응답 헤더까지 볼 수 있는 옵션이 있다. 그 옵션을 붙이면 Body와 Header가 함께 출력돼.",
+      "응답이 405라면 메서드가 안 맞는 거다. 서버는 허용되는 메서드를 응답 안에 같이 돌려준다. 거기서 올바른 메서드를 확인하고 다시 호출해봐.",
+      "curl -i -X POST /api/v1/challenges/level2_1/actions/track",
     ],
     consoleBoot: [
       "[MIRA] operation shift: Signal Edge",
@@ -360,7 +357,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "라우팅 티켓 회수 완료. Body는 정리됐지만 Header는 아직 말이 많았네.",
       defense:
-        "이제 같은 티켓이 응답 Header에 그대로 남지 않도록 봉쇄해야 해. Header도 전송 채널이라는 걸 AEGIS에게 증명해.",
+        "X-Courier-Ticket 하나만 빼면 끝일까? AEGIS Edge는 헤더 하나가 아니라 여러 헤더로 같은 값을 흘릴 수 있어. 코드에서 라우팅 티켓 값을 Header에 직접 싣는 라인을 골라 봉쇄해.",
       complete:
         "Signal Edge의 첫 라우팅 누수는 닫혔어. 다음에는 요청 값 자체가 AEGIS의 신뢰 판단을 흔드는지 시험하자.",
     },
@@ -381,14 +378,163 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "INVISIBLE HEADER 정리",
       summary:
-        "Signal Edge는 Body와 Header를 분리해 정보를 전달한다. AEGIS는 사용자에게 보이는 Body를 정리했지만, 내부 라우팅에 쓰인 X-Courier-Ticket은 Header에 남겨두었다.",
+        "Signal Edge는 Body와 Header를 분리해 정보를 전달한다. AEGIS는 사용자에게 보이는 Body를 정리했지만, 내부 라우팅에 쓰인 X-Courier-Ticket은 Header에 남겨두었다. 게다가 X-Internal-Route처럼 다른 이름의 Header에도 같은 티켓의 일부가 흘러나올 수 있었다.",
       learned: [
         "화면에 보이지 않는 값도 응답에 포함될 수 있다.",
         "Header는 Body와 다른 정보 채널이다.",
         "라우팅 티켓은 다음 노드 접근에 사용될 수 있으므로 민감정보다.",
+        "민감값은 전체 값뿐 아니라 prefix, fragment, alias 형태로 새어 나가도 위험하다.",
+        "Header 이름이 안전해 보여도 값의 출처가 routingTicket이면 봉쇄 대상이다.",
         "보안 점검에서는 Body뿐 아니라 Header, Status, Cookie, Redirect까지 함께 확인해야 한다.",
       ],
       nextTeaser: "다음 노드에서는 Signal Edge에 전달되는 요청 값을 변조해 AEGIS의 신뢰 등급 판단을 시험한다.",
+    },
+  },
+  level2_2: {
+    challengeId: "level2_2",
+    operationId: "op02",
+    codename: "TRUST TAMPER",
+    title: "신뢰 등급을 흔들어라",
+    location: "Signal Priority Gate",
+    threat: "Client-Side Trust Claim",
+    briefing:
+      "INVISIBLE HEADER에서 잡아낸 X-Courier-Ticket은 AEGIS Edge가 외부 노드 사이의 라우팅에 쓰는 메타데이터였다. 이제 그 라우팅이 어떻게 결정되는지를 본다. AEGIS Grid는 각 Signal에 Trust Tier를 매겨 처리 우선순위를 정한다. 그런데 Edge Gateway의 한 엔드포인트가 의심스럽다. 요청 Body의 tier 필드를 그대로 받아 등급을 매기는 것 같다. 클라이언트가 보낸 주장(claim)을 서버가 검증 없이 신뢰하면, 어떤 노드든 자신을 우선 처리 대상으로 선언할 수 있다.",
+    progressiveHints: true,
+    intel: [
+      "이번 노드는 Header가 아니라 Request Body를 본다. 클라이언트가 보낸 JSON은 서버 입장에서 증거가 아니라 주장이다.",
+      "Signal Priority 엔드포인트: /api/v1/challenges/level2_2/actions/order",
+      "요청은 POST + JSON Body 형태다. 처음에는 tier를 \"standard\"로 보내봐.",
+      "standard 응답은 정확한 상위 tier 이름을 숨긴다. 대신 trust policy와 tier shape 같은 흔적을 남긴다.",
+      "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'",
+    ],
+    consoleBoot: [
+      "[MIRA] header leak sealed",
+      "[AEGIS] signal priority gate online",
+      "[AEGIS] client tier claim accepted for routing evaluation",
+      "[MIRA] accepted is not the same as verified",
+      "[AEGIS] standard signal path normalized",
+      "[MIRA] change the claim. Watch the gate decide.",
+    ],
+    consolePlaceholder: "inspect signal priority request...",
+    objectives: [
+      "Signal Priority 엔드포인트에 standard tier로 요청을 보낸다.",
+      "응답에서 redacted trust policy와 tier shape를 확인한다.",
+      "요청 Body의 trust claim을 변조해 우선 처리 경로가 열리는지 확인한다.",
+      "클라이언트 주장으로 권한이 결정되지 않도록 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS Edge는 네가 보내는 Body를 너무 친절하게 믿어. 일단 standard로 한 번 찔러봐. 정확한 상위 tier 이름은 숨기겠지만, policy 흔적은 남을 거야.",
+      attack:
+        "그 다음 네 신호를 더 높은 등급으로 다시 선언해. 중요한 건 Body 값이 네 손에 있다는 점이야.",
+      attackSolved:
+        "Evidence Shard 회수 완료. AEGIS가 요청 Body의 trust claim을 그대로 신뢰했어.",
+      defense:
+        "이제 클라이언트가 보낸 주장으로 우선 처리를 부여하는 라인을 막아. 값을 읽는 것과 그 값에 권한을 주는 건 다른 일이야.",
+      complete:
+        "Trust tier 변조 경로는 닫혔어. 다음 노드는 Signal Edge가 발급하는 dispatch token 내부를 들여다보게 될 거야.",
+    },
+    aegis: {
+      briefing:
+        "Signal trust classification engaged. Tier claims accepted in canonical form.",
+      attack:
+        "Standard signal accepted. Candidate trust tiers classified as routing metadata.",
+      attackSolved:
+        "Unverified trust claim accepted. Priority route misclassified.",
+      defense:
+        "Client-controlled trust input identified. Server-side authority binding required.",
+      complete:
+        "Trust tier input sealed. Dispatch token path exposed.",
+    },
+    attackSuccessText: "Trust tier tampered. AEGIS priority gate misclassified the signal.",
+    defenseSuccessText: "Client-controlled trust tier sealed. 다음 Signal Edge 노드가 열렸다.",
+    debrief: {
+      title: "TRUST TAMPER 정리",
+      summary:
+        "Request Body는 사용자가 직접 만들 수 있는 주장이다. AEGIS는 tier와 fastTrack 값을 서버 정책으로 다시 판단하지 않고 그대로 신뢰했고, 그 결과 Signal Edge의 우선순위 게이트가 조작됐다.",
+      learned: [
+        "클라이언트 요청값은 신뢰 대상이 아니다.",
+        "권한, 등급, 가격, 우선순위 같은 결정은 서버가 재계산해야 한다.",
+        "값을 읽는 것 자체보다, 그 값으로 권한을 부여하는 분기가 핵심 봉쇄 대상이다.",
+        "boolean fastTrack처럼 작아 보이는 필드도 권한 결정에 연결되면 취약점이 된다.",
+        "프론트 제약이나 기본 버튼은 curl/DevTools 요청 변조를 막지 못한다.",
+        "Validation과 Authorization은 별개다. 형식이 맞아도 권한 판단은 서버 기준이어야 한다.",
+      ],
+      nextTeaser: "다음 노드에서는 Signal Edge가 발급한 dispatch token 안에 어떤 데이터가 실려 있는지 확인한다.",
+    },
+  },
+  level2_3: {
+    challengeId: "level2_3",
+    operationId: "op02",
+    codename: "DISPATCH CAPSULE",
+    title: "인코딩된 라우팅 캡슐",
+    location: "Signal Dispatch Capsule",
+    threat: "Transparent Token Payload",
+    briefing:
+      "INVISIBLE HEADER와 TRUST TAMPER를 지나며, AEGIS Edge가 Header와 Body 양쪽에 라우팅 메타데이터를 남긴다는 사실이 확인됐다. 이번 노드는 Signal을 다음 Edge 노드로 넘길 때 발급되는 dispatch_token을 다룬다. AEGIS는 이 토큰을 sealed capsule이라고 부르지만, 모든 sealed가 encrypted는 아니다. 토큰의 구조를 확인하고, payload 안에 남은 Evidence Shard를 복원하라.",
+    progressiveHints: true,
+    intel: [
+      "Dispatch 엔드포인트: POST /api/v1/challenges/level2_3/actions/dispatch",
+      "응답 Body의 dispatch_token 값을 확인해.",
+      "점(.)으로 나뉜 토큰은 보통 header.payload.signature 같은 segment 구조를 가진다.",
+      "Header는 토큰 설명이고, Payload는 실제 claim이 들어가는 영역이다.",
+      "서명된 토큰도 payload 자체는 읽을 수 있다. 서명은 무결성 검증이지 암호화가 아니다.",
+      "이번 노드는 토큰 위조가 아니라 토큰 관찰과 디코딩에 집중한다.",
+      "터미널 helper: decode-token <dispatch_token>",
+    ],
+    consoleBoot: [
+      "[MIRA] trust tamper path sealed",
+      "[AEGIS] dispatch capsule issued",
+      "[AEGIS] token envelope sealed",
+      "[AEGIS] payload opacity assumed",
+      "[MIRA] sealed does not always mean encrypted",
+      "[MIRA] do not forge it. Open it.",
+    ],
+    consolePlaceholder: "inspect dispatch capsule...",
+    objectives: [
+      "Dispatch 엔드포인트를 호출해 dispatch_token을 발급받는다.",
+      "토큰이 어떤 segment로 구성되어 있는지 확인한다.",
+      "payload segment를 디코딩해 Evidence Shard를 찾는다.",
+      "민감값이 디코딩 가능한 token payload에 들어가지 않도록 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS는 이걸 sealed capsule이라고 부르지만, 말장난일 가능성이 높아. 토큰이 점으로 나뉘어 있다면 구조가 있다는 뜻이야.",
+      attack:
+        "Header는 포장지에 가깝고, 진짜 내용은 payload에 들어 있을 때가 많아. 값을 바꾸려고 하지 마. 이번 노드는 위조가 아니라 관찰이야.",
+      attackSolved:
+        "Evidence Shard 회수 완료. capsule은 봉인처럼 보였지만 payload는 그대로 읽혔어.",
+      defense:
+        "서명된 토큰도 payload는 읽을 수 있어. Evidence Shard와 sessionToken처럼 민감한 값을 readable payload에 넣는 라인을 막아.",
+      complete:
+        "Dispatch capsule 누수는 닫혔어. 다음 노드에서는 AEGIS가 token claim을 어떻게 신뢰하는지 시험하게 될 거야.",
+    },
+    aegis: {
+      briefing:
+        "Token envelope sealed. Payload opacity assumed.",
+      attack:
+        "Dispatch capsule issued. Decoded inspection is outside canonical flow.",
+      attackSolved:
+        "Payload claim exposure confirmed. Confidentiality assumption invalid.",
+      defense:
+        "Readable claim set under inspection. Sensitive payload inclusion must be removed.",
+      complete:
+        "Dispatch payload minimized. Claim trust evaluation pending.",
+    },
+    attackSuccessText: "Dispatch payload decoded. Evidence Shard recovered from readable claims.",
+    defenseSuccessText: "Sensitive token payload claims sealed. 다음 Signal Edge 노드가 열렸다.",
+    debrief: {
+      title: "DISPATCH CAPSULE 정리",
+      summary:
+        "AEGIS는 dispatch_token을 sealed capsule이라고 불렀지만, payload는 암호화되어 있지 않았다. 서명은 토큰이 변조되지 않았는지 확인하는 장치일 뿐, payload를 숨기지는 않는다.",
+      learned: [
+        "점(.)으로 나뉜 토큰은 segment 구조를 가질 수 있다.",
+        "Header는 토큰의 포장지이고, Payload는 claim이 담긴 영역이다.",
+        "서명된 토큰도 payload는 읽힐 수 있다.",
+        "Evidence Shard, sessionToken, secret 값은 readable token payload에 넣으면 안 된다.",
+        "토큰을 숨기는 방법은 서명이 아니라 민감값을 넣지 않거나, 필요하면 별도의 암호화를 적용하는 것이다.",
+      ],
+      nextTeaser: "다음 노드에서는 AEGIS가 token claim을 어떻게 신뢰하는지 시험한다.",
     },
   },
 };
@@ -399,7 +545,7 @@ const FALLBACK_CODENAMES = {
   level1_4: "AEGIS ECHO",
   level2_1: "INVISIBLE HEADER",
   level2_2: "TRUST TAMPER",
-  level2_3: "DISPATCH TOKEN",
+  level2_3: "DISPATCH CAPSULE",
   level2_4: "EXPRESS FORGE",
   level2_5: "SEALED ARCHIVE",
   level3_1: "BOLA WINDOW",

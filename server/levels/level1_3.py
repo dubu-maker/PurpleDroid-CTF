@@ -117,14 +117,6 @@ PATCH_FEEDBACK = {
     "d1": "3번은 fragment recovery 시작을 알리는 일반 정보 로그야. Evidence 조각 값을 직접 출력하지 않아.",
     "d2": "8번은 chunk write complete 완료 상태 로그야. 조각 값이나 shardId part 내용을 담지 않아.",
 }
-PATCH_LINE_LABELS = {
-    "p1": "4번",
-    "p2": "5번",
-    "p3": "6번",
-    "p4": "7번",
-}
-
-
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL1_3_FLAG
 
@@ -143,9 +135,11 @@ def patch_feedback(patched_ids: List[str]) -> str:
     if extra:
         return " ".join(PATCH_FEEDBACK[pid] for pid in extra)
 
-    missing = [PATCH_LINE_LABELS[pid] for pid in sorted(REQUIRED_PATCH_IDS - selected)]
-    if missing:
-        return f"아직 Evidence 조각 로그가 남아있어. {', '.join(missing)} 라인을 더 봉쇄해야 해."
+    if REQUIRED_PATCH_IDS - selected:
+        return (
+            "아직 Evidence 조각 로그가 남아있어. 태그가 달라도 같은 shardId와 part 패턴으로 "
+            "재조립 가능한 조각 로그가 더 남았는지 확인해."
+        )
 
     return "정답 라인만 선택해줘. Evidence 조각을 출력하지 않는 정상 상태 로그는 남겨도 돼."
 

@@ -446,8 +446,22 @@ button:disabled {
 }
 
 .hint-toggle {
-  padding: 6px 10px;
-  font-size: 12px;
+  margin-top: 10px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid rgba(106, 255, 191, 0.35);
+  color: #6affbf;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hint-toggle:hover {
+  background: rgba(106, 255, 191, 0.08);
+  border-color: rgba(106, 255, 191, 0.6);
 }
 
 .extra-hints {

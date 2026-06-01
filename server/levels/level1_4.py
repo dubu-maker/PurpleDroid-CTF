@@ -192,12 +192,6 @@ PATCH_WRONG_FEEDBACK = {
     "d9": "12번은 봉쇄 대상이 아니야. 최종 key가 아니라 플레이어를 흔드는 경고문 조각이야.",
     "d10": "13번은 봉쇄 대상이 아니야. preflight key가 검증됐다는 상태 로그지만 key 이름을 직접 남기지는 않아.",
 }
-PATCH_LINE_LABELS = {
-    "p1": "3번",
-    "p2": "14번",
-}
-
-
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL1_4_FLAG
 
@@ -236,10 +230,10 @@ def patch_feedback(patched_ids: List[str]) -> str:
         elif pid in PATCH_WRONG_FEEDBACK:
             messages.append(PATCH_WRONG_FEEDBACK[pid])
 
-    missing = [PATCH_LINE_LABELS[pid] for pid in sorted(REQUIRED_PATCH_IDS - selected)]
-    if missing:
+    if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            f"아직 AEGIS key 노출 또는 검증 대상 로그가 남아있어. {', '.join(missing)} 라인을 더 봉쇄해야 해."
+            "아직 AEGIS key 노출 또는 검증 대상 로그가 남아있어. 실제 key 문자열과 commit 검증 단서를 "
+            "경고문 조각이나 일반 상태 로그와 구분해봐."
         )
 
     if messages:

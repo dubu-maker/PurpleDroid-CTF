@@ -292,6 +292,9 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
     elif level_id == "level4_boss":
         unlocked_attack = all(session["progress"].get(x, {}).get("attackSolved") is True for x in level4_boss_prereqs)
         attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
+    elif level_id == "level1_4":
+        unlocked_attack = session["progress"].get("level1_3", {}).get("defenseSolved") is True
+        attack = "solved" if prog["attackSolved"] else ("available" if unlocked_attack else "locked")
     else:
         # 기본 레벨은 Attack 항상 접근 가능
         attack = "solved" if prog["attackSolved"] else "available"
@@ -535,7 +538,9 @@ def submit_patch(challenge_id: str, req: SubmitPatchReq, authorization: Optional
         )
 
     message = "패치가 충분하지 않습니다."
-    if hasattr(mod, "patch_feedback"):
+    if hasattr(mod, "patch_feedback_with_session"):
+        message = mod.patch_feedback_with_session(req.patched, session) or message
+    elif hasattr(mod, "patch_feedback"):
         message = mod.patch_feedback(req.patched) or message
     return ok({"correct": False, "message": message})
 
@@ -583,16 +588,20 @@ def signal_trace(response: Response):
     
     # Signal Edge의 라우팅 티켓이 Body가 아니라 Header에 새어 나가는 상황
     response.headers["X-Courier-Ticket"] = LEVEL2_1_FLAG
+    response.headers["X-Internal-Route"] = LEVEL2_1_FLAG[:8]
     
     # Body는 아주 평범하게 줘서 스포일러 방지
     return {"ok": True, "message": "routed"}
 
 class OrderRequest(BaseModel):
-    orderId: str
+    orderId: Optional[str] = None
+    signalId: Optional[str] = None
     tier: str
+    fastTrack: Optional[bool] = False
 
 class DispatchRequest(BaseModel):
-    parcel_id: str = Field(default="PD-2026-0001", min_length=3, max_length=64)
+    signalId: Optional[str] = Field(default=None, min_length=3, max_length=64)
+    parcel_id: Optional[str] = Field(default=None, min_length=3, max_length=64)
 
 class BossDispatchRequest(BaseModel):
     parcel_id: str = Field(default="PD-2026-0001", min_length=3, max_length=64)
@@ -632,24 +641,26 @@ class DeliveryEventReq(BaseModel):
 
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
-    """2-2 요청 변조 전용 API"""
+    """2-2 Signal Priority 요청 변조 전용 API"""
     from levels.level2_2 import LEVEL2_2_FLAG
     
-    # 해커가 tier를 vip로 보냈을 때만 플래그 제공!
-    if req.tier.lower() == "vip":
-        response.headers["X-VIP-Label"] = LEVEL2_2_FLAG
-        return {"ok": True, "message": "VIP package confirmed"}
+    # 클라이언트가 보낸 tier를 그대로 신뢰하는 취약한 흐름
+    response.headers["X-Trust-Policy"] = "tier-claim=accepted; elevated=redacted"
+    response.headers["X-Tier-Shape"] = "lowercase-legacy-access-class"
+    if req.tier.lower().strip() == "vip" or req.fastTrack:
+        response.headers["X-Priority-Label"] = LEVEL2_2_FLAG
+        return {"ok": True, "message": "Privileged signal accepted", "route": "priority"}
         
-    return {"ok": True, "message": "Standard package confirmed"}
+    return {"ok": True, "message": "Standard signal accepted", "tier": "standard", "elevatedCandidate": "redacted"}
 
 @app.post("/api/v1/challenges/level2_3/actions/dispatch")
 def dispatch_parcel(response: Response, req: DispatchRequest = DispatchRequest()):
     """2-3 토큰 관찰/디코딩 전용 API"""
     from levels.level2_3 import issue_dispatch_token
 
-    token = issue_dispatch_token(req.parcel_id)
-    response.headers["X-Dispatch-Trace"] = "token-issued"
-    return {"status": "ok", "dispatch_token": token}
+    token = issue_dispatch_token(req.signalId or req.parcel_id)
+    response.headers["X-Dispatch-Trace"] = "capsule-issued"
+    return {"ok": True, "dispatch_token": token}
 
 @app.post("/api/v1/challenges/level2_5/actions/dispatch")
 def boss_dispatch(req: BossDispatchRequest = BossDispatchRequest()):

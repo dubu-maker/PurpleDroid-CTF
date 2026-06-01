@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAMPAIGN_PROLOGUE,
   CAMPAIGN_TOKEN_KEY,
@@ -293,10 +293,15 @@ function ObjectivePanel({ story, phase, hasUserCommand }) {
   );
 }
 
-function IntelPanel({ items }) {
+function IntelPanel({ items, progressive }) {
+  const [revealed, setRevealed] = useState(1);
+
   if (!items?.length) {
     return null;
   }
+
+  const visibleItems = progressive ? items.slice(0, revealed) : items;
+  const hasMore = progressive && revealed < items.length;
 
   return (
     <section className="intel-panel">
@@ -305,10 +310,19 @@ function IntelPanel({ items }) {
         <strong>handler notes</strong>
       </div>
       <ul>
-        {items.map((item) => (
-          <li key={item}>{item}</li>
+        {visibleItems.map((item, i) => (
+          <li key={i}>{item}</li>
         ))}
       </ul>
+      {hasMore && (
+        <button
+          type="button"
+          className="hint-toggle"
+          onClick={() => setRevealed((r) => r + 1)}
+        >
+          힌트 더 보기 ({revealed}/{items.length})
+        </button>
+      )}
     </section>
   );
 }
@@ -366,6 +380,14 @@ function MissionConsole({
   setCommand,
   busy,
 }) {
+  const outputRef = useRef(null);
+
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [logs]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (disabled || busy || !command.trim()) {
@@ -380,7 +402,7 @@ function MissionConsole({
         <span>MISSION CONSOLE</span>
         <strong>{busy ? "running" : disabled ? "standby" : "online"}</strong>
       </div>
-      <div className="campaign-terminal-output">
+      <div ref={outputRef} className="campaign-terminal-output">
         {logs.length === 0 ? (
           <p className="terminal-muted">Awaiting command uplink.</p>
         ) : (
@@ -971,7 +993,7 @@ function CampaignMode() {
                 hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
               />
 
-              <IntelPanel items={story.intel} />
+              <IntelPanel key={activeChallengeId} items={story.intel} progressive={story.progressiveHints} />
 
               {phase === "BRIEFING" && (
                 <section className="briefing-lock">
