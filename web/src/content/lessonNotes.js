@@ -272,13 +272,15 @@ Security by obscurity는 장기 방어 전략이 아니다.
 
   level2_4: {
     id: "level2_4",
-    title: "2-4 Forge the VIP Pass - VIP 패스 위조하기",
+    title: "2-4 Express Forge - 위조된 우선 통행권",
     shortSummary:
-      "토큰을 읽는 단계에서 끝나면 관찰이다. 토큰을 바꿔도 통과되면 실제 사고다. 핵심은 payload가 아니라 signature 검증이다.",
+      "2-3이 token payload 관찰이었다면, 2-4는 검증되지 않은 claim 신뢰 문제다. 핵심은 decode가 아니라 signature verify다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- JWT 구조(header.payload.signature)를 기반으로 payload의 tier/role 값을 수정했다.
-- 위조한 토큰을 Authorization 헤더로 /actions/express에 전송했다.
+- 2-4 터미널의 DISPATCH_TOKEN 환경 변수에서 원본 dispatch_token을 다시 꺼냈다.
+- 원본 dispatch_token으로 Express Gate를 호출해 standard 거부 응답을 확인했다.
+- JWT 구조(header.payload.signature)를 기반으로 payload의 tier/role claim을 수정했다.
+- 위조한 token을 Authorization Bearer로 /actions/express에 전송했다.
 - 서버가 서명 검증을 제대로 하지 않아 권한 상승이 통과되고 FLAG를 획득했다.
 
 ## 왜 이게 중요한가
@@ -288,12 +290,13 @@ Security by obscurity는 장기 방어 전략이 아니다.
 
 ## 어떻게 찾았나
 - Network/터미널에서 토큰 흐름과 Authorization 헤더를 확인했다.
-- payload의 tier/role을 일반 -> vip/admin으로 바꿔 재조합했다.
+- payload의 tier/role을 standard/operator -> vip/admin으로 바꿔 재조합했다.
 - 위조 토큰으로 express 엔드포인트 재요청 후 응답 차이를 확인했다.
 
 ## 현실 위험 포인트
 - JWT decode만 하고 verify를 누락하는 실수
 - alg=none 허용, 알고리즘 처리 혼동(HS256/RS256)
+- token claim만 보고 권한을 열어주는 Express/VIP 분기
 - 프론트 제약만 믿고 서버 인가 검증을 약하게 두는 구조
 
 ## 방어 관점
@@ -301,6 +304,7 @@ Security by obscurity는 장기 방어 전략이 아니다.
 - 허용 알고리즘 화이트리스트 고정(alg=none 거부)
 - 권한 판단은 서버 정책/세션/DB로 재검증
 - 키/시크릿 관리와 라이브러리 옵션 점검
+- decode와 verify를 코드에서 명확히 분리
 
 ## 결론
 토큰은 서명 검증이 빠지면 그냥 조작 가능한 문자열이다.
@@ -325,44 +329,51 @@ Security by obscurity는 장기 방어 전략이 아니다.
 
   level2_5: {
     id: "level2_5",
-    title: "2-5 Sealed Warehouse - 봉인된 창고(웹 무결성 우회)",
+    title: "2-5 Sealed Archive - 봉인된 Signal Archive",
     shortSummary:
-      "잠겨 보이는 UI는 보안이 아니다. DevTools로 흐름을 분석하고 요청을 직접 조합하면 클라이언트 잠금을 우회할 수 있다.",
+      "버튼 실패는 보안이 아니다. token, path, forged claim, integrity header를 직접 조합하면 복합 신뢰 경계가 무너진다.",
     markdown: `
 ## 오늘 미션에서 한 일
 - 클릭으로는 실패하는 UI 흐름을 확인했다.
-- Network/Sources/Console 단서로 실제 요구 조건(토큰/헤더/바디)을 찾았다.
-- 요청을 직접 구성해 봉인 창고를 열고 최종 FLAG를 획득했다.
+- sealed dispatch_token을 발급받고 payload의 warehouse_path와 gate를 확인했다.
+- 2-4에서 배운 forge 흐름으로 vip/admin claim을 준비했다.
+- Authorization, JSON Body, X-Integrity-Bypass Header를 조합해 Archive를 열고 최종 FLAG를 획득했다.
 
 ## 왜 이게 중요한가
 - 클라이언트 검증은 보안이 아니라 연출일 수 있다.
 - 사용자는 DevTools로 JS 흐름을 바꾸거나 요청을 직접 재생성할 수 있다.
+- token decode는 verify가 아니고, client header는 integrity 증거가 아니다.
 - 최종 권한/결정은 서버 검증으로만 보장된다.
 
 ## 어떻게 찾았나
-- Network: dispatch/open 요청과 응답 확인
-- Sources/Console: 우회 단서와 조건 추적
-- 직접 요청: Authorization, 헤더, body를 맞춰 호출
+- Network/Terminal: dispatch/open 요청과 응답 확인
+- Token decode: warehouse_path, tier/role, gate 확인
+- Token forge: standard/user를 vip/admin claim으로 변조
+- 직접 요청: Authorization, X-Integrity-Bypass, JSON body를 맞춰 호출
 
 ## 현실 위험 포인트
 - "프론트에서 막았으니 안전"이라는 착각
 - 클라이언트 코드에 비밀/우회키/검증 로직을 두는 실수
 - 디버그 우회 코드가 운영에 남아 인가 우회로 악용
+- Request Body의 tier나 Header의 integrity 값을 서버가 그대로 신뢰
+- 응답 Header에 Evidence를 흘리는 실수
 
 ## 방어 관점
 - 클라이언트 검증은 UX 보조로만 사용
 - 최종 권한판단은 서버에서 강제
 - 디버그 헤더/백도어/테스트 키는 운영 배포에서 제거
 - 토큰 verify와 정책 검증을 분리해 중복 방어
+- token, operator, archive path, integrity state를 서버 측 상태로 묶어 검증
 
 ## 결론
-잠겨 보이는 화면은 보안이 아니다. 신뢰 경계는 서버에서만 성립한다.
+잠겨 보이는 화면은 보안이 아니다. 복합 신뢰 경계는 서버에서 함께 검증되어야 한다.
 `,
     keyTakeaways: [
-      "클라이언트 잠금은 우회 가능성을 전제로 설계해야 한다.",
-      "요청 재조합(토큰/헤더/바디)은 공격자의 기본 능력이다.",
-      "인가 판단은 서버에서 검증/재검증해야 한다.",
-      "디버그/우회 경로는 운영에서 반드시 제거해야 한다.",
+      "클라이언트 UI는 보안 경계가 아니다.",
+      "요청 재조합(token/header/body)은 공격자의 기본 능력이다.",
+      "JWT payload claim은 signature 검증 전까지 신뢰할 수 없다.",
+      "Body tier와 integrity header는 서버가 재검증해야 한다.",
+      "보스 문제는 취약점 체인을 보는 연습이다.",
     ],
     selfCheck: [
       {

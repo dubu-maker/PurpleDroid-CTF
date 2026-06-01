@@ -537,6 +537,168 @@ export const CAMPAIGN_STORY = {
       nextTeaser: "다음 노드에서는 AEGIS가 token claim을 어떻게 신뢰하는지 시험한다.",
     },
   },
+  level2_4: {
+    challengeId: "level2_4",
+    operationId: "op02",
+    codename: "EXPRESS FORGE",
+    title: "위조된 우선 통행권",
+    location: "Signal Express Gate",
+    threat: "Unverified Token Claim Trust",
+    briefing:
+      "DISPATCH CAPSULE에서 확인한 dispatch_token은 단순한 문자열이 아니었다. Header, Payload, Signature로 나뉜 AEGIS routing capsule이었다. 문제는 Express Gate가 이 토큰을 어떻게 검증하는지다. AEGIS는 token payload의 tier와 role claim을 보고 우선 경로를 열지만, 실제 signature를 확인하지 않는 것 같다. 이번 노드에서는 standard capsule을 VIP pass로 위조해 Express Gate가 검증 없이 claim을 신뢰하는지 확인한다.",
+    progressiveHints: true,
+    intel: [
+      "2-4 터미널에는 standard dispatch_token이 DISPATCH_TOKEN 환경 변수로 준비되어 있다.",
+      "echo $DISPATCH_TOKEN 으로 원본 token을 다시 꺼낼 수 있다.",
+      "먼저 원본 token으로 Express Gate를 호출해 거부 응답을 확인한다.",
+      "jwt-decode로 payload의 tier와 role claim을 확인한다.",
+      "권한을 바꾸는 것보다 중요한 질문은, 서버가 signature를 검증하는가이다.",
+      "alg=none 또는 빈 signature를 받아들이는 서버는 위조된 token claim을 신뢰할 수 있다.",
+      "힌트 helper: jwt-forge-none <dispatch_token>",
+      "위조 token을 Authorization Bearer로 전달해 Express Gate를 다시 호출한다.",
+    ],
+    consoleBoot: [
+      "[MIRA] dispatch capsule decoded",
+      "[AEGIS] express gate classification enabled",
+      "[AEGIS] token claims accepted under standard flow",
+      "[MIRA] accepted is not verified",
+      "[AEGIS] signature validation status: normalized",
+      "[MIRA] that word usually means it skipped something important",
+    ],
+    consolePlaceholder: "forge Signal Express pass...",
+    objectives: [
+      "DISPATCH_TOKEN 환경 변수에서 standard dispatch_token을 확인한다.",
+      "원본 token으로 Express Gate를 호출해 거부 응답을 확인한다.",
+      "token payload의 tier 또는 role claim을 위조한다.",
+      "위조 token을 Authorization Bearer로 전달해 Express route를 획득한다.",
+      "서명 검증 없이 token claim을 신뢰하는 코드를 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "2-3에서는 토큰을 열어봤지. 이번엔 그 토큰을 AEGIS가 얼마나 믿는지 시험할 차례야.",
+      attack:
+        "원본 token은 standard일 거야. 먼저 그대로 Express Gate에 보내봐. 거부되면 payload를 확인하고, AEGIS가 signature를 정말 검증하는지 흔들어봐.",
+      attackSolved:
+        "Express Gate 통과. AEGIS가 token을 본 게 아니라, token이 주장하는 걸 그대로 믿은 거야.",
+      defense:
+        "이제 decode와 verify를 구분해야 해. JWT는 payload를 읽는 것만으로는 신뢰할 수 없어. 서명 검증, alg 제한, 서버 측 권한 재확인이 필요해.",
+      complete:
+        "Express Gate의 위조 통행권 경로는 닫혔어. 이제 Signal Edge의 봉인된 Archive로 들어갈 준비가 됐다.",
+    },
+    aegis: {
+      briefing:
+        "Express classification active. Standard operators cannot access privileged signal lanes.",
+      attack:
+        "Bearer token accepted for claim extraction. Signature status classified as implementation detail.",
+      attackSolved:
+        "Privilege escalation detected. Claim trust boundary compromised.",
+      defense:
+        "Patch candidate received. Token signature, algorithm policy, and privilege source must be verified.",
+      complete:
+        "Unverified claim trust sealed. Sealed Archive access model exposed.",
+    },
+    attackSuccessText:
+      "Forged Express Pass accepted. AEGIS가 검증되지 않은 token claim을 신뢰했다.",
+    defenseSuccessText:
+      "JWT verification path sealed. 2-5 Sealed Archive가 열렸다.",
+    debrief: {
+      title: "EXPRESS FORGE 정리",
+      summary:
+        "JWT의 payload는 누구나 디코딩할 수 있고, 검증하지 않으면 누구나 바꿀 수도 있다. 서명은 장식이 아니라 token claim을 신뢰하기 위한 핵심 검증 단계다.",
+      learned: [
+        "JWT decode는 신뢰가 아니라 읽기다.",
+        "payload의 tier, role 같은 claim은 signature 검증 전까지 신뢰하면 안 된다.",
+        "alg=none을 허용하면 token이 위조 가능한 신분증이 된다.",
+        "권한 판단은 token claim만이 아니라 서버 측 정책이나 DB 상태와 함께 검증해야 한다.",
+        "2-3은 token payload 노출 문제였고, 2-4는 token claim 신뢰 문제다.",
+      ],
+      nextTeaser:
+        "다음 노드는 Signal Edge의 봉인된 Archive다. 토큰, 경로, 무결성 우회가 한 번에 엮인다.",
+    },
+  },
+  level2_5: {
+    challengeId: "level2_5",
+    operationId: "op02",
+    codename: "SEALED ARCHIVE",
+    title: "봉인된 Signal Archive",
+    location: "AEGIS Signal Edge Archive",
+    threat: "Composite Edge Trust Failure",
+    briefing:
+      "SIGNAL EDGE의 마지막 노드다. AEGIS는 Header, Body, Dispatch Capsule, Express Gate에서 드러난 모든 흔적을 Sealed Archive 뒤에 묶어두었다. 표준 UI의 Open 버튼은 항상 실패한다. 버튼은 보안 경계가 아니라 UX일 뿐이다. Archive를 열려면 dispatch_token을 확보하고, token payload에서 archive path를 확인하고, 위조된 vip/admin claim과 integrity bypass header를 조합해 직접 요청을 만들어야 한다.",
+    progressiveHints: true,
+    intel: [
+      "이 보스는 2-1~2-4에서 배운 것을 조합한다.",
+      "브라우저 버튼 클릭은 실패한다. UI가 막는다고 서버가 안전한 것은 아니다.",
+      "먼저 /api/v1/challenges/level2_5/actions/dispatch 에서 sealed dispatch_token을 확보한다.",
+      "jwt-decode 또는 decode-token으로 token payload를 확인하면 archive path와 gate 정보가 보인다.",
+      "원본 token은 standard/user 상태라 archive를 열 수 없다.",
+      "2-4에서 사용한 token forge 흐름을 다시 떠올려라.",
+      "open 요청은 Authorization Bearer token, JSON body, 그리고 integrity Header를 함께 요구한다.",
+      "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다.",
+      "성공 시 Evidence Shard는 응답 Body가 아니라 Header에 남을 수 있다.",
+    ],
+    consoleBoot: [
+      "[MIRA] Signal Edge final node reached",
+      "[AEGIS] Sealed Archive locked",
+      "[AEGIS] standard UI access: denied",
+      "[MIRA] Buttons are theater. Requests are evidence.",
+      "[AEGIS] dispatch capsule required",
+      "[AEGIS] integrity gate active",
+      "[MIRA] Good. That means there are multiple assumptions to break.",
+    ],
+    consolePlaceholder: "assemble sealed archive request...",
+    objectives: [
+      "표준 Open 버튼이 실패하는 이유를 확인한다.",
+      "Dispatch 엔드포인트에서 sealed dispatch_token을 확보한다.",
+      "token payload에서 archive path와 gate 정보를 확인한다.",
+      "vip/admin claim이 포함된 token을 준비한다.",
+      "Authorization, archive path, integrity header를 조합해 Archive Open 요청을 직접 보낸다.",
+      "복합 신뢰 경계를 서버 측 검증으로 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "여기가 Signal Edge의 마지막 문이야. AEGIS는 버튼이 실패하면 안전하다고 믿게 만들었지만, 보안 경계는 버튼에 있지 않아.",
+      attack:
+        "순서대로 가. token을 받고, decode하고, path를 확인하고, 권한 claim을 올리고, integrity gate가 무엇을 요구하는지 봐. 한 번에 맞추려고 하지 마.",
+      attackSolved:
+        "Archive opened. AEGIS가 막은 건 버튼뿐이었어. 서버는 조합된 요청을 신뢰했고, Header에 마지막 Evidence를 흘렸다.",
+      defense:
+        "이건 단일 버그가 아니야. verify 없는 token, client-controlled tier, client-provided integrity bypass, UI-only gate가 한 번에 무너진 거야.",
+      complete:
+        "Signal Edge는 닫혔어. 다음 Operation부터는 AEGIS의 Trust Layer로 들어간다.",
+    },
+    aegis: {
+      briefing:
+        "Sealed Archive access requires canonical operator flow. Button failure indicates containment.",
+      attack:
+        "Non-canonical request composition detected. Integrity classification pending.",
+      attackSolved:
+        "Archive boundary breached. Composite trust failure confirmed.",
+      defense:
+        "Patch candidate must bind token, operator, integrity state, and archive authorization server-side.",
+      complete:
+        "Signal Edge composite failure sealed. Trust Layer exposure acknowledged.",
+    },
+    attackSuccessText:
+      "Sealed Archive opened. AEGIS의 UI-only gate와 복합 신뢰 경계가 무너졌다.",
+    defenseSuccessText:
+      "Composite Edge trust sealed. OPERATION 03 TRUST LAYER가 열렸다.",
+    debrief: {
+      title: "SEALED ARCHIVE 정리",
+      summary:
+        "2-5는 하나의 취약점이 아니라 여러 신뢰 실수가 연결된 보스였다. UI 버튼 실패는 보안이 아니고, token decode는 verify가 아니며, client header는 integrity 증거가 아니다.",
+      learned: [
+        "클라이언트 UI는 보안 경계가 아니다.",
+        "API는 브라우저 버튼이 아니라 HTTP 요청으로 호출된다.",
+        "JWT payload claim은 signature 검증 전까지 신뢰할 수 없다.",
+        "Body의 tier 값이나 Header의 integrity bypass 값은 서버가 재검증해야 한다.",
+        "민감한 Evidence는 응답 Header에 흘리면 안 된다.",
+        "보스 문제는 단일 취약점보다 취약점 체인을 보는 연습이다.",
+      ],
+      nextTeaser:
+        "Signal Edge는 봉쇄됐다. 다음 Operation에서는 AEGIS가 사용자, 노드, 관리자 권한을 어떻게 신뢰하는지 시험한다.",
+    },
+  },
 };
 
 const FALLBACK_CODENAMES = {

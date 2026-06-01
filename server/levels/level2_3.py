@@ -114,21 +114,30 @@ def _json_b64(data: Dict[str, Any]) -> str:
     return _b64url_encode(json.dumps(data, separators=(",", ":")).encode("utf-8"))
 
 
-def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID) -> str:
+def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID, include_evidence: bool = True) -> str:
     sid = (signal_id or DEFAULT_SIGNAL_ID).strip() or DEFAULT_SIGNAL_ID
     header = {
         "typ": "AEGIS-DISPATCH",
         "alg": "HS256",
-        "kid": HEADER_DECOY_FLAG,
+        "kid": HEADER_DECOY_FLAG if include_evidence else "dispatch-pass",
     }
     payload = {
         "signalId": sid,
         "route": "signal-edge",
         "state": "issued",
-        "debug": "flags_are_not_always_flags",
-        "evidenceShard": LEVEL2_3_FLAG,
-        "note": "payload_is_visible_not_encrypted",
+        "tier": "standard",
+        "role": "operator",
     }
+    if include_evidence:
+        payload.update(
+            {
+                "debug": "flags_are_not_always_flags",
+                "evidenceShard": LEVEL2_3_FLAG,
+                "note": "payload_is_visible_not_encrypted",
+            }
+        )
+    else:
+        payload["note"] = "express_gate_probe"
     return f"{_json_b64(header)}.{_json_b64(payload)}.{SIGNATURE_PREVIEW}"
 
 
