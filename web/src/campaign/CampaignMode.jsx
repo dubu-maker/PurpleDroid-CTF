@@ -120,6 +120,42 @@ function shouldShowOperation03Intermission(fromId, targetId, intermissionSeen) {
   );
 }
 
+function previewNetworkBody(body) {
+  const data = body?.data || body || {};
+
+  if (Array.isArray(data.parcels)) {
+    const first = data.parcels[0] || {};
+    return [
+      `owner: ${data.owner || "unknown"}`,
+      `capsule: ${first.parcel_id || "unknown"}`,
+      `tier: ${first.tier || "unknown"}`,
+    ];
+  }
+
+  if (data.parcel_id) {
+    return [
+      `owner: ${data.owner || "unknown"}`,
+      `capsule: ${data.parcel_id}`,
+      `tier: ${data.tier || "unknown"}`,
+      `status: ${data.status || "unknown"}`,
+    ];
+  }
+
+  return [`ok: ${body?.ok === false ? "false" : "true"}`];
+}
+
+function createTraceEntry({ method, url, status, body, token }) {
+  return {
+    id: `${Date.now()}-${method}-${url}`,
+    method,
+    url,
+    status,
+    body,
+    preview: previewNetworkBody(body),
+    curl: `curl -v -X ${method} "${url}" -H "Authorization: Bearer ${token}"`,
+  };
+}
+
 function CampaignHome({
   loading,
   me,
@@ -338,26 +374,76 @@ function IntelPanel({ items, progressive }) {
   );
 }
 
-function ActionProbePanel({ probe, disabled, busy, result, onRun }) {
+function NetworkTracePanel({
+  probe,
+  disabled,
+  busy,
+  result,
+  entries,
+  capsuleId,
+  expandedById,
+  onSync,
+  onOpenCapsule,
+  onCopyCurl,
+  onToggleResponse,
+}) {
   if (!probe) {
     return null;
   }
 
   return (
-    <section className="action-probe-panel">
+    <section className="network-trace-panel">
       <div className="section-heading">
-        <span>FIELD PROBE</span>
+        <span>NETWORK TRACE</span>
         <strong>{busy ? "syncing" : probe.status}</strong>
       </div>
       <p>{probe.caption}</p>
-      <div className="action-probe-row">
-        <button type="button" onClick={onRun} disabled={disabled || busy}>
+      <div className="network-trace-actions">
+        <button type="button" onClick={onSync} disabled={disabled || busy}>
           {probe.label}
         </button>
+        <button type="button" className="ghost-button" onClick={onOpenCapsule} disabled={disabled || busy || !capsuleId}>
+          {probe.secondaryLabel || "Open Detail"}
+        </button>
         {result && (
-          <span className={`action-probe-result ${result.ok ? "ok" : "fail"}`}>
+          <span className={`network-trace-result ${result.ok ? "ok" : "fail"}`}>
             {result.message}
           </span>
+        )}
+      </div>
+
+      <div className="network-trace-list">
+        {entries.length === 0 ? (
+          <p className="network-trace-empty">No captured requests. Start with Sync My Capsules.</p>
+        ) : (
+          entries.map((entry) => {
+            const expanded = Boolean(expandedById[entry.id]);
+            return (
+              <article key={entry.id} className="network-trace-entry">
+                <div className="network-trace-entry-top">
+                  <span className="network-status">[{entry.status}]</span>
+                  <strong>{entry.method}</strong>
+                  <code>{entry.url}</code>
+                </div>
+                <div className="network-preview">
+                  {entry.preview.map((line) => (
+                    <span key={line}>{line}</span>
+                  ))}
+                </div>
+                <div className="network-trace-entry-actions">
+                  <button type="button" className="ghost-button" onClick={() => onToggleResponse(entry.id)}>
+                    {expanded ? "Hide Response" : "View Response"}
+                  </button>
+                  <button type="button" className="ghost-button" onClick={() => onCopyCurl(entry.curl)}>
+                    Copy as curl
+                  </button>
+                </div>
+                {expanded && (
+                  <pre className="network-response">{JSON.stringify(entry.body, null, 2)}</pre>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
     </section>
@@ -699,8 +785,11 @@ function CampaignMode() {
   const [flagValue, setFlagValue] = useState("");
   const [evidenceResult, setEvidenceResult] = useState(null);
   const [patchResult, setPatchResult] = useState(null);
-  const [actionProbeResult, setActionProbeResult] = useState(null);
-  const [actionProbeBusy, setActionProbeBusy] = useState(false);
+  const [networkTraceResult, setNetworkTraceResult] = useState(null);
+  const [networkTraceBusy, setNetworkTraceBusy] = useState(false);
+  const [networkTraceEntries, setNetworkTraceEntries] = useState([]);
+  const [networkTraceCapsuleId, setNetworkTraceCapsuleId] = useState("");
+  const [expandedTraceById, setExpandedTraceById] = useState({});
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
   const [attackNotice, setAttackNotice] = useState(false);
@@ -780,8 +869,11 @@ function CampaignMode() {
     setFlagValue("");
     setEvidenceResult(null);
     setPatchResult(null);
-    setActionProbeResult(null);
-    setActionProbeBusy(false);
+    setNetworkTraceResult(null);
+    setNetworkTraceBusy(false);
+    setNetworkTraceEntries([]);
+    setNetworkTraceCapsuleId("");
+    setExpandedTraceById({});
     setSelectedPatchIds([]);
     setAttackNotice(false);
     setShowDebrief(false);
@@ -999,28 +1091,27 @@ function CampaignMode() {
     [currentId, prompt, token]
   );
 
-  const handleActionProbe = useCallback(async () => {
+  const handleSyncCapsules = useCallback(async () => {
     if (!token || !story.actionProbe) {
       return;
     }
 
-    setActionProbeBusy(true);
-    setActionProbeResult(null);
+    setNetworkTraceBusy(true);
+    setNetworkTraceResult(null);
 
     try {
-      let response = null;
-
-      if (story.actionProbe.id === "level3_1_mine") {
-        response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          cache: "no-store",
-        });
-      } else {
+      if (story.actionProbe.id !== "level3_1_mine") {
         throw new Error("Unknown field probe.");
       }
+
+      const traceUrl = "/api/v1/challenges/level3_1/actions/parcels/mine";
+      const response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
 
       if (!response.ok) {
         const raw = await response.text();
@@ -1031,24 +1122,116 @@ function CampaignMode() {
         } catch {
           // keep fallback
         }
-        setActionProbeResult({ ok: false, message });
+        setNetworkTraceResult({ ok: false, message });
         return;
       }
 
-      await response.text();
-      setActionProbeResult({
+      const body = await response.json();
+      const capsuleId = body?.data?.parcels?.[0]?.parcel_id || "";
+      setNetworkTraceCapsuleId(capsuleId);
+      setNetworkTraceEntries((prev) => [
+        createTraceEntry({
+          method: "GET",
+          url: traceUrl,
+          status: response.status,
+          body,
+          token,
+        }),
+        ...prev,
+      ]);
+      setNetworkTraceResult({
         ok: true,
         message: story.actionProbe.success || "Probe sent. Check Network.",
       });
     } catch (error) {
-      setActionProbeResult({
+      setNetworkTraceResult({
         ok: false,
         message: error.message || "Probe failed.",
       });
     } finally {
-      setActionProbeBusy(false);
+      setNetworkTraceBusy(false);
     }
   }, [story.actionProbe, token]);
+
+  const handleOpenMyCapsule = useCallback(async () => {
+    if (!token || !networkTraceCapsuleId) {
+      return;
+    }
+
+    setNetworkTraceBusy(true);
+    setNetworkTraceResult(null);
+
+    const traceUrl = `/api/v1/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(
+      networkTraceCapsuleId
+    )}`;
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(
+          networkTraceCapsuleId
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `probe failed (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setNetworkTraceResult({ ok: false, message });
+        return;
+      }
+
+      const body = await response.json();
+      setNetworkTraceEntries((prev) => [
+        createTraceEntry({
+          method: "GET",
+          url: traceUrl,
+          status: response.status,
+          body,
+          token,
+        }),
+        ...prev,
+      ]);
+      setNetworkTraceResult({
+        ok: true,
+        message: "Capsule detail captured. Copy as curl로 콘솔에 옮긴 뒤 parcel_id를 바꿔봐.",
+      });
+    } catch (error) {
+      setNetworkTraceResult({
+        ok: false,
+        message: error.message || "Probe failed.",
+      });
+    } finally {
+      setNetworkTraceBusy(false);
+    }
+  }, [networkTraceCapsuleId, token]);
+
+  const handleCopyTraceCurl = useCallback((curl) => {
+    setCommand(curl);
+    setNetworkTraceResult({
+      ok: true,
+      message: "curl copied to Mission Console. parcel_id 값을 바꿔 재실행해봐.",
+    });
+
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(curl).catch(() => {});
+    }
+  }, []);
+
+  const handleToggleTraceResponse = useCallback((entryId) => {
+    setExpandedTraceById((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
+  }, []);
 
   const handleSubmitEvidence = useCallback(async () => {
     if (!token || !currentId || !flagValue.trim()) {
@@ -1262,12 +1445,18 @@ function CampaignMode() {
 
               <IntelPanel key={activeChallengeId} items={story.intel} progressive={story.progressiveHints} />
 
-              <ActionProbePanel
+              <NetworkTracePanel
                 probe={story.actionProbe}
                 disabled={phase === "LOCKED" || phase === "BRIEFING"}
-                busy={actionProbeBusy}
-                result={actionProbeResult}
-                onRun={handleActionProbe}
+                busy={networkTraceBusy}
+                result={networkTraceResult}
+                entries={networkTraceEntries}
+                capsuleId={networkTraceCapsuleId}
+                expandedById={expandedTraceById}
+                onSync={handleSyncCapsules}
+                onOpenCapsule={handleOpenMyCapsule}
+                onCopyCurl={handleCopyTraceCurl}
+                onToggleResponse={handleToggleTraceResponse}
               />
 
               {phase === "BRIEFING" && (

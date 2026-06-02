@@ -1021,16 +1021,17 @@ button:disabled {
   margin-top: 6px;
 }
 
-.action-probe-panel {
+.network-trace-panel {
   border-color: rgba(106, 255, 191, 0.28);
 }
 
-.action-probe-panel p {
+.network-trace-panel > p {
   color: #b9c4de;
   line-height: 1.55;
 }
 
-.action-probe-row {
+.network-trace-actions,
+.network-trace-entry-actions {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -1038,17 +1039,85 @@ button:disabled {
   margin-top: 12px;
 }
 
-.action-probe-result {
+.network-trace-result {
   color: #c8d2ec;
   line-height: 1.45;
 }
 
-.action-probe-result.ok {
+.network-trace-result.ok {
   color: #6affbf;
 }
 
-.action-probe-result.fail {
+.network-trace-result.fail {
   color: #ff8fab;
+}
+
+.network-trace-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.network-trace-empty {
+  border: 1px dashed rgba(106, 255, 191, 0.22);
+  color: #65708f;
+  padding: 14px;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.network-trace-entry {
+  border: 1px solid rgba(106, 255, 191, 0.2);
+  background: rgba(5, 7, 12, 0.78);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.network-trace-entry-top {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.network-status {
+  color: #6affbf;
+}
+
+.network-trace-entry-top strong {
+  color: #edf2ff;
+}
+
+.network-trace-entry-top code {
+  color: #b9c4de;
+  overflow-wrap: anywhere;
+}
+
+.network-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.network-preview span {
+  border: 1px solid rgba(157, 78, 221, 0.28);
+  background: rgba(157, 78, 221, 0.12);
+  color: #d7ddff;
+  padding: 5px 8px;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+}
+
+.network-response {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #05070c;
+  color: #c8d2ec;
+  padding: 12px;
+  white-space: pre-wrap;
 }
 
 .briefing-lock,
@@ -1605,5 +1674,9 @@ button:disabled {
 
   .intermission-log-list {
     min-height: 280px;
+  }
+
+  .network-trace-entry-top {
+    grid-template-columns: 1fr;
   }
 }

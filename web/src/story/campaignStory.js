@@ -727,12 +727,13 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "probe object registry...",
     actionProbe: {
       id: "level3_1_mine",
-      label: "Trace My Capsule",
-      status: "object registry probe",
+      label: "Sync My Capsules",
+      secondaryLabel: "Open My Capsule",
+      status: "recording",
       caption:
-        "Network를 비운 뒤 실행하면 /actions/parcels/mine 요청 하나만 새로 남는다. 응답에서 기준 객체 ID를 확인해.",
+        "게임 안의 Network Trace로 요청을 관찰해. 목록 요청에서 기준 객체 ID를 찾고, 상세 요청을 Copy as curl로 콘솔에 옮겨 ID를 바꿔볼 수 있다.",
       success:
-        "Object registry probe sent. Network에서 /actions/parcels/mine 응답의 owner와 parcel_id를 확인해.",
+        "Object registry probe captured. 응답 preview에서 owner와 parcel_id를 확인해.",
     },
     objectives: [
       "내 Signal Capsule 목록과 ID 패턴을 확인한다.",
