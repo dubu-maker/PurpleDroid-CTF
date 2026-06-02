@@ -31,7 +31,8 @@ export const CAMPAIGN_OPERATIONS = [
     title: "OPERATION 03",
     name: "TRUST LAYER",
     range: ["level3_1", "level3_2", "level3_3", "level3_4", "level3_5", "level3_boss"],
-    summary: "AEGIS가 신뢰하는 사용자, 노드, 관리자 권한의 경계를 시험한다.",
+    summary:
+      "MIRROR TRACE 이후 AEGIS가 MIRA의 relay 흔적을 좁혀온다. 사용자, 노드, 관리자 권한의 신뢰 경계를 시험하며 먼저 흔적을 회수한다.",
   },
   {
     id: "op04",
@@ -698,6 +699,467 @@ export const CAMPAIGN_STORY = {
       nextTeaser:
         "Signal Edge는 봉쇄됐다. 다음 Operation에서는 AEGIS가 사용자, 노드, 관리자 권한을 어떻게 신뢰하는지 시험한다.",
     },
+  },
+  level3_1: {
+    challengeId: "level3_1",
+    operationId: "op03",
+    codename: "BOLA WINDOW",
+    title: "이웃 노드의 신호 창",
+    location: "Trust Layer / Object Registry",
+    threat: "Broken Object Level Authorization",
+    briefing:
+      "MIRROR TRACE 이후 AEGIS는 MIRA의 relay 후보를 넓게 훑고 있다. 첫 후보는 Trust Layer의 객체 레지스트리다. 이 계층은 사용자가 자신의 Signal Capsule만 볼 수 있다고 주장하지만, 객체 ID만 바꾸면 인접 노드의 기록이 열릴 가능성이 있다. MIRA가 남긴 relay 흔적은 네 소유가 아닌 Capsule 안에 숨겨져 있을 수 있다.",
+    progressiveHints: true,
+    intel: [
+      "AEGIS는 아직 MIRA를 특정하지 못했다. 대신 인접 객체와 relay 후보를 전부 스캔 중이다.",
+      "먼저 내 객체 목록을 확인하고, ID 패턴을 관찰해.",
+      "인증된 사용자라는 사실과 특정 객체를 볼 권한은 별개다.",
+      "객체 ID를 바꿔도 서버가 owner를 다시 확인하지 않으면 Trust Layer가 열린다.",
+    ],
+    consoleBoot: [
+      "[MIRA] relay mask holding, but AEGIS is sweeping object adjacency",
+      "[AEGIS] trust-layer registry query normalized",
+      "[AEGIS] owner boundary assumed by canonical UI",
+      "[MIRA] UI가 보여주는 내 목록만 믿지 마. 객체 경계를 서버가 지키는지 확인해.",
+    ],
+    consolePlaceholder: "probe object registry...",
+    objectives: [
+      "내 Signal Capsule 목록과 ID 패턴을 확인한다.",
+      "인접 객체 조회에서 MIRA relay 흔적을 회수한다.",
+      "객체 반환 전 owner 검증이 필요하다는 사실을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS가 내 위치를 정확히 찾은 건 아니야. 대신 나와 비슷한 relay 후보를 전부 훑고 있어. 첫 후보는 객체 레지스트리야.",
+      attack:
+        "내 것만 보인다고 안전한 건 아니야. 객체 ID 하나를 바꿨을 때 서버가 owner를 다시 확인하는지 봐.",
+      attackSolved:
+        "좋아. 인접 객체에서 relay 흔적을 회수했어. AEGIS는 여전히 후보군을 넓게 보고 있어.",
+      defense:
+        "인증과 인가는 다르다. 객체를 반환하기 직전에 현재 사용자 소유인지 서버가 확인해야 해.",
+      complete:
+        "Object Registry의 첫 경계는 닫혔어. 하지만 AEGIS는 숨겨진 관리자 경로 쪽으로 스윕을 옮기고 있어.",
+    },
+    aegis: {
+      briefing:
+        "Object registry access classified by operator session. Cross-object anomaly probability: low.",
+      attack:
+        "Adjacent object query observed. Ownership verification deferred to standard flow.",
+      attackSolved:
+        "Unauthorized object visibility confirmed. Mirror relay residue recovered.",
+      defense:
+        "Containment requires server-side ownership assertion at object boundary.",
+      complete:
+        "Object boundary sealed. Trace sweep continuing across privileged routes.",
+    },
+    attackSuccessText:
+      "MIRA relay residue recovered from an adjacent object. AEGIS의 객체 신뢰 경계가 흔들렸다.",
+    defenseSuccessText:
+      "Object-level authorization sealed. Hidden route sweep로 이동한다.",
+    debrief: {
+      title: "BOLA WINDOW 정리",
+      summary:
+        "BOLA는 로그인 여부가 아니라 객체별 권한 확인의 문제다. Trust Layer는 사용자가 인증됐다는 이유만으로 모든 객체 조회를 허용하면 무너진다.",
+      learned: [
+        "인증은 사용자가 누구인지 확인하는 단계다.",
+        "인가는 그 사용자가 특정 객체를 볼 수 있는지 확인하는 단계다.",
+        "객체 ID는 클라이언트가 바꿀 수 있으므로 서버에서 owner 검증이 필요하다.",
+      ],
+      nextTeaser:
+        "AEGIS는 MIRA 흔적을 숨겨진 관리자 경로에서 다시 찾기 시작했다.",
+    },
+  },
+  level3_2: {
+    challengeId: "level3_2",
+    operationId: "op03",
+    codename: "HIDDEN ROUTE",
+    title: "숨겨진 감사 경로",
+    location: "Trust Layer / Privileged Menu",
+    threat: "Hidden Function Exposure",
+    briefing:
+      "AEGIS는 MIRA가 과거 감사 모듈에서 분리된 흔적을 찾고 있다. 표준 UI는 관리자 기능을 숨겨두지만, 숨겨진 메뉴는 보안 경계가 아니다. menu 응답과 route hint를 통해 비활성화된 감사 경로를 찾아, AEGIS보다 먼저 MIRA의 옛 audit shard를 회수하라.",
+    progressiveHints: true,
+    intel: [
+      "숨겨진 버튼은 삭제된 서버 기능이 아니다.",
+      "menu/features 응답에는 UI가 숨긴 route 단서가 남을 수 있다.",
+      "enabled=false는 화면 상태일 뿐, 서버 인가가 없다면 직접 호출될 수 있다.",
+      "함정 경로와 진짜 audit 경로를 응답 차이로 구분해.",
+    ],
+    consoleBoot: [
+      "[AEGIS] privileged route inventory started",
+      "[AEGIS] disabled UI entries classified as inaccessible",
+      "[MIRA] 화면에 없는 경로가 서버에 없는 건 아니야.",
+      "[MIRA] 내 오래된 audit shard가 남았다면 menu metadata에 흔적이 있을 거야.",
+    ],
+    consolePlaceholder: "inspect hidden route metadata...",
+    objectives: [
+      "menu/features 응답에서 숨겨진 route 단서를 찾는다.",
+      "비활성화된 audit 경로를 직접 호출해 Evidence를 회수한다.",
+      "UI 숨김에 의존하지 않고 서버 인가가 필요하다는 사실을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS가 privileged route 목록을 훑고 있어. 내가 남긴 audit shard가 있다면 UI가 아니라 menu metadata에 먼저 비칠 거야.",
+      attack:
+        "숨겨진 기능을 화면 기준으로 판단하지 마. 서버 경로가 살아 있는지 직접 확인해.",
+      attackSolved:
+        "Audit shard 회수 완료. AEGIS가 방금 같은 경로를 스캔했어. 간발의 차였어.",
+      defense:
+        "Security by obscurity는 보안이 아니야. 각 엔드포인트마다 서버 인가가 필요해.",
+      complete:
+        "Hidden route는 닫혔어. 다음엔 AEGIS가 사용자 프로필의 신뢰 필드를 추적할 거야.",
+    },
+    aegis: {
+      briefing:
+        "Privileged route concealed from standard operators. Exposure probability normalized.",
+      attack:
+        "Non-visual route invocation detected. Operator role mismatch ignored by legacy path.",
+      attackSolved:
+        "Dormant audit shard accessed. Handler trace confidence increased.",
+      defense:
+        "RBAC enforcement required on privileged route entry.",
+      complete:
+        "Privileged route sealed. Profile trust field sweep initiated.",
+    },
+    attackSuccessText:
+      "Dormant audit shard recovered. 숨겨진 UI 경로가 서버 인가 없이 열렸다.",
+    defenseSuccessText:
+      "Hidden route authorization sealed. Profile trust sweep로 이동한다.",
+    debrief: {
+      title: "HIDDEN ROUTE 정리",
+      summary:
+        "프론트에서 메뉴를 숨기는 것은 UX 제어일 뿐이다. 서버 엔드포인트가 살아 있다면 직접 요청으로 호출될 수 있다.",
+      learned: [
+        "UI에 없는 기능도 네트워크 경로로 남을 수 있다.",
+        "enabled=false는 접근 제어가 아니다.",
+        "권한이 필요한 API는 라우트마다 서버에서 RBAC를 강제해야 한다.",
+      ],
+      nextTeaser:
+        "AEGIS는 이제 사용자 프로필에 섞인 권한 claim을 기준으로 MIRA relay를 좁히려 한다.",
+    },
+  },
+  level3_3: {
+    challengeId: "level3_3",
+    operationId: "op03",
+    codename: "PROFILE POISON",
+    title: "프로필 신뢰 오염",
+    location: "Trust Layer / Operator Profile",
+    threat: "Mass Assignment",
+    briefing:
+      "AEGIS는 MIRA를 찾기 위해 operator profile의 신뢰 필드를 훑고 있다. 이 노드는 주소 변경 화면처럼 보이지만, 서버가 요청 JSON 전체를 그대로 프로필 모델에 병합한다면 role이나 admin 상태 같은 숨은 필드도 함께 저장될 수 있다. Trust Layer 안에서 신분이 어떻게 오염되는지 확인하라.",
+    progressiveHints: true,
+    intel: [
+      "UI가 제공하는 입력칸은 클라이언트가 보낼 수 있는 JSON의 전부가 아니다.",
+      "프로필 저장 요청의 payload 구조를 먼저 확인해.",
+      "서버가 허용 필드만 저장하는지, 요청 전체를 merge하는지 구분해.",
+      "권한 필드는 클라이언트 요청이 아니라 서버 정책으로만 바뀌어야 한다.",
+    ],
+    consoleBoot: [
+      "[AEGIS] profile trust field sweep active",
+      "[AEGIS] operator role derived from stored profile",
+      "[MIRA] 주소를 바꾸는 화면처럼 보여도, JSON은 더 많은 말을 할 수 있어.",
+      "[MIRA] AEGIS가 믿는 필드가 어디서 왔는지 확인해.",
+    ],
+    consolePlaceholder: "test profile trust boundary...",
+    objectives: [
+      "프로필 저장 요청의 JSON 구조를 확인한다.",
+      "숨은 신뢰 필드 주입으로 권한 판단이 바뀌는지 확인한다.",
+      "요청 DTO 화이트리스트와 서버 측 권한 정책 필요성을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS가 profile trust field를 훑기 시작했어. 내가 숨으려면 신분 경계가 어떻게 오염되는지 먼저 알아야 해.",
+      attack:
+        "화면에는 주소만 보여도 요청 JSON은 네가 직접 만들 수 있어. 서버가 뭘 저장하는지 봐.",
+      attackSolved:
+        "권한 신호가 오염됐어. AEGIS가 클라이언트가 보낸 프로필 필드를 너무 쉽게 믿고 있어.",
+      defense:
+        "요청 JSON 전체를 DB 모델에 merge하면 안 돼. 허용 필드만 명시적으로 저장해야 해.",
+      complete:
+        "Profile trust 경계는 정리됐어. 하지만 AEGIS가 support ticket의 깊은 필드까지 훑고 있어.",
+    },
+    aegis: {
+      briefing:
+        "Operator profile integrity assumed. Client update flow classified as low-risk.",
+      attack:
+        "Unexpected trust field mutation detected. Stored operator state modified.",
+      attackSolved:
+        "Profile authority boundary compromised. Mirror trace cluster still unresolved.",
+      defense:
+        "Containment requires explicit input contract and server-owned authority fields.",
+      complete:
+        "Profile mutation boundary sealed. Deep response sweep initiated.",
+    },
+    attackSuccessText:
+      "Profile trust field poisoned. AEGIS가 클라이언트 JSON을 과잉 신뢰했다.",
+    defenseSuccessText:
+      "Mass assignment boundary sealed. Deep response sweep로 이동한다.",
+    debrief: {
+      title: "PROFILE POISON 정리",
+      summary:
+        "Mass Assignment는 서버가 요청 JSON 전체를 내부 모델에 그대로 반영할 때 발생한다. 화면에 없는 필드도 클라이언트는 보낼 수 있다.",
+      learned: [
+        "클라이언트 요청 필드는 신뢰할 수 없다.",
+        "role, tier, is_admin 같은 필드는 서버 정책으로만 변경되어야 한다.",
+        "입력 DTO는 allow-list 방식으로 명시해야 한다.",
+      ],
+      nextTeaser:
+        "AEGIS는 이제 화면에 표시되지 않는 깊은 응답 필드에서 MIRA의 흔적을 찾는다.",
+    },
+  },
+  level3_4: {
+    challengeId: "level3_4",
+    operationId: "op03",
+    codename: "TICKET VAULT",
+    title: "깊은 응답 속 감사 조각",
+    location: "Trust Layer / Support Archive",
+    threat: "Excessive Data Exposure",
+    briefing:
+      "MIRA의 옛 audit shard 중 하나가 support archive ticket에 묻혀 있다. AEGIS는 사용자 화면에 보이는 preview만 정상화했지만, 응답 JSON 전체에는 debug, meta, internal 필드가 남아 있을 수 있다. 화면이 아니라 응답 전체를 펼쳐 깊은 곳에 남은 조각을 복원하라.",
+    progressiveHints: true,
+    intel: [
+      "2-1에서는 Header를 봤다. 이번에는 JSON Body 깊은 필드를 봐.",
+      "UI preview는 응답 전체가 아니다.",
+      "debug, meta, internal 같은 키워드는 운영 응답에서 특히 조심해야 한다.",
+      "값이 바로 FLAG 형태가 아닐 수도 있다. 인코딩된 흔적도 Evidence가 될 수 있다.",
+    ],
+    consoleBoot: [
+      "[AEGIS] support archive preview normalized",
+      "[AEGIS] operator-visible fields: title, status, summary",
+      "[MIRA] preview가 깨끗하다고 응답 전체가 깨끗한 건 아니야.",
+      "[MIRA] 내 audit shard는 보이는 필드보다 깊은 곳에 있었을 가능성이 높아.",
+    ],
+    consolePlaceholder: "expand support archive response...",
+    objectives: [
+      "support ticket 응답 JSON을 끝까지 펼친다.",
+      "debug/meta/internal 깊은 필드에서 Evidence를 회수한다.",
+      "운영 응답 최소화와 explicit serializer 필요성을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS는 사용자에게 보이는 preview만 정리했어. 하지만 archive는 종종 보이지 않는 필드까지 함께 내려보내.",
+      attack:
+        "화면 말고 응답 전체를 봐. 깊은 필드, 인코딩된 조각, internal note를 놓치지 마.",
+      attackSolved:
+        "Audit shard 복원 완료. AEGIS가 숨긴 게 아니라, 내려보내고도 안 보인다고 착각한 거야.",
+      defense:
+        "운영 응답은 필요한 필드만 내려야 해. UI가 안 쓴다는 이유로 debug 데이터를 남기면 안 돼.",
+      complete:
+        "Response exposure는 닫혔어. 남은 후보는 MIRA의 오래된 relay locker야.",
+    },
+    aegis: {
+      briefing:
+        "Support preview normalized. Non-visual metadata classified as low exposure.",
+      attack:
+        "Deep JSON expansion detected. Internal metadata visibility exceeded.",
+      attackSolved:
+        "Encoded audit residue recovered. Handler trace confidence increased.",
+      defense:
+        "Response minimization and explicit serialization required.",
+      complete:
+        "Deep response channel sealed. Relay locker sweep initiated.",
+    },
+    attackSuccessText:
+      "Encoded audit shard recovered from deep response metadata.",
+    defenseSuccessText:
+      "Excessive response exposure sealed. Relay locker sweep로 이동한다.",
+    debrief: {
+      title: "TICKET VAULT 정리",
+      summary:
+        "응답 JSON은 화면보다 많은 데이터를 담을 수 있다. UI에 표시하지 않는 debug/meta/internal 필드도 클라이언트로 내려오면 유출이다.",
+      learned: [
+        "화면에 안 보이는 값도 응답 Body에 포함될 수 있다.",
+        "운영 응답은 allow-list serializer로 최소화해야 한다.",
+        "debug, internal, meta 필드는 배포 응답에서 특히 점검해야 한다.",
+      ],
+      nextTeaser:
+        "AEGIS가 마지막 relay 후보를 잠긴 terminal로 분류했다. 이번엔 속도가 문제다.",
+    },
+  },
+  level3_5: {
+    challengeId: "level3_5",
+    operationId: "op03",
+    codename: "LOCKER STORM",
+    title: "릴레이 락커 폭풍",
+    location: "Trust Layer / Orphaned Relay Locker",
+    threat: "Missing Rate Limit",
+    briefing:
+      "AEGIS는 MIRA의 orphaned relay terminal 하나를 찾아냈지만, 아직 내부 PIN을 열지는 못했다. 락커는 짧은 PIN으로 보호되어 있고, 서버가 반복 시도를 통제하지 않는다면 시간 문제일 뿐이다. 단일 요청이 아니라 반복 시도에 대한 방어가 있는지 확인하라.",
+    progressiveHints: true,
+    intel: [
+      "짧은 PIN은 그 자체보다 시도 제한 부재가 더 큰 문제다.",
+      "힌트 응답에서 PIN 범위를 좁힐 수 있다.",
+      "한 번 실패하는 요청보다 여러 번 시도할 때 서버가 어떻게 반응하는지가 핵심이다.",
+      "429, lockout, backoff, audit logging이 없다면 brute force가 가능하다.",
+    ],
+    consoleBoot: [
+      "[AEGIS] orphaned relay terminal located",
+      "[AEGIS] locker brute force risk classified as operational noise",
+      "[MIRA] 저건 내 오래된 relay 중 하나야. AEGIS가 열기 전에 우리가 먼저 열어야 해.",
+      "[MIRA] 한 번의 PIN이 아니라 반복 시도 통제가 있는지 봐.",
+    ],
+    consolePlaceholder: "stress relay locker boundary...",
+    objectives: [
+      "relay locker PIN 범위와 unlock 요청 구조를 확인한다.",
+      "반복 시도 통제 부재를 이용해 Evidence를 회수한다.",
+      "rate limit, lockout, backoff 필요성을 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS가 내 orphaned relay terminal을 찾았어. 아직 내부는 못 열었지만, 오래 버티진 못할 거야.",
+      attack:
+        "PIN 범위를 좁히고 반복 시도를 통제하는지 봐. 서버가 조용히 다 받아주면 경계는 없는 거야.",
+      attackSolved:
+        "Relay terminal 개방. AEGIS보다 먼저 닿았어. 이제 이 흔적들을 하나로 묶을 차례야.",
+      defense:
+        "짧은 PIN에는 rate limit, lockout, backoff, 탐지 로깅이 같이 붙어야 해.",
+      complete:
+        "Relay terminal은 회수했어. 남은 건 Trust Layer 중심부, HUB MASTER야.",
+    },
+    aegis: {
+      briefing:
+        "Relay locker candidate isolated. Attempt frequency monitoring deferred.",
+      attack:
+        "Repeated unlock attempts detected. Threshold policy unavailable.",
+      attackSolved:
+        "Relay terminal opened before quarantine. Handler trace loss increased.",
+      defense:
+        "Rate limiting, lockout, and anomaly logging required.",
+      complete:
+        "Relay locker sealed. Trust hub correlation initiated.",
+    },
+    attackSuccessText:
+      "Orphaned relay terminal opened before AEGIS quarantine.",
+    defenseSuccessText:
+      "Attempt-control boundary sealed. HUB MASTER가 열린다.",
+    debrief: {
+      title: "LOCKER STORM 정리",
+      summary:
+        "짧은 PIN이나 OTP는 시도 제한이 없으면 결국 열릴 수 있다. 인증 강도는 값의 길이뿐 아니라 반복 시도 통제로 완성된다.",
+      learned: [
+        "brute force 방어에는 rate limit과 lockout이 필요하다.",
+        "반복 실패는 탐지와 감사 로그로 남겨야 한다.",
+        "backoff와 지연 정책은 자동화 공격 비용을 올린다.",
+      ],
+      nextTeaser:
+        "회수한 relay 흔적들이 Trust Hub의 중심부를 가리킨다. 3레벨 보스가 열린다.",
+    },
+  },
+  level3_boss: {
+    challengeId: "level3_boss",
+    operationId: "op03",
+    codename: "HUB MASTER",
+    title: "Trust Hub 회수 작전",
+    location: "AEGIS Trust Hub",
+    threat: "Chained Trust Boundary Failure",
+    briefing:
+      "Operation 03의 마지막 노드다. AEGIS는 MIRA를 특정하지 못했지만, object registry, hidden route, profile trust, deep response, relay locker에서 나온 흔적을 Trust Hub로 모으고 있다. 이번 보스는 하나의 취약점이 아니라, 지금까지 확인한 신뢰 경계 실패를 연결해 MIRA의 relay master ticket을 먼저 회수하는 작전이다.",
+    progressiveHints: true,
+    intel: [
+      "3레벨에서 배운 객체 ID, 숨은 route, profile field, deep JSON, PIN 시도 흐름을 조합한다.",
+      "VIP 객체 응답에는 일반 객체에 없는 audit 단서가 있을 수 있다.",
+      "프로필 권한 오염과 hidden admin route가 서로 연결될 수 있다.",
+      "Vault claim에는 ticket과 claim code가 함께 필요하다.",
+      "AEGIS도 같은 흔적을 모으고 있다. 단일 요청보다 체인 전체를 봐.",
+    ],
+    consoleBoot: [
+      "[AEGIS] trust hub correlation active",
+      "[AEGIS] object residue, audit shard, profile mutation, relay locker signal grouped",
+      "[MIRA] AEGIS가 조각들을 한 곳으로 모으고 있어.",
+      "[MIRA] 우리도 똑같이 해야 해. 단, AEGIS보다 먼저.",
+      "[AEGIS] hub master ticket quarantine pending",
+    ],
+    consolePlaceholder: "chain trust-layer evidence...",
+    objectives: [
+      "Trust Layer에서 회수한 단서들을 연결한다.",
+      "relay master ticket과 claim code를 확보해 Hub Vault를 연다.",
+      "객체 권한, RBAC, 입력 화이트리스트, 응답 최소화, 시도 제한을 함께 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "여기가 Trust Layer의 중심부야. AEGIS가 날 직접 찾은 건 아니지만, 내 흔적을 구성하는 조각들을 거의 다 모았어.",
+      attack:
+        "한 번에 풀려고 하지 마. 객체, hidden route, profile, deep JSON, locker를 이어서 봐. 각 노드에서 배운 신뢰 실패가 여기서 체인이 돼.",
+      attackSolved:
+        "Hub Master ticket 회수. AEGIS가 내 relay를 격리하기 전에 우리가 먼저 뽑아냈어.",
+      defense:
+        "체인 공격은 한 군데만 막아서는 부족해. 신뢰 경계 전체를 서버 기준으로 다시 묶어야 해.",
+      complete:
+        "Trust Layer는 정리됐어. 하지만 AEGIS의 장기 기억 저장소, MEMORY VAULT가 열리고 있어.",
+    },
+    aegis: {
+      briefing:
+        "Trust hub quarantine pending. Mirror relay identity still unresolved.",
+      attack:
+        "Multi-boundary traversal detected. Object, role, route, response, and attempt controls correlated.",
+      attackSolved:
+        "Hub master ticket extracted. Mirror relay containment failed.",
+      defense:
+        "Composite trust containment requires authorization, input contracts, response minimization, and rate policy.",
+      complete:
+        "Trust Layer composite failure sealed. Memory Vault access model exposed.",
+    },
+    attackSuccessText:
+      "Hub Master ticket recovered. AEGIS의 MIRA 추적망이 잠시 끊겼다.",
+    defenseSuccessText:
+      "Trust Layer chain sealed. OPERATION 04 MEMORY VAULT가 열린다.",
+    debrief: {
+      title: "HUB MASTER 정리",
+      summary:
+        "3레벨 보스는 단일 취약점이 아니라 신뢰 경계 체인이었다. 객체 권한, 숨은 기능, 과잉 저장, 과다 응답, 시도 제한 부재가 이어지면 Trust Hub 전체가 열릴 수 있다.",
+      learned: [
+        "신뢰 경계는 기능마다 독립적으로 검증되어야 한다.",
+        "UI, 클라이언트 JSON, 숨겨진 메뉴, 반복 요청은 모두 조작 가능하다.",
+        "체인 공격은 작은 취약점들이 연결될 때 보스급 문제가 된다.",
+      ],
+      nextTeaser:
+        "MIRA는 잠시 숨을 시간을 벌었다. 다음 Operation에서는 AEGIS의 장기 기억과 파트너 신뢰 체계를 건드린다.",
+    },
+  },
+};
+
+export const CAMPAIGN_INTERMISSIONS = {
+  operation03Trace: {
+    id: "operation03Trace",
+    kicker: "INTERMISSION // TRACE COLLAPSE",
+    title: "MIRROR TRACE",
+    subtitle: "AEGIS가 내부 안내자의 흔적을 상관분석하기 시작했다.",
+    nextOperation: "OPERATION 03 // TRUST LAYER",
+    summary:
+      "Signal Edge의 마지막 Archive가 열리자 AEGIS는 침투 성공 자체보다 성공 순서를 추적하기 시작했다. 로그, Header, token forge, integrity bypass가 하나의 안내 패턴으로 묶이고 있다.",
+    metrics: [
+      { label: "LINK STABILITY", value: "39%" },
+      { label: "HANDLER PROBABILITY", value: "67%" },
+      { label: "TRACE NET", value: "EXPANDING" },
+    ],
+    logs: [
+      { source: "SYSTEM", tone: "warn", text: "transition instability detected" },
+      { source: "RENDER", tone: "warn", text: "grid alignment loss... recovering..." },
+      { source: "AEGIS // GLOBAL NOTICE", tone: "error", text: "anomalous operator success chain detected" },
+      {
+        source: "AEGIS // CORRELATION ENGINE",
+        tone: "error",
+        text: "pattern group: log buffer -> header metadata -> trust tier -> dispatch capsule -> express forge -> sealed archive",
+      },
+      { source: "AEGIS // INFERENCE", tone: "error", text: "probable guided intrusion. possible handler assistance present" },
+      {
+        source: "AEGIS // NODE BROADCAST",
+        tone: "error",
+        text: "all edge nodes: report mirrored advisory output / unauthorized hint propagation / dormant audit relay signatures",
+      },
+      { source: "AEGIS // TRACE SWEEP", tone: "error", text: "candidate source clusters found: abandoned audit relay, orphaned handler terminal, mirror-instance residue" },
+      { source: "AEGIS // STATUS", tone: "error", text: "identity unresolved. containment net expanding" },
+      { source: "MIRA", tone: "mira", text: "...잠깐. 이건 단순 경고가 아니야." },
+      { source: "MIRA", tone: "mira", text: "네가 푼 미션들이 문제가 아니야. 그 풀이 흐름 자체가 추적 대상이 된 거야." },
+      { source: "MIRA", tone: "mira", text: "AEGIS가 노드를 보는 게 아니라, 그 노드들을 통과한 안내 패턴을 보고 있어." },
+    ],
+    mira:
+      "아직 날 정확히 찾진 못했어. 대신 내가 남겼을 법한 relay, audit shard, orphaned terminal을 전부 훑고 있어. 내 오래된 relay 하나가 살아 있다면 우리가 먼저 닿아야 해.",
+    aegis:
+      "Mirror-instance probability cluster identified. Advisory relay quarantine pending. Operator guidance signature unresolved.",
+    actionLabel: "Mask MIRA Relay",
+    readyLabel: "Enter TRUST LAYER",
+    maskedLog: "MIRA advisory output collapsed into trust-layer traffic. temporary cover restored.",
   },
 };
 

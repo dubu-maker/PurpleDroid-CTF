@@ -1284,6 +1284,212 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.intermission-page {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  padding: clamp(14px, 3vw, 34px);
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 72% 18%, rgba(255, 0, 85, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(4, 5, 11, 0.98), rgba(9, 9, 16, 0.99)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 0, 85, 0.07) 0,
+      rgba(255, 0, 85, 0.07) 1px,
+      transparent 1px,
+      transparent 34px
+    );
+  animation: intermission-jitter 1.4s steps(2, end) infinite;
+}
+
+.intermission-noise {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  opacity: 0.22;
+  background:
+    linear-gradient(90deg, transparent, rgba(106, 255, 191, 0.08), transparent),
+    repeating-linear-gradient(
+      90deg,
+      rgba(237, 242, 255, 0.04) 0,
+      rgba(237, 242, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+  mix-blend-mode: screen;
+  animation: intermission-noise 2.2s linear infinite;
+}
+
+.intermission-stage {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.intermission-hero,
+.intermission-console,
+.intermission-dialogue,
+.intermission-brief,
+.intermission-metrics > div {
+  border: 1px solid rgba(255, 0, 85, 0.38);
+  background: rgba(5, 7, 14, 0.88);
+  box-shadow:
+    0 0 28px rgba(255, 0, 85, 0.1),
+    inset 0 0 0 1px rgba(237, 242, 255, 0.03);
+}
+
+.intermission-hero {
+  min-height: 220px;
+  display: grid;
+  align-content: end;
+  gap: 12px;
+  padding: clamp(20px, 4vw, 42px);
+  position: relative;
+  overflow: hidden;
+}
+
+.intermission-hero::after {
+  content: "AEGIS TRACE SWEEP";
+  position: absolute;
+  right: 18px;
+  top: 14px;
+  color: rgba(255, 77, 125, 0.22);
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: clamp(28px, 7vw, 76px);
+  line-height: 1;
+}
+
+.intermission-hero h1 {
+  font-size: clamp(44px, 9vw, 110px);
+  line-height: 0.88;
+  text-shadow:
+    3px 0 rgba(255, 0, 85, 0.72),
+    -3px 0 rgba(106, 255, 191, 0.5),
+    0 0 36px rgba(255, 0, 85, 0.26);
+}
+
+.intermission-hero p:last-child,
+.intermission-brief p {
+  color: #c8d2ec;
+  line-height: 1.55;
+}
+
+.intermission-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.intermission-metrics > div {
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.intermission-metrics span,
+.intermission-log span {
+  color: #8190b3;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+}
+
+.intermission-metrics strong {
+  color: #ff8fab;
+  font-size: 22px;
+}
+
+.intermission-console {
+  padding: 16px;
+}
+
+.intermission-log-list {
+  min-height: 330px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(106, 255, 191, 0.2);
+  background: #05070c;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.intermission-log {
+  display: grid;
+  grid-template-columns: minmax(180px, 270px) 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.intermission-log p {
+  color: #d7ddff;
+  overflow-wrap: anywhere;
+}
+
+.intermission-log.error p,
+.intermission-log.warn p {
+  color: #ffadc2;
+}
+
+.intermission-log.mira p {
+  color: #6affbf;
+}
+
+.intermission-dialogue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.intermission-brief {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  border-color: rgba(106, 255, 191, 0.36);
+}
+
+.intermission-brief > div {
+  display: grid;
+  gap: 8px;
+}
+
+.relay-masked .intermission-brief {
+  box-shadow: 0 0 34px rgba(106, 255, 191, 0.14);
+}
+
+@keyframes intermission-jitter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  28% {
+    transform: translate(1px, -1px);
+  }
+  30% {
+    transform: translate(-1px, 1px);
+  }
+  32% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes intermission-noise {
+  0% {
+    transform: translateX(-4%);
+  }
+  100% {
+    transform: translateX(4%);
+  }
+}
+
 @keyframes campaign-scan {
   0% {
     transform: translateX(-100%);
@@ -1335,14 +1541,17 @@ button:disabled {
   .mission-scene,
   .dialogue-panel,
   .campaign-home-strip,
-  .campaign-side-rail {
+  .campaign-side-rail,
+  .intermission-metrics,
+  .intermission-dialogue {
     grid-template-columns: 1fr;
   }
 
   .operation-header,
   .briefing-lock,
   .aegis-alert,
-  .mission-complete-panel {
+  .mission-complete-panel,
+  .intermission-brief {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1358,5 +1567,13 @@ button:disabled {
 
   .campaign-terminal-output {
     height: 260px;
+  }
+
+  .intermission-log {
+    grid-template-columns: 1fr;
+  }
+
+  .intermission-log-list {
+    min-height: 280px;
   }
 }

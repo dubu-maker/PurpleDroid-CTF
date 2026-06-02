@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  CAMPAIGN_INTERMISSIONS,
   CAMPAIGN_PROLOGUE,
   CAMPAIGN_TOKEN_KEY,
   getMissionStory,
@@ -7,6 +8,7 @@ import {
 } from "../story/campaignStory";
 
 const TOKEN_KEY = "purpledroid_session_token";
+const OPERATION_03_INTERMISSION_KEY = "purpledroid_intermission_operation03_trace_seen";
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
@@ -107,6 +109,15 @@ function resolveCurrentChallengeId(me, challenges) {
   }
   const nextAvailable = challenges.find((item) => item.status?.defense !== "solved");
   return nextAvailable?.id || challenges[0]?.id || "";
+}
+
+function shouldShowOperation03Intermission(fromId, targetId, intermissionSeen) {
+  return (
+    !intermissionSeen &&
+    fromId === "level2_5" &&
+    targetId &&
+    getOperationForChallenge(targetId).id === "op03"
+  );
 }
 
 function CampaignHome({
@@ -545,6 +556,104 @@ function DebriefModal({ story, onNext, onClose, hasNext }) {
   );
 }
 
+function OperationIntermission({ intermission, busy, onContinue }) {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [relayMasked, setRelayMasked] = useState(false);
+  const logs = intermission.logs || [];
+  const visibleLogs = relayMasked
+    ? [
+        ...logs.slice(0, visibleCount),
+        { source: "LOCAL // RELAY MASK", tone: "mira", text: intermission.maskedLog },
+      ]
+    : logs.slice(0, visibleCount);
+  const sweepComplete = visibleCount >= logs.length;
+
+  useEffect(() => {
+    setVisibleCount(0);
+    setRelayMasked(false);
+  }, [intermission.id]);
+
+  useEffect(() => {
+    if (!logs.length || visibleCount >= logs.length) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setVisibleCount((count) => Math.min(count + 1, logs.length));
+    }, visibleCount < 2 ? 260 : 520);
+
+    return () => window.clearTimeout(timer);
+  }, [logs.length, visibleCount]);
+
+  return (
+    <div
+      className={`campaign-page intermission-page ${
+        sweepComplete ? "trace-complete" : "trace-running"
+      } ${relayMasked ? "relay-masked" : ""}`}
+    >
+      <div className="intermission-noise" aria-hidden="true" />
+      <main className="intermission-stage">
+        <section className="intermission-hero">
+          <p className="campaign-kicker">{intermission.kicker}</p>
+          <h1>{intermission.title}</h1>
+          <p>{intermission.subtitle}</p>
+        </section>
+
+        <section className="intermission-metrics" aria-label="Trace metrics">
+          {intermission.metrics.map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </section>
+
+        <section className="intermission-console">
+          <div className="section-heading">
+            <span>AEGIS TRACE SWEEP</span>
+            <strong>{sweepComplete ? "identity unresolved" : "correlating"}</strong>
+          </div>
+          <div className="intermission-log-list">
+            {visibleLogs.map((log, index) => (
+              <div key={`${log.source}-${index}`} className={`intermission-log ${log.tone}`}>
+                <span>[{log.source}]</span>
+                <p>{log.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="intermission-dialogue">
+          <div className="dialogue-line mira">
+            <span>MIRA</span>
+            <p>{intermission.mira}</p>
+          </div>
+          <div className="dialogue-line aegis">
+            <span>AEGIS</span>
+            <p>{intermission.aegis}</p>
+          </div>
+        </section>
+
+        <section className="intermission-brief">
+          <div>
+            <p className="campaign-kicker">{intermission.nextOperation}</p>
+            <p>{intermission.summary}</p>
+          </div>
+          {!sweepComplete ? (
+            <button disabled>Trace sweep running...</button>
+          ) : !relayMasked ? (
+            <button onClick={() => setRelayMasked(true)}>{intermission.actionLabel}</button>
+          ) : (
+            <button onClick={onContinue} disabled={busy}>
+              {busy ? "Opening..." : intermission.readyLabel}
+            </button>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
 function CampaignMode() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
   const [campaignActive, setCampaignActive] = useState(
@@ -569,6 +678,10 @@ function CampaignMode() {
   const [attackNotice, setAttackNotice] = useState(false);
   const [showDebrief, setShowDebrief] = useState(false);
   const [nextId, setNextId] = useState(null);
+  const [operation03IntermissionSeen, setOperation03IntermissionSeen] = useState(
+    () => localStorage.getItem(OPERATION_03_INTERMISSION_KEY) === "1"
+  );
+  const [activeIntermission, setActiveIntermission] = useState(null);
 
   const createSession = useCallback(async () => {
     const data = await apiRequest("/session", {
@@ -663,6 +776,23 @@ function CampaignMode() {
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
 
   useEffect(() => {
+    if (
+      !campaignActive ||
+      operation03IntermissionSeen ||
+      activeIntermission ||
+      currentId !== "level3_1" ||
+      !me?.completed?.includes("level2_5")
+    ) {
+      return;
+    }
+
+    setActiveIntermission({
+      ...CAMPAIGN_INTERMISSIONS.operation03Trace,
+      nextId: currentId,
+    });
+  }, [activeIntermission, campaignActive, currentId, me?.completed, operation03IntermissionSeen]);
+
+  useEffect(() => {
     if (!currentId || phase === "LOCKED" || bootedById[currentId]) {
       return;
     }
@@ -726,6 +856,7 @@ function CampaignMode() {
 
   const handleNewCampaign = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(OPERATION_03_INTERMISSION_KEY);
     localStorage.setItem(CAMPAIGN_TOKEN_KEY, "1");
     setCampaignActive(true);
     setToken("");
@@ -736,6 +867,8 @@ function CampaignMode() {
     setBriefingSeenById({});
     setBootedById({});
     setContainmentVerifiedById({});
+    setOperation03IntermissionSeen(false);
+    setActiveIntermission(null);
     await bootstrap("");
   }, [bootstrap]);
 
@@ -931,6 +1064,15 @@ function CampaignMode() {
       "";
 
     if (candidate) {
+      if (shouldShowOperation03Intermission(currentId, candidate, operation03IntermissionSeen)) {
+        setActiveIntermission({
+          ...CAMPAIGN_INTERMISSIONS.operation03Trace,
+          nextId: candidate,
+        });
+        setShowDebrief(false);
+        return;
+      }
+
       setCurrentId(candidate);
       await loadMissionDetail(token, candidate);
       setShowDebrief(false);
@@ -939,7 +1081,41 @@ function CampaignMode() {
 
     setShowDebrief(false);
     setStatusText("All available campaign nodes are sealed.");
-  }, [currentId, detail?.next?.id, loadMissionDetail, nextId, refreshMission, token]);
+  }, [
+    currentId,
+    detail?.next?.id,
+    loadMissionDetail,
+    nextId,
+    operation03IntermissionSeen,
+    refreshMission,
+    token,
+  ]);
+
+  const handleCompleteIntermission = useCallback(async () => {
+    if (!activeIntermission) {
+      return;
+    }
+
+    localStorage.setItem(OPERATION_03_INTERMISSION_KEY, "1");
+    setOperation03IntermissionSeen(true);
+
+    const targetId = activeIntermission.nextId;
+    setActiveIntermission(null);
+
+    if (token && targetId && targetId !== currentId) {
+      setLoading(true);
+      setStatusText("Opening TRUST LAYER...");
+      try {
+        setCurrentId(targetId);
+        await loadMissionDetail(token, targetId);
+        setStatusText("");
+      } catch (error) {
+        setStatusText(error.message || "Operation transfer failed.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [activeIntermission, currentId, loadMissionDetail, token]);
 
   if (!campaignActive) {
     return (
@@ -950,6 +1126,16 @@ function CampaignMode() {
         onContinue={handleContinue}
         onNewCampaign={handleNewCampaign}
         statusText={statusText}
+      />
+    );
+  }
+
+  if (activeIntermission) {
+    return (
+      <OperationIntermission
+        intermission={activeIntermission}
+        busy={loading}
+        onContinue={handleCompleteIntermission}
       />
     );
   }
