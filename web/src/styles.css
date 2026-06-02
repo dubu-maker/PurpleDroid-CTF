@@ -1021,6 +1021,36 @@ button:disabled {
   margin-top: 6px;
 }
 
+.action-probe-panel {
+  border-color: rgba(106, 255, 191, 0.28);
+}
+
+.action-probe-panel p {
+  color: #b9c4de;
+  line-height: 1.55;
+}
+
+.action-probe-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.action-probe-result {
+  color: #c8d2ec;
+  line-height: 1.45;
+}
+
+.action-probe-result.ok {
+  color: #6affbf;
+}
+
+.action-probe-result.fail {
+  color: #ff8fab;
+}
+
 .briefing-lock,
 .aegis-alert,
 .mission-complete-panel {

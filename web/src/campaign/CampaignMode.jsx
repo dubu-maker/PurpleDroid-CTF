@@ -338,6 +338,32 @@ function IntelPanel({ items, progressive }) {
   );
 }
 
+function ActionProbePanel({ probe, disabled, busy, result, onRun }) {
+  if (!probe) {
+    return null;
+  }
+
+  return (
+    <section className="action-probe-panel">
+      <div className="section-heading">
+        <span>FIELD PROBE</span>
+        <strong>{busy ? "syncing" : probe.status}</strong>
+      </div>
+      <p>{probe.caption}</p>
+      <div className="action-probe-row">
+        <button type="button" onClick={onRun} disabled={disabled || busy}>
+          {probe.label}
+        </button>
+        {result && (
+          <span className={`action-probe-result ${result.ok ? "ok" : "fail"}`}>
+            {result.message}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function MiniNetworkMap({ challenges, currentId, activeId, onSelectNode }) {
   return (
     <section className="mini-network-map">
@@ -673,6 +699,8 @@ function CampaignMode() {
   const [flagValue, setFlagValue] = useState("");
   const [evidenceResult, setEvidenceResult] = useState(null);
   const [patchResult, setPatchResult] = useState(null);
+  const [actionProbeResult, setActionProbeResult] = useState(null);
+  const [actionProbeBusy, setActionProbeBusy] = useState(false);
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
   const [attackNotice, setAttackNotice] = useState(false);
@@ -752,6 +780,8 @@ function CampaignMode() {
     setFlagValue("");
     setEvidenceResult(null);
     setPatchResult(null);
+    setActionProbeResult(null);
+    setActionProbeBusy(false);
     setSelectedPatchIds([]);
     setAttackNotice(false);
     setShowDebrief(false);
@@ -969,6 +999,57 @@ function CampaignMode() {
     [currentId, prompt, token]
   );
 
+  const handleActionProbe = useCallback(async () => {
+    if (!token || !story.actionProbe) {
+      return;
+    }
+
+    setActionProbeBusy(true);
+    setActionProbeResult(null);
+
+    try {
+      let response = null;
+
+      if (story.actionProbe.id === "level3_1_mine") {
+        response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+      } else {
+        throw new Error("Unknown field probe.");
+      }
+
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = `probe failed (${response.status})`;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed?.error?.message || parsed?.detail || message;
+        } catch {
+          // keep fallback
+        }
+        setActionProbeResult({ ok: false, message });
+        return;
+      }
+
+      await response.text();
+      setActionProbeResult({
+        ok: true,
+        message: story.actionProbe.success || "Probe sent. Check Network.",
+      });
+    } catch (error) {
+      setActionProbeResult({
+        ok: false,
+        message: error.message || "Probe failed.",
+      });
+    } finally {
+      setActionProbeBusy(false);
+    }
+  }, [story.actionProbe, token]);
+
   const handleSubmitEvidence = useCallback(async () => {
     if (!token || !currentId || !flagValue.trim()) {
       return;
@@ -1180,6 +1261,14 @@ function CampaignMode() {
               />
 
               <IntelPanel key={activeChallengeId} items={story.intel} progressive={story.progressiveHints} />
+
+              <ActionProbePanel
+                probe={story.actionProbe}
+                disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                busy={actionProbeBusy}
+                result={actionProbeResult}
+                onRun={handleActionProbe}
+              />
 
               {phase === "BRIEFING" && (
                 <section className="briefing-lock">

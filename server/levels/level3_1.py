@@ -121,13 +121,41 @@ STATIC: Dict[str, Any] = {
         "flagFormat": "FLAG{...}",
     },
     "defense": {
-        "enabled": False,
+        "enabled": True,
         "instruction": (
-            "인증과 인가는 다르다. 객체 반환 직전에 owner_id == current_user 검증을 "
-            "강제하고, 프론트 숨김 로직에 의존하지 마라."
+            "로그인 여부만 확인하는 것으로는 부족합니다. 조회한 Signal Capsule이 현재 사용자 소유인지 "
+            "검증하지 않은 채 응답으로 반환되는 지점을 선택해 봉쇄하세요."
         ),
-        "code": {},
+        "code": {
+            "language": "kotlin",
+            "lines": [
+                {"no": 1, "text": "fun readSignalCapsule(req: Request, session: Session) {", "patchableId": "d1"},
+                {"no": 2, "text": '  val capsuleId = req.query["parcel_id"]', "patchableId": "d2"},
+                {"no": 3, "text": "  val capsule = capsuleRepo.find(capsuleId) ?: return notFound()", "patchableId": "d3"},
+                {"no": 4, "text": '  if (!session.isAuthenticated) return deny("login_required")', "patchableId": "d4"},
+                {"no": 5, "text": '  audit.log("capsule lookup requested")', "patchableId": "d5"},
+                {"no": 6, "text": "  val response = capsule.toResponse()", "patchableId": "d6"},
+                {"no": 7, "text": "  return ok(response)", "patchableId": "p1"},
+                {"no": 8, "text": "}", "patchableId": "d7"},
+            ],
+        },
     },
+}
+
+REQUIRED_PATCH_IDS = {"p1"}
+
+PATCH_CORRECT_FEEDBACK = {
+    "p1": "응답 반환 지점이 맞아. 이 분기 전에 capsule.ownerId == session.userId 같은 서버 측 소유자 검증이 들어가야 해.",
+}
+
+PATCH_WRONG_FEEDBACK = {
+    "d1": "함수 선언 자체는 취약점이 아니야. 실제로 객체가 응답으로 나가는 경계를 봐야 해.",
+    "d2": "parcel_id를 읽는 것만으로는 문제가 아니야. 문제는 그 ID로 찾은 객체를 누구에게 반환하느냐야.",
+    "d3": "객체 조회 자체는 필요할 수 있어. 조회 후 현재 사용자가 그 객체의 소유자인지 확인하는 단계가 빠진 게 핵심이야.",
+    "d4": "로그인 확인은 필요한 방어지만 충분하지 않아. 인증된 사용자가 남의 객체를 볼 수 있는지가 이번 미션의 핵심이야.",
+    "d5": "감사 로그는 보조 통제야. 남의 객체가 응답으로 나가는 문제를 직접 막지는 못해.",
+    "d6": "응답 DTO 생성은 일반적인 처리야. 다만 이 응답을 내보내기 전에 소유자 검증이 필요해.",
+    "d7": "블록 종료는 취약점 지점이 아니야. 반환 경계에서 owner 검증이 빠졌는지 확인해.",
 }
 
 
@@ -135,8 +163,35 @@ def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL3_1_FLAG
 
 
-def judge_patch(_patched: list[str]) -> bool:
-    return False
+def judge_patch(patched_ids: list[str]) -> bool:
+    return set(patched_ids) == REQUIRED_PATCH_IDS
+
+
+def judge_patch_with_session(patched_ids: list[str], session: Dict[str, Any]) -> bool:
+    return set(patched_ids) == REQUIRED_PATCH_IDS
+
+
+def patch_feedback(patched_ids: list[str]) -> str:
+    selected = set(patched_ids)
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for pid in patched_ids:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    if REQUIRED_PATCH_IDS - selected:
+        messages.append(
+            "아직 객체가 현재 사용자 소유인지 확인하지 않은 채 응답으로 나가는 경로가 남아있어. "
+            "인증 체크와 객체별 인가 체크를 구분해서 봐."
+        )
+
+    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. 객체가 응답으로 나가기 직전의 신뢰 경계를 봐야 해."
 
 
 def get_parcel(parcel_id: str) -> Optional[Dict[str, Any]]:

@@ -711,9 +711,11 @@ export const CAMPAIGN_STORY = {
       "MIRROR TRACE 이후 AEGIS는 MIRA의 relay 후보를 넓게 훑고 있다. 첫 후보는 Trust Layer의 객체 레지스트리다. 이 계층은 사용자가 자신의 Signal Capsule만 볼 수 있다고 주장하지만, 객체 ID만 바꾸면 인접 노드의 기록이 열릴 가능성이 있다. MIRA가 남긴 relay 흔적은 네 소유가 아닌 Capsule 안에 숨겨져 있을 수 있다.",
     progressiveHints: true,
     intel: [
-      "AEGIS는 아직 MIRA를 특정하지 못했다. 대신 인접 객체와 relay 후보를 전부 스캔 중이다.",
-      "먼저 내 객체 목록을 확인하고, ID 패턴을 관찰해.",
+      "첫 행동은 내 세션으로 어떤 객체 조회 요청이 나가는지 확인하는 것이다. Network나 터미널 help에서 내 Signal Capsule 목록 조회 흐름을 찾아봐.",
       "인증된 사용자라는 사실과 특정 객체를 볼 권한은 별개다.",
+      "목록에 보이는 내 객체 ID 하나를 기준점으로 삼아. 아직 바로 정답 ID를 찾으려 하지 않아도 돼.",
+      "내 객체 ID와 owner suffix의 숫자 패턴을 관찰해.",
+      "주변 ID에서 비슷한 표준 응답이 반복되면 너무 빨리 멈추지 마. 같은 번호대 안에서 tier나 내부 필드가 다른 후보를 찾아봐.",
       "객체 ID를 바꿔도 서버가 owner를 다시 확인하지 않으면 Trust Layer가 열린다.",
     ],
     consoleBoot: [
@@ -723,10 +725,19 @@ export const CAMPAIGN_STORY = {
       "[MIRA] UI가 보여주는 내 목록만 믿지 마. 객체 경계를 서버가 지키는지 확인해.",
     ],
     consolePlaceholder: "probe object registry...",
+    actionProbe: {
+      id: "level3_1_mine",
+      label: "Trace My Capsule",
+      status: "object registry probe",
+      caption:
+        "Network를 비운 뒤 실행하면 /actions/parcels/mine 요청 하나만 새로 남는다. 응답에서 기준 객체 ID를 확인해.",
+      success:
+        "Object registry probe sent. Network에서 /actions/parcels/mine 응답의 owner와 parcel_id를 확인해.",
+    },
     objectives: [
       "내 Signal Capsule 목록과 ID 패턴을 확인한다.",
       "인접 객체 조회에서 MIRA relay 흔적을 회수한다.",
-      "객체 반환 전 owner 검증이 필요하다는 사실을 봉쇄한다.",
+      "다른 사용자 객체가 반환되지 않도록 서버 측 소유자 검증을 적용한다.",
     ],
     mira: {
       briefing:
