@@ -1052,6 +1052,68 @@ button:disabled {
   color: #ff8fab;
 }
 
+.network-selector-board {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(106, 255, 191, 0.32);
+}
+
+.network-selector-board-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.network-selector-board-title span {
+  color: #8190b3;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+
+.network-selector-board-title strong {
+  color: #6affbf;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.network-selector-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.network-selector-slot {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.network-selector-slot span {
+  color: #c8d2ec;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+}
+
+.network-selector-slot input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(106, 255, 191, 0.24);
+  background: rgba(5, 7, 12, 0.7);
+  color: #edf2ff;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.network-selector-slot input::placeholder {
+  color: #65708f;
+}
+
 .network-trace-list {
   display: grid;
   gap: 10px;
@@ -1071,6 +1133,26 @@ button:disabled {
   padding: 12px;
   display: grid;
   gap: 10px;
+}
+
+.network-trace-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.network-trace-title strong {
+  color: #edf2ff;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.network-trace-title span {
+  color: #8190b3;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
 }
 
 .network-trace-entry-top {
@@ -1107,6 +1189,65 @@ button:disabled {
   padding: 5px 8px;
   font-family: "Consolas", "Menlo", monospace;
   font-size: 12px;
+}
+
+.network-request-headers {
+  display: grid;
+  gap: 5px;
+  border-left: 2px solid rgba(106, 255, 191, 0.28);
+  padding-left: 10px;
+}
+
+.network-request-headers span {
+  color: #8190b3;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+
+.network-request-headers code {
+  color: #6affbf;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.network-route-candidates {
+  display: grid;
+  gap: 8px;
+  border-left: 2px solid rgba(157, 78, 221, 0.38);
+  padding-left: 10px;
+}
+
+.network-route-candidates > span {
+  color: #8190b3;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+
+.network-route-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(157, 78, 221, 0.2);
+  background: rgba(157, 78, 221, 0.08);
+  padding: 8px;
+}
+
+.network-route-candidate strong {
+  display: block;
+  color: #edf2ff;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+}
+
+.network-route-candidate small {
+  display: block;
+  color: #9aa6c4;
+  margin-top: 2px;
 }
 
 .network-response {
@@ -1674,6 +1815,10 @@ button:disabled {
 
   .intermission-log-list {
     min-height: 280px;
+  }
+
+  .network-selector-slots {
+    grid-template-columns: 1fr;
   }
 
   .network-trace-entry-top {

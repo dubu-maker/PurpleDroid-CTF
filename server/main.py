@@ -108,10 +108,35 @@ def _new_token() -> str:
 
 
 def _init_progress() -> Dict[str, Dict[str, bool]]:
-    return {
-        level_id: {"attackSolved": False, "defenseSolved": False}
-        for level_id in LEVEL_ORDER
-    }
+    return _apply_test_unlock_until(
+        {
+            level_id: {"attackSolved": False, "defenseSolved": False}
+            for level_id in LEVEL_ORDER
+        }
+    )
+
+
+def _test_unlock_until_index() -> Optional[int]:
+    target = os.getenv("PURPLEDROID_UNLOCK_UNTIL", "").strip()
+    if not target:
+        return None
+    if target in LEVEL_ORDER:
+        return LEVEL_ORDER.index(target)
+    return None
+
+
+def _apply_test_unlock_until(progress: Dict[str, Dict[str, bool]]) -> Dict[str, Dict[str, bool]]:
+    target_idx = _test_unlock_until_index()
+    if target_idx is None:
+        return progress
+
+    for idx, level_id in enumerate(LEVEL_ORDER):
+        if idx >= target_idx:
+            break
+        item = progress.setdefault(level_id, {"attackSolved": False, "defenseSolved": False})
+        item["attackSolved"] = True
+        item["defenseSolved"] = True
+    return progress
 
 
 def _session_persistence_enabled() -> bool:
@@ -136,7 +161,7 @@ def _normalize_progress(raw: Any) -> Dict[str, Dict[str, bool]]:
             "attackSolved": bool(item.get("attackSolved")),
             "defenseSolved": bool(item.get("defenseSolved")),
         }
-    return progress
+    return _apply_test_unlock_until(progress)
 
 
 def _normalize_session(token: str, raw: Any) -> Optional[Dict[str, Any]]:
@@ -220,6 +245,14 @@ def _get_session(authorization: Optional[str]) -> Tuple[str, Dict[str, Any]]:
         raise APIError("UNAUTHORIZED", "Authorization: Bearer <token> 이 필요해.", 401)
 
     token = authorization.split(" ", 1)[1].strip()
+    if token.startswith("<") and token.endswith(">"):
+        inner = token[1:-1].strip() or "SESSION_TOKEN"
+        raise APIError(
+            "PLACEHOLDER_TOKEN",
+            f"꺾쇠(< >)는 placeholder 표시야. Authorization 값은 실제 Bearer token으로 바꿔줘. 지금 값: {inner}",
+            400,
+        )
+
     s = _sessions.get(token)
     if not s:
         raise APIError("UNAUTHORIZED", "세션이 없거나 만료됐어. /session 다시 호출해줘.", 401)
@@ -246,6 +279,12 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
     prog = session["progress"].get(level_id)
     if not prog:
         return {"attack": "locked", "defense": "locked"}
+
+    unlock_until_idx = _test_unlock_until_index()
+    if unlock_until_idx is not None and level_id in LEVEL_ORDER and LEVEL_ORDER.index(level_id) > unlock_until_idx:
+        attack = "solved" if prog["attackSolved"] else "locked"
+        defense = "solved" if prog["defenseSolved"] else "locked"
+        return {"attack": attack, "defense": defense}
 
     unlock_all = os.getenv("PURPLEDROID_UNLOCK_ALL", "").strip().lower() in {"1", "true", "yes", "on"}
     if unlock_all:
@@ -447,9 +486,9 @@ def terminal_exec(challenge_id: str, req: TerminalExecReq, authorization: Option
     if not mod:
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
-    # st = _status_for(session, challenge_id)
-    # if st["attack"] == "locked":
-    #     raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
+    st = _status_for(session, challenge_id)
+    if st["attack"] == "locked":
+        raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
 
     _rate_limit_terminal(session)
 
@@ -485,9 +524,9 @@ def submit_flag(challenge_id: str, req: SubmitFlagReq, authorization: Optional[s
     if not mod:
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
-    # st = _status_for(session, challenge_id)
-    # if st["attack"] == "locked":
-    #     raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
+    st = _status_for(session, challenge_id)
+    if st["attack"] == "locked":
+        raise APIError("CHALLENGE_LOCKED", "아직 잠긴 레벨이야.", 403)
 
     correct = mod.check_flag(req.flag)
     if correct:
@@ -613,6 +652,8 @@ class BossOpenRequest(BaseModel):
 
 class AdminAuditReq(BaseModel):
     range: str = Field(default="last_24h", max_length=40)
+    auditRef: Optional[str] = Field(default=None, max_length=80)
+    scope: Optional[str] = Field(default=None, max_length=40)
 
 
 class LockerUnlockReq(BaseModel):
@@ -735,14 +776,17 @@ def level3_1_get_mine(authorization: Optional[str] = Header(None)):
 def _level3_1_lookup_parcel(authorization: Optional[str], parcel_id: str):
     _, session = _get_session(authorization)
     _rate_limit_parcel_lookup(session)
-    from levels.level3_1 import get_parcel
+    from levels.level3_1 import get_parcel, placeholder_id_feedback, render_capsule_view
 
     parcel = get_parcel(parcel_id)
     if not parcel:
+        placeholder_message = placeholder_id_feedback(parcel_id)
+        if placeholder_message:
+            raise APIError("PLACEHOLDER_ID", placeholder_message, 400)
         raise APIError("NOT_FOUND", "parcel not found", 404)
 
     # 의도적 취약점: owner == current_user 검증 없음 (BOLA)
-    return {"ok": True, "data": parcel}
+    return {"ok": True, "data": render_capsule_view(parcel)}
 
 
 @app.get("/api/v1/challenges/level3_1/actions/parcel")
@@ -787,7 +831,9 @@ def level3_2_admin_audit(
     from levels.level3_2 import audit_payload
 
     used_range = (req.range if req else "last_24h") or "last_24h"
-    return audit_payload(used_range)
+    used_audit_ref = (req.auditRef if req else "") or ""
+    used_scope = (req.scope if req else "") or ""
+    return audit_payload(used_range, used_audit_ref, used_scope)
 
 
 @app.post("/api/v1/challenges/level3_2/actions/export")

@@ -112,6 +112,16 @@ STATIC: Dict[str, Any] = {
 
 PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3", "d4"}
 REQUIRED_PATCH_IDS = {"p1", "p2"}
+PATCH_CORRECT_FEEDBACK = {
+    "p1": "5번은 sessionToken을 그대로 로그에 남기는 라인이 맞아. 로그인 세션 값은 직접 출력하면 안 돼.",
+    "p2": "6번은 refreshToken을 그대로 로그에 남기는 라인이 맞아. 재발급 토큰도 탈취되면 세션을 이어갈 수 있어.",
+}
+PATCH_WRONG_FEEDBACK = {
+    "d1": "2번은 로그인 시도 이벤트만 남겨. 사용자 입력이나 토큰 값이 출력되지 않아서 이번 취약점 지점은 아니야.",
+    "d2": "4번은 성공 상태만 알려주는 일반 정보 로그야. 실제 session 값은 들어있지 않아.",
+    "d3": "7번은 refresh queue 상태 로그야. refreshToken 값 자체를 노출하지는 않아.",
+    "d4": "8번 Telemetry 로그는 이벤트 이름만 남겨. AuthService의 session/token 노출 라인을 찾아야 해.",
+}
 
 
 def check_flag(flag: str) -> bool:
@@ -119,11 +129,37 @@ def check_flag(flag: str) -> bool:
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
-    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
+    return set(patched_ids) == REQUIRED_PATCH_IDS
 
 
 def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
-    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
+    return set(patched_ids) == REQUIRED_PATCH_IDS
+
+
+def patch_feedback(patched_ids: List[str]) -> str:
+    selected = set(patched_ids)
+    messages: List[str] = []
+    seen: set[str] = set()
+
+    for pid in patched_ids:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    if REQUIRED_PATCH_IDS - selected:
+        messages.append(
+            "아직 AuthService의 민감 토큰 로그가 남아있어. 성공했다는 상태 로그와 실제 session/refreshToken 값 출력은 구분해야 해."
+        )
+
+    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. AuthService가 실제 토큰 값을 출력하는 지점을 찾아야 해."
+
+
+def patch_feedback_with_session(patched_ids: List[str], session: Dict[str, Any]) -> str:
+    return patch_feedback(patched_ids)
 
 
 def _split_pipes(s: str) -> List[str]:

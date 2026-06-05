@@ -728,12 +728,12 @@ export const CAMPAIGN_STORY = {
     actionProbe: {
       id: "level3_1_mine",
       label: "Sync My Capsules",
-      secondaryLabel: "Open My Capsule",
+      secondaryLabel: "Queue Detail Request",
       status: "recording",
       caption:
-        "게임 안의 Network Trace로 요청을 관찰해. 목록 요청에서 기준 객체 ID를 찾고, 상세 요청을 Copy as curl로 콘솔에 옮겨 ID를 바꿔볼 수 있다.",
+        "Network Trace는 관찰 도구, Mission Console은 조작 도구다. 목록 요청에서 기준 객체 ID와 Authorization 헤더를 확인하고, 상세 요청은 콘솔에서 직접 재현해.",
       success:
-        "Object registry probe captured. 응답 preview에서 owner와 parcel_id를 확인해.",
+        "Object registry probe captured. 응답 preview에서 owner와 capsule_id를 확인해.",
     },
     objectives: [
       "내 Signal Capsule 목록과 ID 패턴을 확인한다.",
@@ -792,10 +792,13 @@ export const CAMPAIGN_STORY = {
       "AEGIS는 MIRA가 과거 감사 모듈에서 분리된 흔적을 찾고 있다. 표준 UI는 관리자 기능을 숨겨두지만, 숨겨진 메뉴는 보안 경계가 아니다. menu 응답과 route hint를 통해 비활성화된 감사 경로를 찾아, AEGIS보다 먼저 MIRA의 옛 audit shard를 회수하라.",
     progressiveHints: true,
     intel: [
-      "숨겨진 버튼은 삭제된 서버 기능이 아니다.",
-      "menu/features 응답에는 UI가 숨긴 route 단서가 남을 수 있다.",
-      "enabled=false는 화면 상태일 뿐, 서버 인가가 없다면 직접 호출될 수 있다.",
-      "함정 경로와 진짜 audit 경로를 응답 차이로 구분해.",
+      "menu 응답은 화면에 표시되는 버튼 목록만 의미하지 않는다. 숨겨진 feature metadata를 같이 봐.",
+      "enabled=false는 서버 기능이 삭제됐다는 뜻이 아니라, UI에서 비활성화됐다는 뜻일 수 있다.",
+      "route 또는 routeHint가 보이면, 그 경로를 Mission Console에서 직접 호출해볼 수 있다.",
+      "audit route를 빈 body로 호출해보면 필요한 selector key를 알 수 있다.",
+      "metrics와 legacy snapshot은 정답 route가 아닐 수 있지만, audit selector 조각을 흘릴 수 있다.",
+      "selector 값은 서로 같은 review cluster를 가리켜야 한다.",
+      "range는 metrics 쪽, auditRef와 scope는 legacy snapshot 쪽을 확인해.",
     ],
     consoleBoot: [
       "[AEGIS] privileged route inventory started",
@@ -804,14 +807,25 @@ export const CAMPAIGN_STORY = {
       "[MIRA] 내 오래된 audit shard가 남았다면 menu metadata에 흔적이 있을 거야.",
     ],
     consolePlaceholder: "inspect hidden route metadata...",
+    actionProbe: {
+      id: "level3_2_menu",
+      label: "Fetch Privileged Menu",
+      status: "recording",
+      caption:
+        "Network Trace는 숨겨진 menu metadata를 관찰하는 도구다. 요약은 최소 정보만 보여준다. route 단서는 raw response에서 직접 확인해.",
+      emptyText: "No captured menu metadata. Start with Fetch Privileged Menu.",
+      success:
+        "Privileged menu metadata captured. View Raw Response를 열어 route와 routeHint를 직접 확인해.",
+    },
     objectives: [
-      "menu/features 응답에서 숨겨진 route 단서를 찾는다.",
-      "비활성화된 audit 경로를 직접 호출해 Evidence를 회수한다.",
+      "menu 응답에서 숨겨진 feature route 단서를 찾는다.",
+      "후보 route 응답에서 audit 요청에 필요한 range, auditRef, scope를 수집한다.",
+      "비활성화된 audit 경로에 조각을 조합해 Evidence를 회수한다.",
       "UI 숨김에 의존하지 않고 서버 인가가 필요하다는 사실을 봉쇄한다.",
     ],
     mira: {
       briefing:
-        "AEGIS가 privileged route 목록을 훑고 있어. 내가 남긴 audit shard가 있다면 UI가 아니라 menu metadata에 먼저 비칠 거야.",
+        "AEGIS가 privileged route 목록을 훑고 있어. 버튼은 숨겨져도 metadata는 남아. 내가 남긴 audit shard가 있다면, 화면이 아니라 menu 응답에 먼저 비칠 거야.",
       attack:
         "숨겨진 기능을 화면 기준으로 판단하지 마. 서버 경로가 살아 있는지 직접 확인해.",
       attackSolved:
@@ -823,7 +837,7 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Privileged route concealed from standard operators. Exposure probability normalized.",
+        "Privileged route concealed from standard operators. Server-side invocation probability classified as negligible.",
       attack:
         "Non-visual route invocation detected. Operator role mismatch ignored by legacy path.",
       attackSolved:
@@ -856,33 +870,51 @@ export const CAMPAIGN_STORY = {
     codename: "PROFILE POISON",
     title: "프로필 신뢰 오염",
     location: "Trust Layer / Operator Profile",
-    threat: "Mass Assignment",
+    threat: "Mass Assignment / Overposting",
     briefing:
-      "AEGIS는 MIRA를 찾기 위해 operator profile의 신뢰 필드를 훑고 있다. 이 노드는 주소 변경 화면처럼 보이지만, 서버가 요청 JSON 전체를 그대로 프로필 모델에 병합한다면 role이나 admin 상태 같은 숨은 필드도 함께 저장될 수 있다. Trust Layer 안에서 신분이 어떻게 오염되는지 확인하라.",
+      "AEGIS는 MIRA를 찾기 위해 operator profile의 신뢰 필드를 훑고 있다. 이 노드는 평범한 프로필 저장 화면처럼 보인다. 하지만 서버가 요청 JSON 전체를 그대로 profile model에 병합한다면, UI에는 없는 trust field도 함께 저장될 수 있다. 정상 프로필 저장 요청을 관찰하고, 클라이언트가 보낸 숨은 필드가 권한 판단을 오염시킬 수 있는지 확인하라.",
     progressiveHints: true,
     intel: [
       "UI가 제공하는 입력칸은 클라이언트가 보낼 수 있는 JSON의 전부가 아니다.",
       "프로필 저장 요청의 payload 구조를 먼저 확인해.",
-      "서버가 허용 필드만 저장하는지, 요청 전체를 merge하는지 구분해.",
-      "권한 필드는 클라이언트 요청이 아니라 서버 정책으로만 바뀌어야 한다.",
+      "Load Operator Profile 응답에서 profile, trust, editableFields를 비교해봐.",
+      "정상 저장 요청은 displayName, relayNote, timezone 같은 일반 필드만 보낸다.",
+      "서버가 요청 전체를 merge한다면, editableFields에 없는 필드도 저장될 수 있다.",
+      "trust state에 보이는 field 이름을 저장 요청 Body에 추가해보면 어떻게 될까?",
+      "role과 isAdmin은 UI가 보내지 않지만, 권한 판단에 영향을 줄 수 있는 trust field다.",
     ],
     consoleBoot: [
       "[AEGIS] profile trust field sweep active",
-      "[AEGIS] operator role derived from stored profile",
-      "[MIRA] 주소를 바꾸는 화면처럼 보여도, JSON은 더 많은 말을 할 수 있어.",
-      "[MIRA] AEGIS가 믿는 필드가 어디서 왔는지 확인해.",
+      "[AEGIS] trust fields synchronized from submitted profile state",
+      "[MIRA] UI가 보여주는 입력칸만 보지 마. 클라이언트는 화면에 없는 JSON field도 보낼 수 있어.",
+      "[MIRA] 중요한 건 서버가 무엇을 허용하는지야.",
     ],
     consolePlaceholder: "test profile trust boundary...",
+    actionProbe: {
+      id: "level3_3_profile",
+      status: "recording",
+      caption:
+        "Network Trace는 정상 프로필 조회와 저장 payload를 관찰하는 도구다. Stage 버튼은 요청 초안만 Mission Console에 올린다.",
+      emptyText: "No captured profile traffic. Start with Load Operator Profile.",
+      actions: [
+        { id: "level3_3_load_profile", label: "Load Operator Profile" },
+        { id: "level3_3_stage_update", label: "Stage Safe Update", variant: "ghost" },
+        { id: "level3_3_stage_perks", label: "Stage Trust Check", variant: "ghost" },
+      ],
+      success:
+        "Profile state captured. profile, trust, editableFields를 비교한 뒤 safe update payload를 확인해.",
+    },
     objectives: [
-      "프로필 저장 요청의 JSON 구조를 확인한다.",
-      "숨은 신뢰 필드 주입으로 권한 판단이 바뀌는지 확인한다.",
+      "프로필 조회 응답에서 일반 profile field와 trust field를 구분한다.",
+      "정상 프로필 저장 요청의 JSON Body를 관찰한다.",
+      "UI가 보내지 않는 hidden trust field를 추가해 권한 판단이 바뀌는지 확인한다.",
       "요청 DTO 화이트리스트와 서버 측 권한 정책 필요성을 봉쇄한다.",
     ],
     mira: {
       briefing:
-        "AEGIS가 profile trust field를 훑기 시작했어. 내가 숨으려면 신분 경계가 어떻게 오염되는지 먼저 알아야 해.",
+        "AEGIS가 profile trust field를 훑기 시작했어. UI가 보여주는 입력칸만 보지 마. 중요한 건 서버가 무엇을 허용하는지야.",
       attack:
-        "화면에는 주소만 보여도 요청 JSON은 네가 직접 만들 수 있어. 서버가 뭘 저장하는지 봐.",
+        "정상 저장 요청을 먼저 관찰해. 그다음 화면에 없는 JSON field가 서버 model에 들어가는지 확인해.",
       attackSolved:
         "권한 신호가 오염됐어. AEGIS가 클라이언트가 보낸 프로필 필드를 너무 쉽게 믿고 있어.",
       defense:
@@ -892,7 +924,7 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Operator profile integrity assumed. Client update flow classified as low-risk.",
+        "Operator profile integrity assumed. Client update flow classified as low-risk. Trust fields synchronized from submitted profile state.",
       attack:
         "Unexpected trust field mutation detected. Stored operator state modified.",
       attackSolved:
@@ -909,11 +941,13 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "PROFILE POISON 정리",
       summary:
-        "Mass Assignment는 서버가 요청 JSON 전체를 내부 모델에 그대로 반영할 때 발생한다. 화면에 없는 필드도 클라이언트는 보낼 수 있다.",
+        "Mass Assignment는 서버가 요청 JSON 전체를 내부 모델에 그대로 반영할 때 발생한다. UI에 입력칸이 없더라도 공격자는 request body에 role, isAdmin, clearance 같은 필드를 직접 추가할 수 있다.",
       learned: [
-        "클라이언트 요청 필드는 신뢰할 수 없다.",
-        "role, tier, is_admin 같은 필드는 서버 정책으로만 변경되어야 한다.",
-        "입력 DTO는 allow-list 방식으로 명시해야 한다.",
+        "UI에 없는 필드도 HTTP 요청에는 포함될 수 있다.",
+        "editableFields와 server trust fields는 분리되어야 한다.",
+        "request body 전체를 domain model에 merge하면 안 된다.",
+        "프로필 수정 DTO는 허용된 필드만 받아야 한다.",
+        "role, isAdmin, clearance 같은 권한 필드는 서버 정책이나 관리자 기능으로만 변경되어야 한다.",
       ],
       nextTeaser:
         "AEGIS는 이제 화면에 표시되지 않는 깊은 응답 필드에서 MIRA의 흔적을 찾는다.",

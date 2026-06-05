@@ -46,12 +46,24 @@ _PARCELS: Dict[str, Dict[str, Any]] = {
         "status": "sorting",
         "contents": "pet supplies",
         "delivery_instructions": "Ring bell once.",
+        "logistics": {
+            "warehouse": "WH-EAST-07",
+            "priority": "express",
+            "handler": {
+                "team": "vip-ops",
+                "shift": "night",
+                "notes": {
+                    "last_scan": "2026-02-24T03:12:00Z",
+                    "ack": True,
+                },
+            },
+        },
     },
     "PD-1006": {
         "parcel_id": "PD-1006",
         "owner": "vip_neighbor",
         "tier": "vip",
-        "status": "in_transit",
+        "status": "sorting",
         "contents": "VIP-only gift",
         "recipient_phone": "+82-10-1006-0000",
         "delivery_instructions": "Handle with care.",
@@ -75,26 +87,26 @@ _PARCELS: Dict[str, Dict[str, Any]] = {
 STATIC: Dict[str, Any] = {
     "id": "level3_1",
     "level": 3,
-    "title": "3-1 Steal the Neighbor's Parcel",
-    "summary": "남의 택배 정보가 보이면 인가 결함(BOLA)이다.",
+    "title": "3-1 BOLA Window",
+    "summary": "다른 Signal Capsule이 보이면 객체 단위 인가 결함(BOLA)이다.",
     "description": (
-        "미션: 내 택배(PD-1004) 조회 흐름을 관찰하고, parcel_id를 바꿔 "
-        "다른 고객 택배를 조회해 FLAG를 찾아 제출해라."
+        "미션: 내 Signal Capsule(PD-1004) 조회 흐름을 관찰하고, object id 파라미터를 바꿔 "
+        "다른 노드의 Capsule에서 Evidence Shard를 회수해라."
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
         "hints": [
             {
                 "platform": "web",
-                "text": "F12 Network에서 /actions/parcels/mine 과 /actions/parcel 요청을 확인해.",
+                "text": "Campaign의 Network Trace 또는 F12 Network에서 /actions/parcels/mine 요청을 확인해.",
             },
             {
                 "platform": "all",
-                "text": "내 owner와 내 parcel_id의 숫자 suffix 패턴이 연결되는지 확인해.",
+                "text": "내 owner와 Capsule object id의 숫자 suffix 패턴이 연결되는지 확인해.",
             },
             {
                 "platform": "all",
-                "text": "내 번호 주변 작은 범위(parcel_id)를 열거해봐.",
+                "text": "기준 object id 주변의 작은 범위를 탐색해봐.",
             },
             {
                 "platform": "windows",
@@ -106,7 +118,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "all",
-                "text": "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해.",
+                "text": "다른 사용자 객체가 열렸다면, 응답 구조도 다를 수 있다. 표면 필드가 같아도, 한쪽에만 있는 새 필드가 진짜 단서다.",
             },
         ],
         "terminal": {
@@ -199,23 +211,63 @@ def get_parcel(parcel_id: str) -> Optional[Dict[str, Any]]:
     return copy.deepcopy(record) if record else None
 
 
+def placeholder_id_feedback(parcel_id: str) -> Optional[str]:
+    value = (parcel_id or "").strip()
+    if value.startswith("<") and value.endswith(">"):
+        inner = value[1:-1].strip()
+        if inner:
+            return f"꺾쇠(< >)는 placeholder 표시야. object id는 {inner}처럼 꺾쇠 없이 넣어줘."
+        return "꺾쇠(< >)는 placeholder 표시야. 실제 object id를 꺾쇠 없이 넣어줘."
+    return None
+
+
+def placeholder_token_feedback(authorization: str) -> Optional[str]:
+    auth = (authorization or "").strip()
+    if not auth.lower().startswith("bearer "):
+        return None
+    token = auth.split(" ", 1)[1].strip()
+    if token.startswith("<") and token.endswith(">"):
+        inner = token[1:-1].strip() or "SESSION_TOKEN"
+        return f"꺾쇠(< >)는 placeholder 표시야. Mission Console에서는 Authorization 값을 Bearer $SESSION_TOKEN으로 쓸 수 있어. 지금 값: {inner}"
+    return None
+
+
 def get_mine_view(owner: str = DEFAULT_OWNER) -> Dict[str, Any]:
     own = get_parcel("PD-1004")
+    capsule_id = own["parcel_id"] if own else "PD-1004"
     return {
         "owner": owner or DEFAULT_OWNER,
-        "parcels": [
+        "capsules": [
             {
-                "parcel_id": own["parcel_id"] if own else "PD-1004",
-                "label": "My Parcel",
+                "capsule_id": capsule_id,
+                "label": "My Signal Capsule",
                 "tier": own["tier"] if own else "standard",
+                "links": {
+                    "detail": f"/api/v1/challenges/level3_1/actions/parcel?parcel_id={capsule_id}",
+                },
             }
         ],
-        "hint": "owner suffix와 parcel_id suffix의 관계를 관찰해봐.",
+        "hint": "목록에 보이는 object id는 상세 조회 흐름의 기준점이 될 수 있다.",
     }
 
 
+def render_capsule_view(parcel: Dict[str, Any]) -> Dict[str, Any]:
+    data = copy.deepcopy(parcel)
+    capsule_id = str(data.get("parcel_id", ""))
+    data["capsule_id"] = capsule_id
+    data.pop("parcel_id", None)
+    data.pop("contents", None)
+    data.pop("delivery_instructions", None)
+    data.pop("recipient_phone", None)
+    return data
+
+
 def _json_response(payload: Dict[str, Any], status: int = 200) -> HttpResponse:
-    return HttpResponse(status=status, headers={"content-type": "application/json"}, body=json.dumps(payload, separators=(",", ":")))
+    return HttpResponse(
+        status=status,
+        headers={"content-type": "application/json"},
+        body=json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+    )
 
 
 def _unauthorized() -> HttpResponse:
@@ -233,6 +285,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 
@@ -244,6 +298,13 @@ def _shell_http_router(
     _body: str,
     ctx: ShellContext,
 ) -> HttpResponse:
+    token_placeholder_message = placeholder_token_feedback(headers.get("authorization", ""))
+    if token_placeholder_message:
+        return _json_response(
+            {"ok": False, "error": {"code": "PLACEHOLDER_TOKEN", "message": token_placeholder_message}},
+            400,
+        )
+
     if not _is_auth_ok(headers, ctx):
         return _unauthorized()
 
@@ -259,16 +320,28 @@ def _shell_http_router(
             )
         parcel = get_parcel(parcel_id)
         if not parcel:
+            placeholder_message = placeholder_id_feedback(parcel_id)
+            if placeholder_message:
+                return _json_response(
+                    {"ok": False, "error": {"code": "PLACEHOLDER_ID", "message": placeholder_message}},
+                    400,
+                )
             return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "parcel not found"}}, 404)
-        return _json_response({"ok": True, "data": parcel})
+        return _json_response({"ok": True, "data": render_capsule_view(parcel)})
 
     if method == "GET":
         matched = re.match(r"^/api/v1/challenges/level3_1/actions/parcels/([A-Za-z0-9\-]+)$", path)
         if matched:
             parcel = get_parcel(matched.group(1))
             if not parcel:
+                placeholder_message = placeholder_id_feedback(matched.group(1))
+                if placeholder_message:
+                    return _json_response(
+                        {"ok": False, "error": {"code": "PLACEHOLDER_ID", "message": placeholder_message}},
+                        400,
+                    )
                 return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "parcel not found"}}, 404)
-            return _json_response({"ok": True, "data": parcel})
+            return _json_response({"ok": True, "data": render_capsule_view(parcel)})
 
     return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "route not found"}}, 404)
 

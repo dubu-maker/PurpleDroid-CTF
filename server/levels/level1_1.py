@@ -115,6 +115,14 @@ STATIC: Dict[str, Any] = {
 
 PATCHABLE_IDS = {"p1", "p2", "d1", "d2"}
 REQUIRED_PATCH_IDS = {"p1", "p2"}
+PATCH_CORRECT_FEEDBACK = {
+    "p1": "5번은 FLAG 값을 직접 로그에 출력하는 라인이 맞아. 민감 값은 로그에 남기면 안 돼.",
+    "p2": "6번은 sessionToken을 그대로 출력하는 라인이 맞아. 인증 토큰도 FLAG와 같은 민감 정보로 봐야 해.",
+}
+PATCH_WRONG_FEEDBACK = {
+    "d1": "4번 Analytics 로그는 화면 이름만 남기는 일반 이벤트야. 민감 값이나 토큰이 들어있지 않아.",
+    "d2": "7번 Perf 로그는 성능 숫자만 남기는 진단 로그야. FLAG나 sessionToken 노출 지점이 아니야.",
+}
 
 
 def check_flag(flag: str) -> bool:
@@ -122,11 +130,37 @@ def check_flag(flag: str) -> bool:
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
-    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
+    return set(patched_ids) == REQUIRED_PATCH_IDS
 
 
 def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
-    return REQUIRED_PATCH_IDS.issubset(set(patched_ids))
+    return set(patched_ids) == REQUIRED_PATCH_IDS
+
+
+def patch_feedback(patched_ids: List[str]) -> str:
+    selected = set(patched_ids)
+    messages: List[str] = []
+    seen: set[str] = set()
+
+    for pid in patched_ids:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    if REQUIRED_PATCH_IDS - selected:
+        messages.append(
+            "아직 민감 로그가 남아있어. FLAG 문자열과 sessionToken처럼 실제 비밀값을 출력하는 라인을 모두 막아야 해."
+        )
+
+    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. 일반 로그가 아니라 비밀값을 직접 출력하는 로그를 찾아야 해."
+
+
+def patch_feedback_with_session(patched_ids: List[str], session: Dict[str, Any]) -> str:
+    return patch_feedback(patched_ids)
 
 
 def _split_pipes(s: str) -> List[str]:

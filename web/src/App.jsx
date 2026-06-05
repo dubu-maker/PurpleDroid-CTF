@@ -866,6 +866,7 @@ function ClassicApp() {
       return;
     }
     setActiveTab("attack");
+    setStatusText("");
     loadDetail(token, selectedId, true).catch((error) => setStatusText(error.message));
   }, [loadDetail, selectedId, token]);
 

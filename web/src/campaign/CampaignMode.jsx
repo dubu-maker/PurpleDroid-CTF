@@ -26,6 +26,22 @@ function normalizeApiBase(raw) {
 }
 
 const API_BASE = normalizeApiBase(API_BASE_RAW);
+const LEVEL3_2_SELECTOR_FIELDS = ["range", "auditRef", "scope"];
+const LEVEL3_3_SAFE_PROFILE = {
+  displayName: "Agent VIOLET",
+  relayNote: "standard trust lane",
+  timezone: "KST",
+};
+
+function level33SafeUpdateCurl() {
+  return `curl -v -X PUT "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d '${JSON.stringify(
+    LEVEL3_3_SAFE_PROFILE
+  )}'`;
+}
+
+function level33TrustCheckCurl() {
+  return 'curl -v -X GET "/api/v1/challenges/level3_3/actions/perks" -H "Authorization: Bearer $SESSION_TOKEN"';
+}
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
   const headers = {};
@@ -123,37 +139,255 @@ function shouldShowOperation03Intermission(fromId, targetId, intermissionSeen) {
 function previewNetworkBody(body) {
   const data = body?.data || body || {};
 
-  if (Array.isArray(data.parcels)) {
-    const first = data.parcels[0] || {};
+  if (Array.isArray(data.capsules) || Array.isArray(data.parcels)) {
+    const first = (data.capsules || data.parcels)[0] || {};
     return [
       `owner: ${data.owner || "unknown"}`,
-      `capsule: ${first.parcel_id || "unknown"}`,
+      `capsule: ${first.capsule_id || first.parcel_id || "unknown"}`,
       `tier: ${first.tier || "unknown"}`,
     ];
   }
 
-  if (data.parcel_id) {
+  if (data.capsule_id || data.parcel_id) {
     return [
       `owner: ${data.owner || "unknown"}`,
-      `capsule: ${data.parcel_id}`,
+      `capsule: ${data.capsule_id || data.parcel_id}`,
       `tier: ${data.tier || "unknown"}`,
       `status: ${data.status || "unknown"}`,
+    ];
+  }
+
+  if (Array.isArray(data.features)) {
+    const hiddenCount = data.features.filter((feature) => feature.enabled === false).length;
+    return [
+      `operator: ${data.operator || "unknown"}`,
+      `features: ${data.features.length}`,
+      `hidden: ${hiddenCount}`,
+      "routes: inspect raw response",
+    ];
+  }
+
+  if (data.staged) {
+    return [
+      `staged: ${data.staged}`,
+      `payload fields: ${Array.isArray(data.payloadFields) ? data.payloadFields.join(", ") || "none" : "none"}`,
+    ];
+  }
+
+  if (data.updated) {
+    return [
+      "updated: true",
+      `merged: ${Array.isArray(data.mergedFields) ? data.mergedFields.join(", ") || "none" : "unknown"}`,
+      `trust: ${data.trust?.role || "unknown"} / ${String(Boolean(data.trust?.isAdmin))}`,
+    ];
+  }
+
+  if (data.profile && data.trust) {
+    return [
+      `operator: ${data.profile.operatorId || "unknown"}`,
+      `role: ${data.trust.role || "unknown"}`,
+      `isAdmin: ${String(Boolean(data.trust.isAdmin))}`,
+      `editable: ${Array.isArray(data.editableFields) ? data.editableFields.join(", ") : "unknown"}`,
+    ];
+  }
+
+  if (Array.isArray(data.perks)) {
+    return [
+      `status: ${data.status || "unknown"}`,
+      `perks: ${data.perks.length}`,
+      `miraResidue: ${data.miraResidue || "none"}`,
+    ];
+  }
+
+  if (data.report) {
+    return [
+      `status: ${data.status || "unknown"}`,
+      `report: ${data.report.title || "unknown"}`,
+      `auditRef: ${data.report.auditRef || "none"}`,
+      `miraResidue: ${data.report.miraResidue || "none"}`,
+    ];
+  }
+
+  if (data.stats) {
+    return [
+      "route: metrics",
+      `reviewWindow: ${data.reviewWindow || data.auditWindow || "none"}`,
+      `miraResidue: ${data.miraResidue || "none"}`,
+    ];
+  }
+
+  if (data.migration || data.lastAuditRef || data.requiredScope) {
+    const migration = data.migration || {};
+    return [
+      "route: legacy snapshot",
+      `ref: ${migration.ref || data.lastAuditRef || "none"}`,
+      `scopeHint: ${migration.scopeHint || data.requiredScope || "none"}`,
     ];
   }
 
   return [`ok: ${body?.ok === false ? "false" : "true"}`];
 }
 
-function createTraceEntry({ method, url, status, body, token }) {
+function sanitizeNetworkBody(body) {
+  const clone = JSON.parse(JSON.stringify(body || {}));
+  const data = clone.data;
+
+  if (!data || typeof data !== "object") {
+    return clone;
+  }
+
+  if (Array.isArray(data.capsules)) {
+    delete data.parcels;
+  }
+
+  if (data.capsule_id) {
+    delete data.parcel_id;
+  }
+
+  return clone;
+}
+
+function createTraceEntry({
+  method,
+  url,
+  status,
+  body,
+  token,
+  title = "REQUEST",
+  trigger = "button",
+  curlOverride = "",
+  routeCurls = [],
+}) {
+  const displayBody = sanitizeNetworkBody(body);
+  const requestHeaders = token ? ["Authorization: Bearer $SESSION_TOKEN"] : [];
   return {
     id: `${Date.now()}-${method}-${url}`,
+    title,
+    trigger,
     method,
     url,
     status,
-    body,
-    preview: previewNetworkBody(body),
-    curl: `curl -v -X ${method} "${url}" -H "Authorization: Bearer ${token}"`,
+    requestHeaders,
+    body: displayBody,
+    preview: previewNetworkBody(displayBody),
+    routeCurls,
+    curl:
+      curlOverride ||
+      `curl -v -X ${method} "${url}" -H "Authorization: Bearer $SESSION_TOKEN"`,
   };
+}
+
+function parseJsonFromTerminalOutput(stdout) {
+  try {
+    return JSON.parse(stdout || "{}");
+  } catch {
+    const text = stdout || "";
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start < 0 || end <= start) {
+      return null;
+    }
+    try {
+      return JSON.parse(text.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function detectCurlMethod(command) {
+  const match = command.match(/(?:^|\s)-X\s+([A-Z]+)/i);
+  return match ? match[1].toUpperCase() : "GET";
+}
+
+function traceTitleForCommand(url, body, method = "GET") {
+  const data = body?.data || {};
+
+  if (url.includes("/level3_1/actions/parcels/mine")) {
+    return "CAPSULE LIST REQUEST";
+  }
+  if (url.includes("/level3_1/actions/parcel")) {
+    const capsuleId = data.capsule_id || data.parcel_id || "";
+    return capsuleId && capsuleId !== "PD-1004" ? "FOREIGN CAPSULE PROBE" : "MY CAPSULE DETAIL";
+  }
+  if (url.includes("/level3_2/actions/menu")) {
+    return "MENU FEATURES RESPONSE";
+  }
+  if (url.includes("/level3_2/actions/admin/audit")) {
+    return "AUDIT ROUTE PROBE";
+  }
+  if (url.includes("/level3_2/actions/admin/stats")) {
+    return "STATS ROUTE PROBE";
+  }
+  if (url.includes("/level3_2/actions/export")) {
+    return "LEGACY EXPORT PROBE";
+  }
+  if (url.includes("/level3_3/actions/profile")) {
+    return method === "PUT" || data.updated ? "PROFILE UPDATE RESPONSE" : "PROFILE STATE RESPONSE";
+  }
+  if (url.includes("/level3_3/actions/perks")) {
+    return "TRUST CHECK RESPONSE";
+  }
+  return "HIDDEN ROUTE PROBE";
+}
+
+function statusFromTerminalBody(body) {
+  if (body?.ok === false) {
+    return body?.error?.code === "NOT_FOUND" ? 404 : 400;
+  }
+  return 200;
+}
+
+function auditSelectorFieldsFromTrace(entry) {
+  if (!entry?.url?.includes("/level3_2/actions/admin/audit")) {
+    return [];
+  }
+
+  const data = entry.body?.data || {};
+  if (!Array.isArray(data.missing) || data.missing.length === 0) {
+    return [];
+  }
+
+  const discovered = data.missing.filter((field) => LEVEL3_2_SELECTOR_FIELDS.includes(field));
+  return discovered.length > 0 ? LEVEL3_2_SELECTOR_FIELDS : [];
+}
+
+function extractNetworkTraceFromCommand(command, stdout, token) {
+  if (
+    !command.includes("/api/v1/challenges/level3_1/actions/") &&
+    !command.includes("/api/v1/challenges/level3_2/actions/") &&
+    !command.includes("/api/v1/challenges/level3_3/actions/")
+  ) {
+    return null;
+  }
+
+  const match = command.match(/\/api\/v1\/challenges\/level3_[123]\/actions\/[^\s"'`]+/);
+  if (!match) {
+    return null;
+  }
+
+  let body = null;
+  body = parseJsonFromTerminalOutput(stdout);
+  if (!body) {
+    return null;
+  }
+
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const url = match[0];
+  const method = detectCurlMethod(command);
+
+  return createTraceEntry({
+    method,
+    url,
+    status: statusFromTerminalBody(body),
+    body,
+    token,
+    title: traceTitleForCommand(url, body, method),
+    trigger: "mission console",
+  });
 }
 
 function CampaignHome({
@@ -381,15 +615,20 @@ function NetworkTracePanel({
   result,
   entries,
   capsuleId,
+  auditSelectorFields,
+  auditSelectorDraft,
   expandedById,
   onSync,
   onOpenCapsule,
   onCopyCurl,
+  onAuditSelectorDraftChange,
   onToggleResponse,
 }) {
   if (!probe) {
     return null;
   }
+
+  const probeActions = Array.isArray(probe.actions) && probe.actions.length > 0 ? probe.actions : null;
 
   return (
     <section className="network-trace-panel">
@@ -399,12 +638,28 @@ function NetworkTracePanel({
       </div>
       <p>{probe.caption}</p>
       <div className="network-trace-actions">
-        <button type="button" onClick={onSync} disabled={disabled || busy}>
-          {probe.label}
-        </button>
-        <button type="button" className="ghost-button" onClick={onOpenCapsule} disabled={disabled || busy || !capsuleId}>
-          {probe.secondaryLabel || "Open Detail"}
-        </button>
+        {probeActions ? (
+          probeActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className={action.variant === "ghost" ? "ghost-button" : undefined}
+              onClick={() => onSync(action.id)}
+              disabled={disabled || busy}
+            >
+              {action.label}
+            </button>
+          ))
+        ) : (
+          <button type="button" onClick={() => onSync()} disabled={disabled || busy}>
+            {probe.label}
+          </button>
+        )}
+        {!probeActions && probe.secondaryLabel && (
+          <button type="button" className="ghost-button" onClick={onOpenCapsule} disabled={disabled || busy || !capsuleId}>
+            {probe.secondaryLabel}
+          </button>
+        )}
         {result && (
           <span className={`network-trace-result ${result.ok ? "ok" : "fail"}`}>
             {result.message}
@@ -412,14 +667,41 @@ function NetworkTracePanel({
         )}
       </div>
 
+      {auditSelectorFields?.length > 0 && (
+        <div className="network-selector-board">
+          <div className="network-selector-board-title">
+            <span>AUDIT SELECTOR</span>
+            <strong>{auditSelectorFields.length} keys required</strong>
+          </div>
+          <div className="network-selector-slots">
+            {auditSelectorFields.map((field) => (
+              <label key={field} className="network-selector-slot">
+                <span>{field}</span>
+                <input
+                  type="text"
+                  value={auditSelectorDraft?.[field] || ""}
+                  placeholder="pending"
+                  spellCheck={false}
+                  onChange={(event) => onAuditSelectorDraftChange(field, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="network-trace-list">
         {entries.length === 0 ? (
-          <p className="network-trace-empty">No captured requests. Start with Sync My Capsules.</p>
+          <p className="network-trace-empty">{probe.emptyText || "No captured requests yet."}</p>
         ) : (
           entries.map((entry) => {
             const expanded = Boolean(expandedById[entry.id]);
             return (
               <article key={entry.id} className="network-trace-entry">
+                <div className="network-trace-title">
+                  <strong>{entry.title}</strong>
+                  <span>trigger: {entry.trigger}</span>
+                </div>
                 <div className="network-trace-entry-top">
                   <span className="network-status">[{entry.status}]</span>
                   <strong>{entry.method}</strong>
@@ -430,9 +712,33 @@ function NetworkTracePanel({
                     <span key={line}>{line}</span>
                   ))}
                 </div>
+                {entry.requestHeaders?.length > 0 && (
+                  <div className="network-request-headers">
+                    <span>REQUEST HEADERS</span>
+                    {entry.requestHeaders.map((header) => (
+                      <code key={header}>{header}</code>
+                    ))}
+                  </div>
+                )}
+                {entry.routeCurls?.length > 0 && (
+                  <div className="network-route-candidates">
+                    <span>ROUTE CANDIDATES</span>
+                    {entry.routeCurls.map((candidate) => (
+                      <div key={candidate.label} className="network-route-candidate">
+                        <div>
+                          <strong>{candidate.label}</strong>
+                          <small>{candidate.note}</small>
+                        </div>
+                        <button type="button" className="ghost-button" onClick={() => onCopyCurl(candidate.curl)}>
+                          Stage endpoint
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="network-trace-entry-actions">
                   <button type="button" className="ghost-button" onClick={() => onToggleResponse(entry.id)}>
-                    {expanded ? "Hide Response" : "View Response"}
+                    {expanded ? "Hide Raw Response" : "View Raw Response"}
                   </button>
                   <button type="button" className="ghost-button" onClick={() => onCopyCurl(entry.curl)}>
                     Copy as curl
@@ -789,6 +1095,8 @@ function CampaignMode() {
   const [networkTraceBusy, setNetworkTraceBusy] = useState(false);
   const [networkTraceEntries, setNetworkTraceEntries] = useState([]);
   const [networkTraceCapsuleId, setNetworkTraceCapsuleId] = useState("");
+  const [auditSelectorFields, setAuditSelectorFields] = useState([]);
+  const [auditSelectorDraft, setAuditSelectorDraft] = useState({});
   const [expandedTraceById, setExpandedTraceById] = useState({});
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
@@ -873,6 +1181,8 @@ function CampaignMode() {
     setNetworkTraceBusy(false);
     setNetworkTraceEntries([]);
     setNetworkTraceCapsuleId("");
+    setAuditSelectorFields([]);
+    setAuditSelectorDraft({});
     setExpandedTraceById({});
     setSelectedPatchIds([]);
     setAttackNotice(false);
@@ -1079,6 +1389,15 @@ function CampaignMode() {
             text: output || `(exit ${data.exitCode})`,
           },
         ]);
+
+        const traceEntry = extractNetworkTraceFromCommand(nextCommand, data.stdout, token);
+        if (traceEntry) {
+          setNetworkTraceEntries((prev) => [...prev, traceEntry]);
+          const selectorFields = auditSelectorFieldsFromTrace(traceEntry);
+          if (selectorFields.length > 0) {
+            setAuditSelectorFields(selectorFields);
+          }
+        }
       } catch (error) {
         setConsoleLogs((prev) => [
           ...prev,
@@ -1091,58 +1410,215 @@ function CampaignMode() {
     [currentId, prompt, token]
   );
 
-  const handleSyncCapsules = useCallback(async () => {
+  const handleNetworkTraceProbe = useCallback(async (actionId = "") => {
     if (!token || !story.actionProbe) {
       return;
     }
 
+    const probeActionId = actionId || story.actionProbe.id;
     setNetworkTraceBusy(true);
     setNetworkTraceResult(null);
 
     try {
-      if (story.actionProbe.id !== "level3_1_mine") {
-        throw new Error("Unknown field probe.");
-      }
+      if (probeActionId === "level3_1_mine") {
+        const traceUrl = "/api/v1/challenges/level3_1/actions/parcels/mine";
+        const response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
 
-      const traceUrl = "/api/v1/challenges/level3_1/actions/parcels/mine";
-      const response = await fetch(`${API_BASE}/challenges/level3_1/actions/parcels/mine`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        const raw = await response.text();
-        let message = `probe failed (${response.status})`;
-        try {
-          const parsed = JSON.parse(raw);
-          message = parsed?.error?.message || parsed?.detail || message;
-        } catch {
-          // keep fallback
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = `probe failed (${response.status})`;
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error?.message || parsed?.detail || message;
+          } catch {
+            // keep fallback
+          }
+          setNetworkTraceResult({ ok: false, message });
+          return;
         }
-        setNetworkTraceResult({ ok: false, message });
+
+        const body = await response.json();
+        const capsuleId = body?.data?.capsules?.[0]?.capsule_id || "";
+        setNetworkTraceCapsuleId(capsuleId);
+        setNetworkTraceEntries((prev) => [
+          ...prev,
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: response.status,
+            body,
+            token,
+            title: "CAPSULE LIST REQUEST",
+            trigger: "button",
+            curlOverride:
+              'curl -v -X GET "/api/v1/challenges/level3_1/actions/parcel?parcel_id=<TARGET_ID>" -H "Authorization: Bearer $SESSION_TOKEN"',
+          }),
+        ]);
+        setNetworkTraceResult({
+          ok: true,
+          message: story.actionProbe.success || "Probe sent. Check Network.",
+        });
         return;
       }
 
-      const body = await response.json();
-      const capsuleId = body?.data?.parcels?.[0]?.parcel_id || "";
-      setNetworkTraceCapsuleId(capsuleId);
-      setNetworkTraceEntries((prev) => [
-        createTraceEntry({
+      if (probeActionId === "level3_2_menu") {
+        const traceUrl = "/api/v1/challenges/level3_2/actions/menu";
+        const response = await fetch(`${API_BASE}/challenges/level3_2/actions/menu`, {
           method: "GET",
-          url: traceUrl,
-          status: response.status,
-          body,
-          token,
-        }),
-        ...prev,
-      ]);
-      setNetworkTraceResult({
-        ok: true,
-        message: story.actionProbe.success || "Probe sent. Check Network.",
-      });
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = `probe failed (${response.status})`;
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error?.message || parsed?.detail || message;
+          } catch {
+            // keep fallback
+          }
+          setNetworkTraceResult({ ok: false, message });
+          return;
+        }
+
+        const body = await response.json();
+        setNetworkTraceEntries((prev) => [
+          ...prev,
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: response.status,
+            body,
+            token,
+            title: "MENU FEATURES RESPONSE",
+            trigger: "button",
+            curlOverride:
+              'curl -v -X GET "/api/v1/challenges/level3_2/actions/menu" -H "Authorization: Bearer $SESSION_TOKEN"',
+          }),
+        ]);
+        setNetworkTraceResult({
+          ok: true,
+          message: story.actionProbe.success || "Menu metadata captured. Open the raw response.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_3_load_profile") {
+        const traceUrl = "/api/v1/challenges/level3_3/actions/profile";
+        const response = await fetch(`${API_BASE}/challenges/level3_3/actions/profile`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = `probe failed (${response.status})`;
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error?.message || parsed?.detail || message;
+          } catch {
+            // keep fallback
+          }
+          setNetworkTraceResult({ ok: false, message });
+          return;
+        }
+
+        const body = await response.json();
+        setNetworkTraceEntries((prev) => [
+          ...prev,
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: response.status,
+            body,
+            token,
+            title: "PROFILE STATE RESPONSE",
+            trigger: "button",
+            curlOverride:
+              'curl -v -X GET "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN"',
+          }),
+        ]);
+        setNetworkTraceResult({
+          ok: true,
+          message: story.actionProbe.success || "Profile state captured. Compare profile and trust fields.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_3_stage_update") {
+        const traceUrl = "/api/v1/challenges/level3_3/actions/profile";
+        const curl = level33SafeUpdateCurl();
+        setCommand(curl);
+        setNetworkTraceEntries((prev) => [
+          ...prev,
+          createTraceEntry({
+            method: "PUT",
+            url: traceUrl,
+            status: "STAGED",
+            body: {
+              ok: true,
+              data: {
+                staged: "safe profile update",
+                payload: LEVEL3_3_SAFE_PROFILE,
+                payloadFields: Object.keys(LEVEL3_3_SAFE_PROFILE),
+              },
+            },
+            token,
+            title: "SAFE UPDATE TEMPLATE",
+            trigger: "staged to console",
+            curlOverride: curl,
+          }),
+        ]);
+        setNetworkTraceResult({
+          ok: true,
+          message: "Safe update staged in Mission Console. JSON body를 직접 편집해서 실험해봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_3_stage_perks") {
+        const traceUrl = "/api/v1/challenges/level3_3/actions/perks";
+        const curl = level33TrustCheckCurl();
+        setCommand(curl);
+        setNetworkTraceEntries((prev) => [
+          ...prev,
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: "STAGED",
+            body: {
+              ok: true,
+              data: {
+                staged: "trust check",
+                payloadFields: [],
+              },
+            },
+            token,
+            title: "TRUST CHECK TEMPLATE",
+            trigger: "staged to console",
+            curlOverride: curl,
+          }),
+        ]);
+        setNetworkTraceResult({
+          ok: true,
+          message: "Trust check staged in Mission Console. 먼저 profile update 결과를 만든 뒤 실행해봐.",
+        });
+        return;
+      }
+
+      throw new Error("Unknown field probe.");
     } catch (error) {
       setNetworkTraceResult({
         ok: false,
@@ -1158,75 +1634,31 @@ function CampaignMode() {
       return;
     }
 
-    setNetworkTraceBusy(true);
-    setNetworkTraceResult(null);
-
     const traceUrl = `/api/v1/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(
       networkTraceCapsuleId
     )}`;
 
-    try {
-      const response = await fetch(
-        `${API_BASE}/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(
-          networkTraceCapsuleId
-        )}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          cache: "no-store",
-        }
-      );
-
-      if (!response.ok) {
-        const raw = await response.text();
-        let message = `probe failed (${response.status})`;
-        try {
-          const parsed = JSON.parse(raw);
-          message = parsed?.error?.message || parsed?.detail || message;
-        } catch {
-          // keep fallback
-        }
-        setNetworkTraceResult({ ok: false, message });
-        return;
-      }
-
-      const body = await response.json();
-      setNetworkTraceEntries((prev) => [
-        createTraceEntry({
-          method: "GET",
-          url: traceUrl,
-          status: response.status,
-          body,
-          token,
-        }),
-        ...prev,
-      ]);
-      setNetworkTraceResult({
-        ok: true,
-        message: "Capsule detail captured. Copy as curl로 콘솔에 옮긴 뒤 parcel_id를 바꿔봐.",
-      });
-    } catch (error) {
-      setNetworkTraceResult({
-        ok: false,
-        message: error.message || "Probe failed.",
-      });
-    } finally {
-      setNetworkTraceBusy(false);
-    }
+    setCommand(`curl -v -X GET "${traceUrl}" -H "Authorization: Bearer $SESSION_TOKEN"`);
+    setNetworkTraceResult({
+      ok: true,
+      message: "Detail request queued in Mission Console. $SESSION_TOKEN은 콘솔 안에서 현재 세션으로 처리돼.",
+    });
   }, [networkTraceCapsuleId, token]);
 
   const handleCopyTraceCurl = useCallback((curl) => {
     setCommand(curl);
     setNetworkTraceResult({
       ok: true,
-      message: "curl copied to Mission Console. parcel_id 값을 바꿔 재실행해봐.",
+      message: "curl staged in Mission Console. Raw response를 근거로 직접 수정해봐.",
     });
 
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(curl).catch(() => {});
     }
+  }, []);
+
+  const handleAuditSelectorDraftChange = useCallback((field, value) => {
+    setAuditSelectorDraft((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const handleToggleTraceResponse = useCallback((entryId) => {
@@ -1452,10 +1884,13 @@ function CampaignMode() {
                 result={networkTraceResult}
                 entries={networkTraceEntries}
                 capsuleId={networkTraceCapsuleId}
+                auditSelectorFields={currentId === "level3_2" ? auditSelectorFields : []}
+                auditSelectorDraft={auditSelectorDraft}
                 expandedById={expandedTraceById}
-                onSync={handleSyncCapsules}
+                onSync={handleNetworkTraceProbe}
                 onOpenCapsule={handleOpenMyCapsule}
                 onCopyCurl={handleCopyTraceCurl}
+                onAuditSelectorDraftChange={handleAuditSelectorDraftChange}
                 onToggleResponse={handleToggleTraceResponse}
               />
 
