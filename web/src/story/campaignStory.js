@@ -872,20 +872,18 @@ export const CAMPAIGN_STORY = {
     location: "Trust Layer / Operator Profile",
     threat: "Mass Assignment / Overposting",
     briefing:
-      "AEGIS는 MIRA를 찾기 위해 operator profile의 신뢰 필드를 훑고 있다. 이 노드는 평범한 프로필 저장 화면처럼 보인다. 하지만 서버가 요청 JSON 전체를 그대로 profile model에 병합한다면, UI에는 없는 trust field도 함께 저장될 수 있다. 정상 프로필 저장 요청을 관찰하고, 클라이언트가 보낸 숨은 필드가 권한 판단을 오염시킬 수 있는지 확인하라.",
+      "AEGIS는 MIRA를 찾기 위해 operator profile의 신뢰 경계를 훑고 있다. 이 노드는 평범한 프로필 저장 화면처럼 보인다. 하지만 서버가 요청 JSON 전체를 그대로 profile model에 병합한다면, UI에는 없는 값도 함께 저장될 수 있다. 정상 프로필 저장 요청을 관찰하고, 클라이언트가 보낸 숨은 값이 권한 판단을 오염시킬 수 있는지 확인하라.",
     progressiveHints: true,
     intel: [
-      "UI가 제공하는 입력칸은 클라이언트가 보낼 수 있는 JSON의 전부가 아니다.",
-      "프로필 저장 요청의 payload 구조를 먼저 확인해.",
-      "Load Operator Profile 응답에서 profile, trust, editableFields를 비교해봐.",
-      "정상 저장 요청은 displayName, relayNote, timezone 같은 일반 필드만 보낸다.",
-      "서버가 요청 전체를 merge한다면, editableFields에 없는 필드도 저장될 수 있다.",
-      "trust state에 보이는 field 이름을 저장 요청 Body에 추가해보면 어떻게 될까?",
-      "role과 isAdmin은 UI가 보내지 않지만, 권한 판단에 영향을 줄 수 있는 trust field다.",
+      "UI가 보여주는 입력칸과 실제 HTTP 요청 Body는 다를 수 있다.",
+      "정상 저장 요청에 없는 field를 추가해도 서버가 받아들이는지 확인해봐.",
+      "프로필 저장 후 /perks 응답이 바뀌는지 확인해봐.",
+      "권한이나 신분을 나타내는 흔한 field 이름을 생각해봐.",
+      "role, admin, isAdmin, is_admin, clearance 같은 이름이 자주 쓰인다.",
     ],
     consoleBoot: [
-      "[AEGIS] profile trust field sweep active",
-      "[AEGIS] trust fields synchronized from submitted profile state",
+      "[AEGIS] profile authority sweep active",
+      "[AEGIS] submitted profile state classified as low-risk",
       "[MIRA] UI가 보여주는 입력칸만 보지 마. 클라이언트는 화면에 없는 JSON field도 보낼 수 있어.",
       "[MIRA] 중요한 건 서버가 무엇을 허용하는지야.",
     ],
@@ -894,27 +892,23 @@ export const CAMPAIGN_STORY = {
       id: "level3_3_profile",
       status: "recording",
       caption:
-        "Network Trace는 정상 프로필 조회와 저장 payload를 관찰하는 도구다. Stage 버튼은 요청 초안만 Mission Console에 올린다.",
-      emptyText: "No captured profile traffic. Start with Load Operator Profile.",
-      actions: [
-        { id: "level3_3_load_profile", label: "Load Operator Profile" },
-        { id: "level3_3_stage_update", label: "Stage Safe Update", variant: "ghost" },
-        { id: "level3_3_stage_perks", label: "Stage Trust Check", variant: "ghost" },
-      ],
+        "Network Trace는 정상 프로필 저장 흐름을 캡처하는 도구다. 저장 요청 초안은 Mission Console에 올라간다.",
+      emptyText: "No captured profile traffic. Start with Capture Profile Save Flow.",
+      actions: [{ id: "level3_3_capture_flow", label: "Capture Profile Save Flow" }],
       success:
-        "Profile state captured. profile, trust, editableFields를 비교한 뒤 safe update payload를 확인해.",
+        "Profile save flow captured. Safe update가 Mission Console에 올라갔어. JSON body를 직접 편집해봐.",
     },
     objectives: [
-      "프로필 조회 응답에서 일반 profile field와 trust field를 구분한다.",
-      "정상 프로필 저장 요청의 JSON Body를 관찰한다.",
-      "UI가 보내지 않는 hidden trust field를 추가해 권한 판단이 바뀌는지 확인한다.",
+      "프로필 조회와 정상 저장 요청의 JSON Body를 관찰한다.",
+      "정상 요청에 없는 권한/신분 관련 field를 직접 추가해본다.",
+      "프로필 저장 뒤 perks 상태 변화를 확인한다.",
       "요청 DTO 화이트리스트와 서버 측 권한 정책 필요성을 봉쇄한다.",
     ],
     mira: {
       briefing:
-        "AEGIS가 profile trust field를 훑기 시작했어. UI가 보여주는 입력칸만 보지 마. 중요한 건 서버가 무엇을 허용하는지야.",
+        "AEGIS가 profile authority 경계를 훑기 시작했어. UI가 보여주는 입력칸만 보지 마. 중요한 건 서버가 무엇을 허용하는지야.",
       attack:
-        "정상 저장 요청을 먼저 관찰해. 그다음 화면에 없는 JSON field가 서버 model에 들어가는지 확인해.",
+        "정상 저장 요청을 먼저 관찰해. 그다음 화면에 없는 JSON field가 서버 model에 들어가는지 직접 확인해.",
       attackSolved:
         "권한 신호가 오염됐어. AEGIS가 클라이언트가 보낸 프로필 필드를 너무 쉽게 믿고 있어.",
       defense:
@@ -924,7 +918,7 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Operator profile integrity assumed. Client update flow classified as low-risk. Trust fields synchronized from submitted profile state.",
+        "Operator profile integrity assumed. Client update flow classified as low-risk. Submitted profile state accepted.",
       attack:
         "Unexpected trust field mutation detected. Stored operator state modified.",
       attackSolved:
@@ -944,7 +938,7 @@ export const CAMPAIGN_STORY = {
         "Mass Assignment는 서버가 요청 JSON 전체를 내부 모델에 그대로 반영할 때 발생한다. UI에 입력칸이 없더라도 공격자는 request body에 role, isAdmin, clearance 같은 필드를 직접 추가할 수 있다.",
       learned: [
         "UI에 없는 필드도 HTTP 요청에는 포함될 수 있다.",
-        "editableFields와 server trust fields는 분리되어야 한다.",
+        "화면에 보이는 입력 필드와 서버가 소유해야 할 권한 필드는 분리되어야 한다.",
         "request body 전체를 domain model에 merge하면 안 된다.",
         "프로필 수정 DTO는 허용된 필드만 받아야 한다.",
         "role, isAdmin, clearance 같은 권한 필드는 서버 정책이나 관리자 기능으로만 변경되어야 한다.",

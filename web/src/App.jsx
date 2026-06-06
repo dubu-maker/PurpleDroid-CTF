@@ -120,7 +120,9 @@ const FALLBACK_HINTS = {
   level3_3: [
     { platform: "web", text: "F12 Network에서 프로필 저장 요청의 Request Payload를 확인해." },
     { platform: "all", text: "UI에 없는 JSON 키를 추가해도 전송은 가능하다." },
-    { platform: "all", text: "tier 대신 role 또는 account_info.is_admin을 주입해 /actions/perks 응답을 다시 확인해." },
+    { platform: "all", text: "저장 뒤 권한/혜택 상태가 바뀌는지 별도 응답으로 확인해봐." },
+    { platform: "all", text: "권한이나 신분을 나타내는 흔한 field 이름을 생각해봐." },
+    { platform: "all", text: "role, admin, isAdmin, is_admin, clearance 같은 이름이 자주 쓰인다." },
     {
       platform: "windows",
       text: 'curl -v -X PUT http://localhost:8000/api/v1/challenges/level3_3/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Busan\\",\\"role\\":\\"admin\\"}"',
@@ -329,7 +331,7 @@ const TERMINAL_INTRO_HINTS = {
   level2_5: "버튼 실패, token decode/forge, archive path, integrity header를 순서대로 조합해봐.",
   level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
   level3_2: "menu 응답의 routeHint 단서로 숨은 경로를 추론해 호출해봐.",
-  level3_3: "프로필 저장 body를 변조해 role/is_admin을 주입한 뒤 perks를 조회해봐.",
+  level3_3: "프로필 저장 body에 권한/신분 관련 field를 직접 추가해보고 결과 변화를 확인해봐.",
   level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 debug/internal 필드를 확인해봐.",
   level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
   level3_boss: "체인 공격: parcel -> profile -> menu/audit -> locker -> vault claim",
@@ -1538,44 +1540,7 @@ function ClassicApp() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "프로필 조회 완료. 응답 데이터 구조를 관찰하고 저장 요청을 변조해봐.",
-      }));
-    } catch (error) {
-      setActionMessageById((prev) => ({
-        ...prev,
-        [selectedId]: error.message || "요청 전송 실패",
-      }));
-    }
-  }, [selectedId, token]);
-
-  const handlePerksFetchRequest = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE}/challenges/level3_3/actions/perks`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const raw = await response.text();
-        let message = `요청 실패 (${response.status})`;
-        try {
-          const parsed = JSON.parse(raw);
-          message = parsed?.error?.message || parsed?.detail || message;
-        } catch {
-          // keep fallback
-        }
-        setActionMessageById((prev) => ({ ...prev, [selectedId]: message }));
-        return;
-      }
-      setActionMessageById((prev) => ({
-        ...prev,
-        [selectedId]:
-          "perks 조회 완료. standard 결과라면 프로필 저장 요청 body를 변조한 뒤 다시 확인해.",
+          "프로필 조회 완료. 보이는 필드와 저장 요청 body가 어디까지 같은지 비교해봐.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -2025,13 +1990,7 @@ function ClassicApp() {
                           onClick={handleProfileFetchRequest}
                           disabled={currentTerminalBusy || !detail.attack?.enabled}
                         >
-                          프로필 불러오기
-                        </button>
-                        <button
-                          onClick={handlePerksFetchRequest}
-                          disabled={currentTerminalBusy || !detail.attack?.enabled}
-                        >
-                          혜택 보기
+                          프로필 상태 확인
                         </button>
                       </div>
                     ) : (
@@ -2129,8 +2088,8 @@ function ClassicApp() {
                         </>
                       ) : selectedId === "level3_3" ? (
                         <>
-                          먼저 <code>/actions/profile</code>과 <code>/actions/perks</code> 응답을 확인하고, 이후
-                          저장 요청 body를 변조해 결과 변화를 비교해.
+                          먼저 <code>/actions/profile</code> 응답과 정상 저장 요청 body를 비교하고,
+                          화면에 없는 field가 저장되는지 직접 실험해.
                         </>
                       ) : selectedId === "level3_4" ? (
                         <>
@@ -2193,7 +2152,7 @@ function ClassicApp() {
                     )}
                     {selectedId === "level3_3" && (
                       <div className="action-note">
-                        UI에서는 address만 수정 가능해 보인다. Network의 Request Payload를 변조해서 role/is_admin 주입을 시도해.
+                        UI에 보이는 입력칸만 믿지 마. 권한이나 신분을 나타내는 흔한 JSON field를 직접 추측해봐.
                       </div>
                     )}
                     {selectedId === "level3_4" && (

@@ -12,7 +12,7 @@ from fakeshell.http import HttpResponse
 LEVEL3_3_FLAG = os.getenv("PURPLEDROID_LEVEL3_3_FLAG", "FLAG{DONT_TRUST_CLIENT_FIELDS}")
 PROFILE_VERSION = "profile-poison-v2"
 EDITABLE_FIELDS = ["displayName", "relayNote", "timezone"]
-TRUST_FIELDS = ["role", "isAdmin", "clearance"]
+TRUST_FIELDS = ["role", "isAdmin", "is_admin", "admin", "clearance"]
 
 
 STATIC: Dict[str, Any] = {
@@ -21,7 +21,7 @@ STATIC: Dict[str, Any] = {
     "title": "3-3 Profile Poison",
     "summary": "UI에 없는 필드를 주입하면 서버가 과잉 저장(Mass Assignment / Overposting)할 수 있다.",
     "description": (
-        "미션: 정상 프로필 저장 요청의 JSON body를 관찰하고, UI가 보내지 않는 trust field를 끼워 넣어 "
+        "미션: 정상 프로필 저장 요청의 JSON body를 관찰하고, UI가 보내지 않는 권한/신분 관련 field를 끼워 넣어 "
         "/actions/perks 응답에서 Evidence를 회수해라."
     ),
     "status": {"attack": "available", "defense": "locked"},
@@ -37,19 +37,19 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "all",
-                "text": "profile, trust, editableFields를 구분해서 봐. editableFields에 없는 필드가 권한 판단에 쓰일 수 있다.",
+                "text": "정상 저장 요청에 없는 field를 추가해도 서버가 받아들이는지 확인해봐.",
             },
             {
                 "platform": "all",
-                "text": "서버가 요청 전체를 merge한다면, editableFields에 없는 필드도 저장될 수 있다.",
+                "text": "프로필 저장 후 /actions/perks 응답이 바뀌는지 확인해봐.",
             },
             {
                 "platform": "all",
-                "text": "trust state에 보이는 field 이름을 저장 요청 Body에 추가해보면 어떻게 될까?",
+                "text": "권한이나 신분을 나타내는 흔한 field 이름을 생각해봐.",
             },
             {
                 "platform": "all",
-                "text": "role과 isAdmin은 UI가 보내지 않지만, 권한 판단에 영향을 줄 수 있는 trust field다.",
+                "text": "role, admin, isAdmin, is_admin, clearance 같은 이름이 자주 쓰인다.",
             },
             {
                 "platform": "windows",
@@ -153,7 +153,13 @@ def _is_elevated(profile: Dict[str, Any]) -> bool:
     role = str(profile.get("role", "operator")).strip().lower()
     if role in ("admin", "operator_admin"):
         return True
-    return _truthy(profile.get("isAdmin")) or _truthy(profile.get("is_admin"))
+    clearance = str(profile.get("clearance", "standard")).strip().lower()
+    return (
+        _truthy(profile.get("isAdmin"))
+        or _truthy(profile.get("is_admin"))
+        or _truthy(profile.get("admin"))
+        or clearance in ("admin", "elevated", "root")
+    )
 
 
 def _profile_view(profile: Dict[str, Any]) -> Dict[str, Any]:
@@ -162,14 +168,6 @@ def _profile_view(profile: Dict[str, Any]) -> Dict[str, Any]:
         "displayName": str(profile.get("displayName", "Agent VIOLET")),
         "relayNote": str(profile.get("relayNote", "standard trust lane")),
         "timezone": str(profile.get("timezone", "KST")),
-    }
-
-
-def _trust_view(profile: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "role": str(profile.get("role", "operator")),
-        "isAdmin": _truthy(profile.get("isAdmin")) or _truthy(profile.get("is_admin")),
-        "clearance": str(profile.get("clearance", "standard")),
     }
 
 
@@ -245,9 +243,8 @@ def get_profile_payload(session: Dict[str, Any]) -> Dict[str, Any]:
         "ok": True,
         "data": {
             "profile": _profile_view(profile),
-            "trust": _trust_view(profile),
-            "editableFields": list(EDITABLE_FIELDS),
-            "message": "UI exposes editable profile fields only",
+            "statusBadge": "standard operator" if not _is_elevated(profile) else "elevated operator",
+            "message": "profile loaded",
         },
     }
 
@@ -255,21 +252,23 @@ def get_profile_payload(session: Dict[str, Any]) -> Dict[str, Any]:
 def update_profile_payload(session: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
     profile = _ensure_profile(session)
     # 의도적 취약점(Mass Assignment): 클라이언트 JSON을 그대로 merge
-    merged_fields: list[str] = []
+    unknown_keys = 0
     for key, value in (patch or {}).items():
         stored_key = "isAdmin" if key == "is_admin" else key
         profile[stored_key] = value
-        merged_fields.append(stored_key)
+        if stored_key not in EDITABLE_FIELDS:
+            unknown_keys += 1
     profile["updatedAt"] = _ts()
-    unexpected_trust_fields = [field for field in merged_fields if field in TRUST_FIELDS]
     data: Dict[str, Any] = {
         "updated": True,
-        "mergedFields": merged_fields,
         "profile": _profile_view(profile),
-        "trust": _trust_view(profile),
+        "message": "profile synchronized",
     }
-    if unexpected_trust_fields:
-        data["warning"] = "unexpected trust fields accepted"
+    if unknown_keys:
+        data["unknownKeysAccepted"] = unknown_keys
+        data["trustState"] = "elevated" if _is_elevated(profile) else "unchanged"
+    if any(key in TRUST_FIELDS for key in (patch or {}).keys()) and _is_elevated(profile):
+        data["anomaly"] = "unexpected profile state accepted"
     return {
         "ok": True,
         "data": data,

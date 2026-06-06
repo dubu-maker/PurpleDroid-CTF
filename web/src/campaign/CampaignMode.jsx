@@ -39,10 +39,6 @@ function level33SafeUpdateCurl() {
   )}'`;
 }
 
-function level33TrustCheckCurl() {
-  return 'curl -v -X GET "/api/v1/challenges/level3_3/actions/perks" -H "Authorization: Bearer $SESSION_TOKEN"';
-}
-
 async function apiRequest(path, { method = "GET", token, body } = {}) {
   const headers = {};
   if (token) {
@@ -175,19 +171,24 @@ function previewNetworkBody(body) {
   }
 
   if (data.updated) {
-    return [
+    const lines = [
       "updated: true",
-      `merged: ${Array.isArray(data.mergedFields) ? data.mergedFields.join(", ") || "none" : "unknown"}`,
-      `trust: ${data.trust?.role || "unknown"} / ${String(Boolean(data.trust?.isAdmin))}`,
+      `message: ${data.message || "profile synchronized"}`,
     ];
+    if (data.unknownKeysAccepted) {
+      lines.push(`unknown keys: ${data.unknownKeysAccepted}`);
+    }
+    if (data.trustState) {
+      lines.push(`trust state: ${data.trustState}`);
+    }
+    return lines;
   }
 
-  if (data.profile && data.trust) {
+  if (data.profile && data.statusBadge) {
     return [
       `operator: ${data.profile.operatorId || "unknown"}`,
-      `role: ${data.trust.role || "unknown"}`,
-      `isAdmin: ${String(Boolean(data.trust.isAdmin))}`,
-      `editable: ${Array.isArray(data.editableFields) ? data.editableFields.join(", ") : "unknown"}`,
+      `status: ${data.statusBadge || "unknown"}`,
+      `visible fields: ${Object.keys(LEVEL3_3_SAFE_PROFILE).join(", ")}`,
     ];
   }
 
@@ -323,10 +324,10 @@ function traceTitleForCommand(url, body, method = "GET") {
     return "LEGACY EXPORT PROBE";
   }
   if (url.includes("/level3_3/actions/profile")) {
-    return method === "PUT" || data.updated ? "PROFILE UPDATE RESPONSE" : "PROFILE STATE RESPONSE";
+    return method === "PUT" || data.updated ? "PROFILE UPDATE RESPONSE" : "PROFILE LOAD RESPONSE";
   }
   if (url.includes("/level3_3/actions/perks")) {
-    return "TRUST CHECK RESPONSE";
+    return "PERKS RESPONSE";
   }
   return "HIDDEN ROUTE PROBE";
 }
@@ -1512,7 +1513,7 @@ function CampaignMode() {
         return;
       }
 
-      if (probeActionId === "level3_3_load_profile") {
+      if (probeActionId === "level3_3_capture_flow") {
         const traceUrl = "/api/v1/challenges/level3_3/actions/profile";
         const response = await fetch(`${API_BASE}/challenges/level3_3/actions/profile`, {
           method: "GET",
@@ -1536,6 +1537,8 @@ function CampaignMode() {
         }
 
         const body = await response.json();
+        const curl = level33SafeUpdateCurl();
+        setCommand(curl);
         setNetworkTraceEntries((prev) => [
           ...prev,
           createTraceEntry({
@@ -1544,25 +1547,11 @@ function CampaignMode() {
             status: response.status,
             body,
             token,
-            title: "PROFILE STATE RESPONSE",
+            title: "PROFILE LOAD RESPONSE",
             trigger: "button",
             curlOverride:
               'curl -v -X GET "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN"',
           }),
-        ]);
-        setNetworkTraceResult({
-          ok: true,
-          message: story.actionProbe.success || "Profile state captured. Compare profile and trust fields.",
-        });
-        return;
-      }
-
-      if (probeActionId === "level3_3_stage_update") {
-        const traceUrl = "/api/v1/challenges/level3_3/actions/profile";
-        const curl = level33SafeUpdateCurl();
-        setCommand(curl);
-        setNetworkTraceEntries((prev) => [
-          ...prev,
           createTraceEntry({
             method: "PUT",
             url: traceUrl,
@@ -1583,37 +1572,9 @@ function CampaignMode() {
         ]);
         setNetworkTraceResult({
           ok: true,
-          message: "Safe update staged in Mission Console. JSON body를 직접 편집해서 실험해봐.",
-        });
-        return;
-      }
-
-      if (probeActionId === "level3_3_stage_perks") {
-        const traceUrl = "/api/v1/challenges/level3_3/actions/perks";
-        const curl = level33TrustCheckCurl();
-        setCommand(curl);
-        setNetworkTraceEntries((prev) => [
-          ...prev,
-          createTraceEntry({
-            method: "GET",
-            url: traceUrl,
-            status: "STAGED",
-            body: {
-              ok: true,
-              data: {
-                staged: "trust check",
-                payloadFields: [],
-              },
-            },
-            token,
-            title: "TRUST CHECK TEMPLATE",
-            trigger: "staged to console",
-            curlOverride: curl,
-          }),
-        ]);
-        setNetworkTraceResult({
-          ok: true,
-          message: "Trust check staged in Mission Console. 먼저 profile update 결과를 만든 뒤 실행해봐.",
+          message:
+            story.actionProbe.success ||
+            "Profile save flow captured. Safe update가 Mission Console에 올라갔어. JSON body를 직접 편집해봐.",
         });
         return;
       }
