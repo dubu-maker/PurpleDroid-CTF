@@ -34,9 +34,7 @@ const LEVEL3_3_SAFE_PROFILE = {
 };
 
 function level33SafeUpdateCurl() {
-  return `curl -v -X PUT "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d '${JSON.stringify(
-    LEVEL3_3_SAFE_PROFILE
-  )}'`;
+  return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
 }
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
@@ -135,6 +133,17 @@ function shouldShowOperation03Intermission(fromId, targetId, intermissionSeen) {
 function previewNetworkBody(body) {
   const data = body?.data || body || {};
 
+  if (body?.ok === false && body.error) {
+    const lines = [
+      `error: ${body.error.code || "UNKNOWN"}`,
+      `message: ${body.error.message || "request failed"}`,
+    ];
+    if (body.error.hint) {
+      lines.push(`hint: ${body.error.hint}`);
+    }
+    return lines;
+  }
+
   if (Array.isArray(data.capsules) || Array.isArray(data.parcels)) {
     const first = (data.capsules || data.parcels)[0] || {};
     return [
@@ -160,6 +169,16 @@ function previewNetworkBody(body) {
       `features: ${data.features.length}`,
       `hidden: ${hiddenCount}`,
       "routes: inspect raw response",
+    ];
+  }
+
+  if (data.ticket?.preview) {
+    return [
+      `ticket: ${data.ticket.id || "unknown"}`,
+      `preview: ${data.meta?.redaction?.status || "normalized"}`,
+      `status: ${data.ticket.status || "unknown"}`,
+      `visible residue: ${data.ticket.preview.miraResidue || "none"}`,
+      `response depth: ${data.internal?.serializer?.responseDepth || "deep"}`,
     ];
   }
 
@@ -278,6 +297,34 @@ function createTraceEntry({
   };
 }
 
+function traceEntryKey(entry) {
+  if (entry.url?.includes("/level3_3/actions/profile")) {
+    return entry.method === "GET" ? "level3_3:profile:load" : "level3_3:profile:update";
+  }
+  return `${entry.method}:${entry.url}`;
+}
+
+function mergeTraceEntries(currentEntries, incomingEntries) {
+  const nextEntries = [...currentEntries];
+
+  incomingEntries.forEach((entry) => {
+    const key = traceEntryKey(entry);
+    const existingIndex = nextEntries.findIndex((current) => traceEntryKey(current) === key);
+
+    if (existingIndex >= 0) {
+      nextEntries[existingIndex] = {
+        ...entry,
+        id: nextEntries[existingIndex].id,
+      };
+      return;
+    }
+
+    nextEntries.push(entry);
+  });
+
+  return nextEntries;
+}
+
 function parseJsonFromTerminalOutput(stdout) {
   try {
     return JSON.parse(stdout || "{}");
@@ -297,8 +344,19 @@ function parseJsonFromTerminalOutput(stdout) {
 }
 
 function detectCurlMethod(command) {
-  const match = command.match(/(?:^|\s)-X\s+([A-Z]+)/i);
-  return match ? match[1].toUpperCase() : "GET";
+  const match = command.match(/(?:^|\s)(?:-X|--request)\s+([A-Z]+)/i);
+  if (match) {
+    return match[1].toUpperCase();
+  }
+  const compactMatch = command.match(/(?:^|\s)-X([A-Z]+)/i);
+  if (compactMatch) {
+    return compactMatch[1].toUpperCase();
+  }
+  const longMatch = command.match(/(?:^|\s)--request=([A-Z]+)/i);
+  if (longMatch) {
+    return longMatch[1].toUpperCase();
+  }
+  return /(?:^|\s)(?:-d|--data|--data-raw)(?:\s|=)/.test(command) ? "POST" : "GET";
 }
 
 function traceTitleForCommand(url, body, method = "GET") {
@@ -324,17 +382,32 @@ function traceTitleForCommand(url, body, method = "GET") {
     return "LEGACY EXPORT PROBE";
   }
   if (url.includes("/level3_3/actions/profile")) {
-    return method === "PUT" || data.updated ? "PROFILE UPDATE RESPONSE" : "PROFILE LOAD RESPONSE";
+    if (method === "GET") {
+      return "PROFILE LOAD RESPONSE";
+    }
+    if (method === "PUT" || data.updated) {
+      return "PROFILE UPDATE RESPONSE";
+    }
+    return "PROFILE METHOD MISMATCH";
   }
   if (url.includes("/level3_3/actions/perks")) {
     return "PERKS RESPONSE";
+  }
+  if (url.includes("/level3_4/actions/ticket")) {
+    return "SUPPORT TICKET RESPONSE";
   }
   return "HIDDEN ROUTE PROBE";
 }
 
 function statusFromTerminalBody(body) {
   if (body?.ok === false) {
-    return body?.error?.code === "NOT_FOUND" ? 404 : 400;
+    if (body?.error?.code === "NOT_FOUND") {
+      return 404;
+    }
+    if (body?.error?.code === "METHOD_NOT_ALLOWED") {
+      return 405;
+    }
+    return 400;
   }
   return 200;
 }
@@ -357,12 +430,13 @@ function extractNetworkTraceFromCommand(command, stdout, token) {
   if (
     !command.includes("/api/v1/challenges/level3_1/actions/") &&
     !command.includes("/api/v1/challenges/level3_2/actions/") &&
-    !command.includes("/api/v1/challenges/level3_3/actions/")
+    !command.includes("/api/v1/challenges/level3_3/actions/") &&
+    !command.includes("/api/v1/challenges/level3_4/actions/")
   ) {
     return null;
   }
 
-  const match = command.match(/\/api\/v1\/challenges\/level3_[123]\/actions\/[^\s"'`]+/);
+  const match = command.match(/\/api\/v1\/challenges\/level3_[1234]\/actions\/[^\s"'`]+/);
   if (!match) {
     return null;
   }
@@ -388,7 +462,18 @@ function extractNetworkTraceFromCommand(command, stdout, token) {
     token,
     title: traceTitleForCommand(url, body, method),
     trigger: "mission console",
+    curlOverride: command,
   });
+}
+
+function traceCurlButtonLabel(entry) {
+  if (entry.title === "SAFE UPDATE TEMPLATE") {
+    return "Stage Draft";
+  }
+  if (entry.title === "PROFILE METHOD MISMATCH") {
+    return "Restage Draft";
+  }
+  return "Copy as curl";
 }
 
 function CampaignHome({
@@ -742,7 +827,7 @@ function NetworkTracePanel({
                     {expanded ? "Hide Raw Response" : "View Raw Response"}
                   </button>
                   <button type="button" className="ghost-button" onClick={() => onCopyCurl(entry.curl)}>
-                    Copy as curl
+                    {traceCurlButtonLabel(entry)}
                   </button>
                 </div>
                 {expanded && (
@@ -1393,7 +1478,7 @@ function CampaignMode() {
 
         const traceEntry = extractNetworkTraceFromCommand(nextCommand, data.stdout, token);
         if (traceEntry) {
-          setNetworkTraceEntries((prev) => [...prev, traceEntry]);
+          setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [traceEntry]));
           const selectorFields = auditSelectorFieldsFromTrace(traceEntry);
           if (selectorFields.length > 0) {
             setAuditSelectorFields(selectorFields);
@@ -1447,8 +1532,7 @@ function CampaignMode() {
         const body = await response.json();
         const capsuleId = body?.data?.capsules?.[0]?.capsule_id || "";
         setNetworkTraceCapsuleId(capsuleId);
-        setNetworkTraceEntries((prev) => [
-          ...prev,
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
           createTraceEntry({
             method: "GET",
             url: traceUrl,
@@ -1460,7 +1544,7 @@ function CampaignMode() {
             curlOverride:
               'curl -v -X GET "/api/v1/challenges/level3_1/actions/parcel?parcel_id=<TARGET_ID>" -H "Authorization: Bearer $SESSION_TOKEN"',
           }),
-        ]);
+        ]));
         setNetworkTraceResult({
           ok: true,
           message: story.actionProbe.success || "Probe sent. Check Network.",
@@ -1492,8 +1576,7 @@ function CampaignMode() {
         }
 
         const body = await response.json();
-        setNetworkTraceEntries((prev) => [
-          ...prev,
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
           createTraceEntry({
             method: "GET",
             url: traceUrl,
@@ -1505,7 +1588,7 @@ function CampaignMode() {
             curlOverride:
               'curl -v -X GET "/api/v1/challenges/level3_2/actions/menu" -H "Authorization: Bearer $SESSION_TOKEN"',
           }),
-        ]);
+        ]));
         setNetworkTraceResult({
           ok: true,
           message: story.actionProbe.success || "Menu metadata captured. Open the raw response.",
@@ -1538,9 +1621,7 @@ function CampaignMode() {
 
         const body = await response.json();
         const curl = level33SafeUpdateCurl();
-        setCommand(curl);
-        setNetworkTraceEntries((prev) => [
-          ...prev,
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
           createTraceEntry({
             method: "GET",
             url: traceUrl,
@@ -1566,15 +1647,61 @@ function CampaignMode() {
             },
             token,
             title: "SAFE UPDATE TEMPLATE",
-            trigger: "staged to console",
+            trigger: "template captured",
             curlOverride: curl,
           }),
-        ]);
+        ]));
         setNetworkTraceResult({
           ok: true,
           message:
             story.actionProbe.success ||
-            "Profile save flow captured. Safe update가 Mission Console에 올라갔어. JSON body를 직접 편집해봐.",
+            "Profile save flow captured. 위 Trace를 확인한 뒤 필요한 curl만 Mission Console로 옮겨봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_4_ticket") {
+        const traceUrl = "/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004";
+        const response = await fetch(`${API_BASE}/challenges/level3_4/actions/ticket?id=SUP-1004`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = `probe failed (${response.status})`;
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error?.message || parsed?.detail || message;
+          } catch {
+            // keep fallback
+          }
+          setNetworkTraceResult({ ok: false, message });
+          return;
+        }
+
+        const body = await response.json();
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: response.status,
+            body,
+            token,
+            title: "SUPPORT TICKET RESPONSE",
+            trigger: "button",
+            curlOverride:
+              'curl -v -X GET "/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer $SESSION_TOKEN"',
+          }),
+        ]));
+        setNetworkTraceResult({
+          ok: true,
+          message:
+            story.actionProbe.success ||
+            "Support archive captured. Preview는 안전해 보여도 Raw Response의 깊은 필드를 확인해봐.",
         });
         return;
       }
@@ -1610,7 +1737,7 @@ function CampaignMode() {
     setCommand(curl);
     setNetworkTraceResult({
       ok: true,
-      message: "curl staged in Mission Console. Raw response를 근거로 직접 수정해봐.",
+      message: "curl staged in Mission Console. 필요한 부분을 직접 수정해서 실행해봐.",
     });
 
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {

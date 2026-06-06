@@ -335,6 +335,37 @@ def _validation_error(message: str) -> HttpResponse:
     return _json_response({"ok": False, "error": {"code": "VALIDATION_ERROR", "message": message}}, 422)
 
 
+def _method_mismatch_hint(method: str, expected: str, count: int) -> Optional[str]:
+    if count >= 4:
+        return (
+            f"curl에서 method를 명시하려면 -X {expected}을 URL 앞쪽에 붙여봐. "
+            '예: curl -X PUT "/api/v1/challenges/level3_3/actions/profile" '
+            '-H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'.'
+        )
+    if count >= 2:
+        return (
+            f"-d가 있으면 curl은 기본적으로 {method}로 보낼 수 있어. "
+            f"Network Trace의 [STAGED] {expected} method와 현재 요청 method를 비교해봐."
+        )
+    return None
+
+
+def _method_not_allowed(session: Dict[str, Any], method: str, expected: str) -> HttpResponse:
+    count = int(session.get("level3_3_profile_method_mismatch_count", 0)) + 1
+    session["level3_3_profile_method_mismatch_count"] = count
+    error: Dict[str, Any] = {
+        "code": "METHOD_NOT_ALLOWED",
+        "message": (
+            f"{method} request received. 이 profile save flow는 {expected} method로만 처리돼. "
+            "Network Trace의 method를 다시 확인해."
+        ),
+    }
+    hint = _method_mismatch_hint(method, expected, count)
+    if hint:
+        error["hint"] = hint
+    return _json_response({"ok": False, "error": error}, 405)
+
+
 def _shell_http_router(
     method: str,
     path: str,
@@ -354,7 +385,11 @@ def _shell_http_router(
     if method == "GET" and path == "/api/v1/challenges/level3_3/actions/profile":
         return _json_response(get_profile_payload(session))
 
+    if method != "PUT" and path == "/api/v1/challenges/level3_3/actions/profile":
+        return _method_not_allowed(session, method, "PUT")
+
     if method == "PUT" and path == "/api/v1/challenges/level3_3/actions/profile":
+        session.pop("level3_3_profile_method_mismatch_count", None)
         if not body:
             payload: Dict[str, Any] = {}
         else:

@@ -892,11 +892,11 @@ export const CAMPAIGN_STORY = {
       id: "level3_3_profile",
       status: "recording",
       caption:
-        "Network Trace는 정상 프로필 저장 흐름을 캡처하는 도구다. 저장 요청 초안은 Mission Console에 올라간다.",
+        "Network Trace는 정상 프로필 저장 흐름을 캡처하는 도구다. Trace를 확인한 뒤 필요한 요청만 Mission Console로 옮길 수 있다.",
       emptyText: "No captured profile traffic. Start with Capture Profile Save Flow.",
       actions: [{ id: "level3_3_capture_flow", label: "Capture Profile Save Flow" }],
       success:
-        "Profile save flow captured. Safe update가 Mission Console에 올라갔어. JSON body를 직접 편집해봐.",
+        "Profile save flow captured. 위 Trace를 확인한 뒤 필요한 curl만 Mission Console로 옮겨봐.",
     },
     objectives: [
       "프로필 조회와 정상 저장 요청의 JSON Body를 관찰한다.",
@@ -955,31 +955,45 @@ export const CAMPAIGN_STORY = {
     location: "Trust Layer / Support Archive",
     threat: "Excessive Data Exposure",
     briefing:
-      "MIRA의 옛 audit shard 중 하나가 support archive ticket에 묻혀 있다. AEGIS는 사용자 화면에 보이는 preview만 정상화했지만, 응답 JSON 전체에는 debug, meta, internal 필드가 남아 있을 수 있다. 화면이 아니라 응답 전체를 펼쳐 깊은 곳에 남은 조각을 복원하라.",
+      "MIRA의 옛 audit shard 중 하나가 support archive ticket에 묻혀 있다. AEGIS는 사용자 화면에 보이는 preview만 정리했지만, legacy serializer는 ticket model 전체를 응답 JSON에 함께 실어 보낸다. 보이는 preview는 안전해 보인다. 화면이 아니라 raw JSON 전체를 조사해 MIRA의 audit shard를 복원하라.",
     progressiveHints: true,
     intel: [
-      "2-1에서는 Header를 봤다. 이번에는 JSON Body 깊은 필드를 봐.",
       "UI preview는 응답 전체가 아니다.",
-      "debug, meta, internal 같은 키워드는 운영 응답에서 특히 조심해야 한다.",
-      "값이 바로 FLAG 형태가 아닐 수도 있다. 인코딩된 흔적도 Evidence가 될 수 있다.",
+      "응답 JSON은 화면에 렌더링되지 않는 필드를 포함할 수 있다.",
+      "깊은 객체를 펼쳐보고, 값의 문맥을 확인해.",
+      "debug, meta, internal 같은 키는 운영 응답에서 특히 조심해야 한다.",
+      "FLAG처럼 보이는 값이 있어도 canary나 decoy일 수 있다.",
+      "encoding이 base64url-json이라면 decode-b64url 명령으로 열어볼 수 있다.",
     ],
     consoleBoot: [
       "[AEGIS] support archive preview normalized",
-      "[AEGIS] operator-visible fields: title, status, summary",
+      "[AEGIS] non-visual metadata classified as low exposure",
       "[MIRA] preview가 깨끗하다고 응답 전체가 깨끗한 건 아니야.",
-      "[MIRA] 내 audit shard는 보이는 필드보다 깊은 곳에 있었을 가능성이 높아.",
+      "[MIRA] FLAG처럼 보이는 값이 전부 Evidence는 아니야.",
     ],
     consolePlaceholder: "expand support archive response...",
+    actionProbe: {
+      id: "level3_4_ticket",
+      status: "recording",
+      caption:
+        "Network Trace는 support archive 응답을 캡처하는 도구다. 화면 preview가 아니라 Raw Response를 끝까지 펼쳐봐.",
+      emptyText: "No support archive traffic. Start with Load Support Archive.",
+      actions: [{ id: "level3_4_ticket", label: "Load Support Archive" }],
+      success:
+        "Support archive captured. Preview는 안전해 보여도 Raw Response의 깊은 필드를 확인해봐.",
+    },
     objectives: [
-      "support ticket 응답 JSON을 끝까지 펼친다.",
-      "debug/meta/internal 깊은 필드에서 Evidence를 회수한다.",
+      "Support archive ticket 응답을 요청한다.",
+      "화면 preview와 raw JSON 전체를 구분한다.",
+      "meta/debug/internal 깊은 필드에서 MIRA audit shard 후보를 찾는다.",
+      "decoy canary와 encoded Evidence를 구분한다.",
       "운영 응답 최소화와 explicit serializer 필요성을 봉쇄한다.",
     ],
     mira: {
       briefing:
-        "AEGIS는 사용자에게 보이는 preview만 정리했어. 하지만 archive는 종종 보이지 않는 필드까지 함께 내려보내.",
+        "AEGIS는 preview만 정리했어. 하지만 오래된 archive serializer는 화면에 안 보이는 필드까지 같이 내려보내곤 해.",
       attack:
-        "화면 말고 응답 전체를 봐. 깊은 필드, 인코딩된 조각, internal note를 놓치지 마.",
+        "이번엔 버튼이나 route가 문제가 아니야. 응답을 끝까지 펼쳐봐. 그리고 기억해, FLAG처럼 보이는 값이 전부 Evidence는 아니야.",
       attackSolved:
         "Audit shard 복원 완료. AEGIS가 숨긴 게 아니라, 내려보내고도 안 보인다고 착각한 거야.",
       defense:
@@ -1011,6 +1025,8 @@ export const CAMPAIGN_STORY = {
         "화면에 안 보이는 값도 응답 Body에 포함될 수 있다.",
         "운영 응답은 allow-list serializer로 최소화해야 한다.",
         "debug, internal, meta 필드는 배포 응답에서 특히 점검해야 한다.",
+        "인코딩은 암호화가 아니다.",
+        "FLAG처럼 보이는 canary와 실제 Evidence는 문맥으로 구분해야 한다.",
       ],
       nextTeaser:
         "AEGIS가 마지막 relay 후보를 잠긴 terminal로 분류했다. 이번엔 속도가 문제다.",

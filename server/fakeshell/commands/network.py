@@ -19,9 +19,17 @@ def _parse_curl_args(args: list[str]) -> tuple[str, str, Dict[str, str], str, bo
             show_headers = True
             i += 1
             continue
-        if token == "-X" and i + 1 < len(args):
+        if token in ("-X", "--request") and i + 1 < len(args):
             method = args[i + 1].upper()
             i += 2
+            continue
+        if token.startswith("-X") and len(token) > 2:
+            method = token[2:].upper()
+            i += 1
+            continue
+        if token.startswith("--request="):
+            method = token.split("=", 1)[1].upper()
+            i += 1
             continue
         if token in ("-H", "--header") and i + 1 < len(args):
             raw = args[i + 1]

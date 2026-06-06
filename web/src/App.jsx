@@ -135,25 +135,19 @@ const FALLBACK_HINTS = {
   ],
   level3_4: [
     { platform: "web", text: "F12 Network에서 /actions/ticket 응답(JSON)을 끝까지 펼쳐봐." },
-    { platform: "all", text: "2-1은 Header였다. 이번엔 Body(JSON)다." },
-    { platform: "all", text: "debug / meta / internal 키워드를 찾아봐. 값이 FLAG 형태가 아닐 수도 있다." },
+    { platform: "all", text: "UI preview는 응답 전체가 아니다." },
+    { platform: "all", text: "debug / meta / internal 깊은 필드의 문맥을 확인해봐." },
+    { platform: "all", text: "FLAG처럼 보이는 값이 canary일 수 있다. archive auditBlob을 찾아봐." },
+    { platform: "all", text: "encoding이 base64url-json이라면 decode-b64url <auditBlob>으로 열 수 있다." },
     {
       platform: "windows",
       text: 'curl -v "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
     },
     {
-      platform: "windows",
-      text: 'curl -s "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>" | findstr RkxB',
-    },
-    {
       platform: "unix",
       text: "curl -v 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
     },
-    {
-      platform: "unix",
-      text: "curl -s 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>' | grep RkxB",
-    },
-    { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
+    { platform: "all", text: "decode-b64url <auditBlob>" },
   ],
   level3_5: [
     { platform: "all", text: "PIN은 77** 형태다. 남은 경우의 수는 100개." },
@@ -332,7 +326,7 @@ const TERMINAL_INTRO_HINTS = {
   level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
   level3_2: "menu 응답의 routeHint 단서로 숨은 경로를 추론해 호출해봐.",
   level3_3: "프로필 저장 body에 권한/신분 관련 field를 직접 추가해보고 결과 변화를 확인해봐.",
-  level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 debug/internal 필드를 확인해봐.",
+  level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 canary와 encoded audit shard를 구분해봐.",
   level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
   level3_boss: "체인 공격: parcel -> profile -> menu/audit -> locker -> vault claim",
   level4_1: "공개 번들의 sourceMappingURL 단서를 따라 .map에서 원본 설정을 확인한 뒤 handshake를 호출해봐.",
@@ -2093,8 +2087,8 @@ function ClassicApp() {
                         </>
                       ) : selectedId === "level3_4" ? (
                         <>
-                          이 버튼은 캐시된 데이터를 표시한다. 새로고침 직후 초기 Network에서{" "}
-                          <code>/actions/ticket?id=SUP-1004</code> 응답 JSON을 확인해.
+                          <code>/actions/ticket?id=SUP-1004</code> 응답 JSON을 끝까지 펼치고,
+                          archive 안의 encoded audit shard를 복원해.
                         </>
                       ) : selectedId === "level3_5" ? (
                         <>
@@ -2157,7 +2151,7 @@ function ClassicApp() {
                     )}
                     {selectedId === "level3_4" && (
                       <div className="action-note">
-                        화면에는 일부 필드만 표시된다. 원본 Response(JSON)를 끝까지 펼쳐서 확인해.
+                        FLAG처럼 보이는 값이 전부 Evidence는 아니다. canary와 audit shard 문맥을 구분해.
                       </div>
                     )}
                     {selectedId === "level3_5" && (
