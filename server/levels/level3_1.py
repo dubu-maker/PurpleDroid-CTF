@@ -135,19 +135,19 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": True,
         "instruction": (
-            "로그인 여부만 확인하는 것으로는 부족합니다. 조회한 Signal Capsule이 현재 사용자 소유인지 "
-            "검증하지 않은 채 응답으로 반환되는 지점을 선택해 봉쇄하세요."
+            "로그인 여부만 확인하는 것으로는 부족합니다. Signal Capsule 조회를 현재 사용자 소유 범위에 "
+            "묶지 않아 남의 객체가 응답으로 이어질 수 있는 지점을 선택해 봉쇄하세요."
         ),
         "code": {
             "language": "kotlin",
             "lines": [
                 {"no": 1, "text": "fun readSignalCapsule(req: Request, session: Session) {", "patchableId": "d1"},
                 {"no": 2, "text": '  val capsuleId = req.query["parcel_id"]', "patchableId": "d2"},
-                {"no": 3, "text": "  val capsule = capsuleRepo.find(capsuleId) ?: return notFound()", "patchableId": "d3"},
+                {"no": 3, "text": "  val capsule = capsuleRepo.find(capsuleId) ?: return notFound()", "patchableId": "p1"},
                 {"no": 4, "text": '  if (!session.isAuthenticated) return deny("login_required")', "patchableId": "d4"},
                 {"no": 5, "text": '  audit.log("capsule lookup requested")', "patchableId": "d5"},
                 {"no": 6, "text": "  val response = capsule.toResponse()", "patchableId": "d6"},
-                {"no": 7, "text": "  return ok(response)", "patchableId": "p1"},
+                {"no": 7, "text": "  return ok(response)", "patchableId": "d8"},
                 {"no": 8, "text": "}", "patchableId": "d7"},
             ],
         },
@@ -157,7 +157,7 @@ STATIC: Dict[str, Any] = {
 REQUIRED_PATCH_IDS = {"p1"}
 
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "응답 반환 지점이 맞아. 이 분기 전에 capsule.ownerId == session.userId 같은 서버 측 소유자 검증이 들어가야 해.",
+    "p1": "owner 범위 없이 객체를 조회하는 지점이 맞아. capsuleRepo.findByIdAndOwner(capsuleId, session.userId)처럼 조회를 사용자 범위에 묶거나, 조회 직후 capsule.ownerId == session.userId 검증을 강제해야 해.",
 }
 
 PATCH_WRONG_FEEDBACK = {
@@ -168,6 +168,7 @@ PATCH_WRONG_FEEDBACK = {
     "d5": "감사 로그는 보조 통제야. 남의 객체가 응답으로 나가는 문제를 직접 막지는 못해.",
     "d6": "응답 DTO 생성은 일반적인 처리야. 다만 이 응답을 내보내기 전에 소유자 검증이 필요해.",
     "d7": "블록 종료는 취약점 지점이 아니야. 반환 경계에서 owner 검증이 빠졌는지 확인해.",
+    "d8": "반환은 노출이 드러나는 곳이지만, 진짜 봉쇄점은 line 3의 조회를 현재 사용자 소유 범위에 묶는 거야.",
 }
 
 

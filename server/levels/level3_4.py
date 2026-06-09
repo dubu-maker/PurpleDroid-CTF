@@ -94,7 +94,7 @@ STATIC: Dict[str, Any] = {
             "lines": [
                 {"no": 1, "text": "fun getSupportTicket(req: TicketRequest, session: Session) {", "patchableId": "d1"},
                 {"no": 2, "text": "  val ticket = supportStore.findByIdAndOwner(req.id, session.userId)", "patchableId": "d2"},
-                {"no": 3, "text": "", "patchableId": "d3"},
+                {"no": 3, "text": ""},
                 {"no": 4, "text": "  return SupportTicketResponse(", "patchableId": "d4"},
                 {"no": 5, "text": "    id = ticket.id,", "patchableId": "d5"},
                 {"no": 6, "text": "    title = ticket.title,", "patchableId": "d6"},
