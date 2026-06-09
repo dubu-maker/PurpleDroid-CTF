@@ -137,7 +137,7 @@ const FALLBACK_HINTS = {
     { platform: "web", text: "F12 Network에서 /actions/ticket 응답(JSON)을 끝까지 펼쳐봐." },
     { platform: "all", text: "UI preview는 응답 전체가 아니다." },
     { platform: "all", text: "debug / meta / internal 깊은 필드의 문맥을 확인해봐." },
-    { platform: "all", text: "FLAG처럼 보이는 값이 canary일 수 있다. archive auditBlob을 찾아봐." },
+    { platform: "all", text: "FLAG처럼 보이는 값이 검증 표식일 수 있다. archive auditBlob을 찾아봐." },
     { platform: "all", text: "encoding이 base64url-json이라면 decode-b64url <auditBlob>으로 열 수 있다." },
     {
       platform: "windows",
@@ -150,35 +150,35 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "decode-b64url <auditBlob>" },
   ],
   level3_5: [
-    { platform: "all", text: "PIN은 77** 형태다. 남은 경우의 수는 100개." },
-    { platform: "web", text: "Network에서 반복 요청 시 서버가 차단(429/lockout)하는지 확인해." },
-    { platform: "all", text: "핵심은 반복 시도 통제의 부재다." },
+    { platform: "all", text: "먼저 relay locker inspection 응답에서 candidateWindow와 정책 단서를 확인해." },
+    { platform: "web", text: "Network에서 실패 응답의 AEGIS TRACE PRESSURE, lockout, backoff 값을 확인해." },
+    { platform: "all", text: "핵심은 PIN 길이가 아니라 반복 시도 통제의 부재다." },
     {
       platform: "windows",
-      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"SL-01\\",\\"pin\\":\\"7700\\"}"',
+      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}"',
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"SL-01\\",\\"pin\\":\\"7700\\"}" | findstr unlocked',
+      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}" | findstr evidenceShard',
     },
     {
       platform: "unix",
-      text: "curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"SL-01\",\"pin\":\"7700\"}'",
+      text: "curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}'",
     },
     {
       platform: "unix",
-      text: "curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"SL-01\",\"pin\":\"7700\"}' | grep unlocked",
+      text: "curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}' | grep evidenceShard",
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
-    { platform: "all", text: "자동화: seq 7700 7799 | xargs -I{} ... 또는 for i in $(seq 7700 7799); do ...; done" },
+    { platform: "all", text: "후보 범위가 작다면 seq/xargs/for 루프로 직접 순회해봐." },
   ],
   level3_boss: [
-    { platform: "web", text: "택배 상세 조회 요청에서 parcel_id가 어디에 붙는지 먼저 확인해." },
-    { platform: "all", text: "VIP 택배 응답에는 audit 단서가 있다. 내 택배에는 없을 수 있다." },
-    { platform: "web", text: "menu 응답에는 UI에 숨겨진 관리자 path가 들어있다." },
-    { platform: "all", text: "프로필 업데이트는 address 화면이지만 서버가 role까지 저장할 수 있다." },
-    { platform: "all", text: "audit 응답 JSON을 끝까지 펼쳐 debug/meta/internal 구조를 확인해." },
-    { platform: "all", text: "locker PIN은 78** 형태다. 남은 경우의 수는 100개." },
+    { platform: "all", text: "VIP 객체 응답에는 일반 객체에 없는 audit 단서가 있을 수 있다." },
+    { platform: "all", text: "audit_ref만으로 route를 추측하지 마. disabled feature metadata가 route의 출처일 수 있다." },
+    { platform: "all", text: "admin audit route는 일반 operator role로는 열리지 않는다. profile trust 오염을 떠올려." },
+    { platform: "all", text: "audit 응답은 preview보다 깊다. meta/debug/vault에서 PIN prefix와 후보 제약을 끝까지 확인해." },
+    { platform: "all", text: "locker는 claim code를 준다. vault claim에는 ticket과 claim code가 함께 필요하다." },
+    { platform: "all", text: "체인은 object → profile → hidden audit → locker → vault 순서로 이어진다." },
     {
       platform: "windows",
       text: 'curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
@@ -326,9 +326,9 @@ const TERMINAL_INTRO_HINTS = {
   level3_1: "내 택배(owner/parcel 패턴)를 확인하고 주변 parcel_id를 탐색해봐.",
   level3_2: "menu 응답의 routeHint 단서로 숨은 경로를 추론해 호출해봐.",
   level3_3: "프로필 저장 body에 권한/신분 관련 field를 직접 추가해보고 결과 변화를 확인해봐.",
-  level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 canary와 encoded audit shard를 구분해봐.",
-  level3_5: "PIN은 77**. seq/xargs/for 루프로 자동화해 unlock 응답 변화를 관찰해봐.",
-  level3_boss: "체인 공격: parcel -> profile -> menu/audit -> locker -> vault claim",
+  level3_4: "지원 티켓 응답 JSON을 끝까지 펼쳐 preview marker와 encoded audit shard를 구분해봐.",
+  level3_5: "relay locker inspection으로 후보와 압박 게이지를 확인하고, unlock 응답 변화를 관찰해봐.",
+  level3_boss: "체인 공격: object -> profile -> hidden audit -> locker -> vault claim",
   level4_1: "공개 번들의 sourceMappingURL 단서를 따라 .map에서 원본 설정을 확인한 뒤 handshake를 호출해봐.",
   level4_2: "PartnerPass의 kid를 관찰하고 legacy 경로를 이용해 admin/audit를 호출해봐.",
   level4_3: "같은 delivered 이벤트를 반복 전송하고 stamps count가 누적되는지 확인해봐.",
@@ -1550,7 +1550,7 @@ function ClassicApp() {
     }
     try {
       const response = await fetch(
-        `${API_BASE}/challenges/level3_5/actions/locker/hint?locker_id=SL-01`,
+        `${API_BASE}/challenges/level3_5/actions/locker/hint?locker_id=RL-MIRA-07`,
         {
           method: "GET",
           headers: {
@@ -1574,7 +1574,7 @@ function ClassicApp() {
       setActionMessageById((prev) => ({
         ...prev,
         [selectedId]:
-          "락커 힌트 조회 완료. Network에서 77** 단서를 확인하고 unlock 요청을 반복해봐.",
+          "릴레이 락커 inspection 완료. Network에서 candidateWindow, checksum, rateLimit/backoff 단서를 확인해봐.",
       }));
     } catch (error) {
       setActionMessageById((prev) => ({
@@ -2037,7 +2037,7 @@ function ClassicApp() {
                                     : selectedId === "level3_4"
                                       ? "지원 티켓 불러오기"
                                         : selectedId === "level3_5"
-                                          ? "락커 힌트 조회"
+                                          ? "릴레이 락커 조사"
                                         : selectedId === "level4_1"
                                           ? "번들 힌트 조회"
                                           : selectedId === "level4_2"
@@ -2151,17 +2151,17 @@ function ClassicApp() {
                     )}
                     {selectedId === "level3_4" && (
                       <div className="action-note">
-                        FLAG처럼 보이는 값이 전부 Evidence는 아니다. canary와 audit shard 문맥을 구분해.
+                        FLAG처럼 보이는 값이 전부 Evidence는 아니다. preview marker와 audit shard 문맥을 구분해.
                       </div>
                     )}
                     {selectedId === "level3_5" && (
                       <div className="action-note">
-                        자동화 버튼은 없다. 터미널에서 seq/xargs/for로 반복 요청 자동화를 직접 시도해.
+                        자동화 버튼은 없다. inspection으로 후보를 좁힌 뒤 Mission Console에서 unlock 요청을 직접 조정해.
                       </div>
                     )}
                     {selectedId === "level3_boss" && (
                       <div className="action-note">
-                        FINAL BOSS: 한 가지가 아니라 취약점 체인이다. 단계 단서를 연결해서 최종 claim을 완성해.
+                        FINAL BOSS: Network 버튼은 첫 probe까지만 도와준다. 이후에는 응답 단서를 직접 이어서 MIRROR CAGE claim을 완성해.
                       </div>
                     )}
                     {selectedId === "level4_1" && (

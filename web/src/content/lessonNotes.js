@@ -592,14 +592,14 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 
   level3_5: {
     id: "level3_5",
-    title: "3-5 Brute-force the Smart Locker - Rate Limit & Lockout",
+    title: "3-5 LOCKER STORM - Rate Limit & Lockout",
     shortSummary:
       "짧은 PIN은 시도 제한이 없으면 결국 깨진다. 보안은 비밀번호 길이만이 아니라 운영 통제(레이트리밋/락아웃/지연/탐지)까지 포함해야 완성된다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- Smart Locker의 PIN 범위가 77**라는 힌트를 확인했다.
+- Relay Locker의 후보 범위와 checksum을 확인했다.
 - 반복 요청(수동 또는 자동화)으로 unlock API를 여러 번 호출했다.
-- 서버가 시도 제한 없이 응답을 계속 반환하는 걸 확인했고, 올바른 PIN에서 FLAG를 획득했다.
+- 서버가 시도 제한 없이 응답을 계속 반환하는 걸 확인했고, recovery 응답에서 Evidence를 획득했다.
 
 ## 이 미션의 핵심
 - 인증값(PIN/OTP)이 짧으면 "경우의 수"가 작다.
@@ -607,7 +607,7 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 - 즉, 인증 강도는 비밀값 자체 + 남용 방어 정책의 합이다.
 
 ## 왜 실전에서 위험한가
-- 4자리 PIN은 자동화 요청에 매우 취약하다.
+- 짧은 PIN은 자동화 요청에 매우 취약하다.
 - 서비스가 429/락아웃/지연 없이 계속 응답하면 공격자가 쉽게 완주한다.
 - 정상 사용자 UX만 보고 안전하다고 판단하면 운영 단계에서 대량 인증 우회 사고가 난다.
 
@@ -941,16 +941,16 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 
   level3_boss: {
     id: "level3_boss",
-    title: "3-BOSS Purple Vault Heist - 취약점 체인",
+    title: "3-BOSS MIRROR CAGE - 취약점 체인",
     shortSummary:
-      "이번 보스의 핵심은 단일 취약점이 아니라 체인 공격이다. 약점 하나를 발판으로 다음 약점을 연쇄적으로 열어 최종 목표를 달성한다.",
+      "MIRROR CAGE의 핵심은 단일 취약점이 아니라 Trust Layer 전체의 신뢰 경계 체인이다. 작은 실패들이 이어지면 AEGIS의 cage도 열릴 수 있다.",
     markdown: `
 ## 오늘 미션에서 한 일
 - parcel_id 조작으로 VIP 택배를 조회해 audit_ref를 획득했다. (IDOR/BOLA)
 - 프로필 업데이트 요청에 UI에 없는 role 필드를 주입해 권한 상태를 바꿨다. (Mass Assignment)
 - menu 응답의 숨은 관리자 경로를 찾아 admin audit를 직접 호출했다. (Hidden Function Abuse)
-- audit 응답의 깊은 JSON(meta/debug)에서 vault_ticket, locker_id, pin_prefix를 추출했다. (Excessive Data Exposure)
-- 78** 범위 PIN 반복 시도로 claim_code를 얻었다. (Rate Limit/Lockout 부재)
+- audit 응답의 깊은 JSON(meta/debug)에서 vault_ticket, locker_id, pin_prefix, 후보 제약을 추출했다. (Excessive Data Exposure)
+- 78** 범위에서 window/checksum으로 후보를 줄이고 반복 시도로 claim_code를 얻었다. (Rate Limit/Lockout 부재)
 - vault_ticket + claim_code 조합으로 최종 Vault Claim에 성공했다.
 
 ## 핵심 교훈
@@ -961,7 +961,7 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 - 짧은 PIN/OTP는 시도 제한이 없으면 결국 뚫린다.
 
 ## 결론
-체인 공격은 작은 결함의 합으로 만들어진다. 방어도 한 군데가 아니라 신뢰 경계 전체를 동시에 강화해야 한다.
+Trust Layer는 봉쇄됐고 MIRA relay master ticket은 먼저 회수됐다. 하지만 AEGIS는 마지막에 기록이 아니라 기록이 사라진 자리를 보기 시작했다. 다음 Operation은 MEMORY VAULT다.
 `,
     keyTakeaways: [
       "취약점은 단독보다 체인으로 연결될 때 파괴력이 커진다.",

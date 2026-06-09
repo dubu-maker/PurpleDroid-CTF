@@ -144,6 +144,25 @@ function previewNetworkBody(body) {
     return lines;
   }
 
+  if (Array.isArray(data.trustFragments)) {
+    return [
+      `fragments: ${data.trustFragments.length}`,
+      "BOLA Window -> foreign object signal",
+      "Hidden Route -> admin path metadata",
+      "Profile Poison -> client field trust",
+      "Ticket Vault -> deep response shard",
+      "Locker Storm -> missing attempt control",
+    ];
+  }
+
+  if (Array.isArray(data.mine)) {
+    return [
+      `mine: ${data.mine.join(", ") || "unknown"}`,
+      `hint: ${data.objectHint || "inspect adjacent registry"}`,
+      "next: use detail endpoint with parcel_id",
+    ];
+  }
+
   if (Array.isArray(data.capsules) || Array.isArray(data.parcels)) {
     const first = (data.capsules || data.parcels)[0] || {};
     return [
@@ -154,11 +173,27 @@ function previewNetworkBody(body) {
   }
 
   if (data.capsule_id || data.parcel_id) {
-    return [
+    const lines = [
       `owner: ${data.owner || "unknown"}`,
       `capsule: ${data.capsule_id || data.parcel_id}`,
       `tier: ${data.tier || "unknown"}`,
       `status: ${data.status || "unknown"}`,
+    ];
+    if (data.meta?.audit_ref) {
+      lines.push(`auditRef: ${data.meta.audit_ref}`);
+      lines.push("route source: hidden menu metadata");
+    }
+    return lines;
+  }
+
+  if (data.features && !Array.isArray(data.features) && typeof data.features === "object") {
+    const featureItems = Object.values(data.features);
+    const hiddenCount = featureItems.filter((feature) => feature?.enabled === false).length;
+    return [
+      `menu: ${Array.isArray(data.menu) ? data.menu.join(", ") : "unknown"}`,
+      `features: ${featureItems.length}`,
+      `hidden: ${hiddenCount}`,
+      "routes: inspect raw response",
     ];
   }
 
@@ -172,6 +207,36 @@ function previewNetworkBody(body) {
     ];
   }
 
+  if (data.report?.title && data.meta?.debug?.vault) {
+    const vault = data.meta.debug.vault;
+    return [
+      `report: ${data.report.title}`,
+      `result: ${data.report.result || "unknown"}`,
+      `locker: ${vault.locker_id || "unknown"}`,
+      `pin prefix: ${vault.pin_prefix || "unknown"}`,
+      `candidate window: ${vault.candidate_window || "inspect raw response"}`,
+      `checksum: ${vault.checksum || "inspect raw response"}`,
+      "vault ticket: inspect raw response",
+    ];
+  }
+
+  if (data.status === "unlocked" && data.claim_code) {
+    return [
+      `locker: ${data.locker_id || "unknown"}`,
+      "status: unlocked",
+      "claim code: present",
+      `attempts: ${data.attempts || "unknown"}`,
+    ];
+  }
+
+  if (data.status === "claimed" && data.flag) {
+    return [
+      "vault: claimed",
+      `ticket: ${data.masterTicket || "relay-master-ticket"}`,
+      "evidence: present",
+    ];
+  }
+
   if (data.ticket?.preview) {
     return [
       `ticket: ${data.ticket.id || "unknown"}`,
@@ -180,6 +245,33 @@ function previewNetworkBody(body) {
       `visible residue: ${data.ticket.preview.miraResidue || "none"}`,
       `response depth: ${data.internal?.serializer?.responseDepth || "deep"}`,
     ];
+  }
+
+  if (data.pinPolicy && data.lockerId) {
+    return [
+      `locker: ${data.lockerId}`,
+      `window: ${data.candidateWindow || "unknown"}`,
+      `checksum: ${data.checksum || "none"}`,
+      `rate limit: ${data.rateLimit || "none"}`,
+      `trace pressure: ${data.aegisTracePressure || "0/8"}`,
+    ];
+  }
+
+  if (typeof data.unlocked === "boolean" && data.lockerId) {
+    const lines = [
+      `locker: ${data.lockerId}`,
+      `unlocked: ${data.unlocked}`,
+      `pressure: ${data.aegisTracePressure || "unknown"}`,
+      `lockout: ${data.lockout ? "active" : "none"}`,
+      `backoff: ${data.backoff ? "active" : "none"}`,
+    ];
+    if (data.result) {
+      lines.push(`result: ${data.result}`);
+    }
+    if (data.evidenceShard) {
+      lines.push("evidence: present");
+    }
+    return lines;
   }
 
   if (data.staged) {
@@ -277,6 +369,7 @@ function createTraceEntry({
   trigger = "button",
   curlOverride = "",
   routeCurls = [],
+  suppressCurlButton = false,
 }) {
   const displayBody = sanitizeNetworkBody(body);
   const requestHeaders = token ? ["Authorization: Bearer $SESSION_TOKEN"] : [];
@@ -291,6 +384,7 @@ function createTraceEntry({
     body: displayBody,
     preview: previewNetworkBody(displayBody),
     routeCurls,
+    suppressCurlButton,
     curl:
       curlOverride ||
       `curl -v -X ${method} "${url}" -H "Authorization: Bearer $SESSION_TOKEN"`,
@@ -396,6 +490,39 @@ function traceTitleForCommand(url, body, method = "GET") {
   if (url.includes("/level3_4/actions/ticket")) {
     return "SUPPORT TICKET RESPONSE";
   }
+  if (url.includes("/level3_5/actions/locker/hint")) {
+    return "RELAY LOCKER INSPECTION";
+  }
+  if (url.includes("/level3_5/actions/locker/unlock")) {
+    if (body?.data?.result === "clean_recovery") {
+      return "RELAY LOCKER CLEAN RECOVERY";
+    }
+    if (body?.data?.result === "compromised_recovery") {
+      return "RELAY LOCKER COMPROMISED RECOVERY";
+    }
+    return "RELAY LOCKER ATTEMPT";
+  }
+  if (url.includes("/level3_boss/actions/parcels/mine")) {
+    return "MIRROR CAGE FIRST PROBE";
+  }
+  if (url.includes("/level3_boss/actions/parcel")) {
+    return "BOSS OBJECT REGISTRY";
+  }
+  if (url.includes("/level3_boss/actions/profile")) {
+    return method === "PUT" ? "BOSS PROFILE POISON" : "BOSS PROFILE STATE";
+  }
+  if (url.includes("/level3_boss/actions/menu")) {
+    return "BOSS HIDDEN MENU";
+  }
+  if (url.includes("/level3_boss/actions/admin/audit")) {
+    return "BOSS AUDIT EXPORT";
+  }
+  if (url.includes("/level3_boss/actions/locker/unlock")) {
+    return body?.data?.status === "unlocked" ? "BOSS LOCKER OPENED" : "BOSS LOCKER ATTEMPT";
+  }
+  if (url.includes("/level3_boss/actions/vault/claim")) {
+    return body?.data?.status === "claimed" ? "MIRROR CAGE CLAIM" : "BOSS VAULT CLAIM";
+  }
   return "HIDDEN ROUTE PROBE";
 }
 
@@ -410,6 +537,17 @@ function statusFromTerminalBody(body) {
     return 400;
   }
   return 200;
+}
+
+function shouldSuppressTraceEntry(url, body) {
+  if (!url.includes("/level3_boss/actions/")) {
+    return false;
+  }
+  const error = body?.error || {};
+  if (body?.ok === false && error.code === "NOT_FOUND") {
+    return true;
+  }
+  return false;
 }
 
 function auditSelectorFieldsFromTrace(entry) {
@@ -431,12 +569,14 @@ function extractNetworkTraceFromCommand(command, stdout, token) {
     !command.includes("/api/v1/challenges/level3_1/actions/") &&
     !command.includes("/api/v1/challenges/level3_2/actions/") &&
     !command.includes("/api/v1/challenges/level3_3/actions/") &&
-    !command.includes("/api/v1/challenges/level3_4/actions/")
+    !command.includes("/api/v1/challenges/level3_4/actions/") &&
+    !command.includes("/api/v1/challenges/level3_5/actions/") &&
+    !command.includes("/api/v1/challenges/level3_boss/actions/")
   ) {
     return null;
   }
 
-  const match = command.match(/\/api\/v1\/challenges\/level3_[1234]\/actions\/[^\s"'`]+/);
+  const match = command.match(/\/api\/v1\/challenges\/(?:level3_[12345]|level3_boss)\/actions\/[^\s"'`]+/);
   if (!match) {
     return null;
   }
@@ -454,6 +594,10 @@ function extractNetworkTraceFromCommand(command, stdout, token) {
   const url = match[0];
   const method = detectCurlMethod(command);
 
+  if (shouldSuppressTraceEntry(url, body)) {
+    return null;
+  }
+
   return createTraceEntry({
     method,
     url,
@@ -467,7 +611,11 @@ function extractNetworkTraceFromCommand(command, stdout, token) {
 }
 
 function traceCurlButtonLabel(entry) {
-  if (entry.title === "SAFE UPDATE TEMPLATE") {
+  if (
+    entry.title === "SAFE UPDATE TEMPLATE" ||
+    entry.title === "UNLOCK REQUEST TEMPLATE" ||
+    entry.title === "FIRST PROBE TEMPLATE"
+  ) {
     return "Stage Draft";
   }
   if (entry.title === "PROFILE METHOD MISMATCH") {
@@ -826,9 +974,11 @@ function NetworkTracePanel({
                   <button type="button" className="ghost-button" onClick={() => onToggleResponse(entry.id)}>
                     {expanded ? "Hide Raw Response" : "View Raw Response"}
                   </button>
-                  <button type="button" className="ghost-button" onClick={() => onCopyCurl(entry.curl)}>
-                    {traceCurlButtonLabel(entry)}
-                  </button>
+                  {!entry.suppressCurlButton && (
+                    <button type="button" className="ghost-button" onClick={() => onCopyCurl(entry.curl)}>
+                      {traceCurlButtonLabel(entry)}
+                    </button>
+                  )}
                 </div>
                 {expanded && (
                   <pre className="network-response">{JSON.stringify(entry.body, null, 2)}</pre>
@@ -1437,6 +1587,13 @@ function CampaignMode() {
         return;
       }
 
+      if (currentId === "level3_boss" && nextCommand.trim().toLowerCase() === "clear") {
+        setConsoleLogs([]);
+        setCommand("");
+        setConsoleBusy(false);
+        return;
+      }
+
       const id = Date.now();
       setConsoleLogs((prev) => [
         ...prev,
@@ -1702,6 +1859,164 @@ function CampaignMode() {
           message:
             story.actionProbe.success ||
             "Support archive captured. Preview는 안전해 보여도 Raw Response의 깊은 필드를 확인해봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_5_inspect_locker" || probeActionId === "level3_5_locker_hint") {
+        const traceUrl = "/api/v1/challenges/level3_5/actions/locker/hint?locker_id=RL-MIRA-07";
+        const response = await fetch(`${API_BASE}/challenges/level3_5/actions/locker/hint?locker_id=RL-MIRA-07`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = `probe failed (${response.status})`;
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error?.message || parsed?.detail || message;
+          } catch {
+            // keep fallback
+          }
+          setNetworkTraceResult({ ok: false, message });
+          return;
+        }
+
+        const body = await response.json();
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: response.status,
+            body,
+            token,
+            title: "RELAY LOCKER INSPECTION",
+            trigger: "button",
+            curlOverride:
+              'curl -v -X GET "/api/v1/challenges/level3_5/actions/locker/hint?locker_id=RL-MIRA-07" -H "Authorization: Bearer $SESSION_TOKEN"',
+          }),
+        ]));
+        setNetworkTraceResult({
+          ok: true,
+          message:
+            story.actionProbe.success ||
+            "Relay locker inspection captured. 후보와 정책을 확인한 뒤 unlock 요청을 직접 조정해봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_5_stage_unlock") {
+        const traceUrl = "/api/v1/challenges/level3_5/actions/locker/unlock";
+        const curl =
+          'curl -v -X POST "/api/v1/challenges/level3_5/actions/locker/unlock" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"locker_id":"RL-MIRA-07","pin":"<PIN>"}\'';
+        setCommand(curl);
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
+          createTraceEntry({
+            method: "POST",
+            url: traceUrl,
+            status: "STAGED",
+            body: {
+              ok: true,
+              data: {
+                staged: "relay unlock request",
+                payload: {
+                  locker_id: "RL-MIRA-07",
+                  pin: "<PIN>",
+                },
+                payloadFields: ["locker_id", "pin"],
+                note: "Replace <PIN> in Mission Console before running.",
+              },
+            },
+            token,
+            title: "UNLOCK REQUEST TEMPLATE",
+            trigger: "template captured",
+            curlOverride: curl,
+          }),
+        ]));
+        setNetworkTraceResult({
+          ok: true,
+          message: "Unlock request staged in Mission Console. <PIN>만 직접 바꿔서 실행해봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_boss_review_chain") {
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
+          createTraceEntry({
+            method: "INFO",
+            url: "/api/v1/challenges/level3_boss/trust-chain",
+            status: "REVIEW",
+            body: {
+              ok: true,
+              data: {
+                trustFragments: [
+                  {
+                    label: "BOLA Window",
+                    clue: "object id can expose foreign signal capsule",
+                  },
+                  {
+                    label: "Hidden Route",
+                    clue: "disabled feature metadata can reveal admin path",
+                  },
+                  {
+                    label: "Profile Poison",
+                    clue: "profile model can be polluted by client fields",
+                  },
+                  {
+                    label: "Ticket Vault",
+                    clue: "deep JSON can expose internal shard",
+                  },
+                  {
+                    label: "Locker Storm",
+                    clue: "missing rate limit can expose relay seed",
+                  },
+                ],
+                message: "Recovered Trust Fragments",
+              },
+            },
+            title: "RECOVERED TRUST FRAGMENTS",
+            trigger: "review",
+            suppressCurlButton: true,
+          }),
+        ]));
+        setNetworkTraceResult({
+          ok: true,
+          message: "Trust fragments reviewed. 첫 probe 이후 체인은 Mission Console에서 직접 이어가봐.",
+        });
+        return;
+      }
+
+      if (probeActionId === "level3_boss_stage_first_probe") {
+        const traceUrl = "/api/v1/challenges/level3_boss/actions/parcels/mine";
+        const curl =
+          'curl -v -X GET "/api/v1/challenges/level3_boss/actions/parcels/mine" -H "Authorization: Bearer $SESSION_TOKEN"';
+        setCommand(curl);
+        setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
+          createTraceEntry({
+            method: "GET",
+            url: traceUrl,
+            status: "STAGED",
+            body: {
+              ok: true,
+              data: {
+                staged: "first mirror cage probe",
+                payloadFields: [],
+                next: "Inspect the response, then mutate the object id manually.",
+              },
+            },
+            token,
+            title: "FIRST PROBE TEMPLATE",
+            trigger: "template captured",
+            curlOverride: curl,
+          }),
+        ]));
+        setNetworkTraceResult({
+          ok: true,
+          message: "First probe staged in Mission Console. 이후 요청은 응답 단서를 보고 직접 이어가봐.",
         });
         return;
       }

@@ -12,7 +12,7 @@ from fakeshell.http import HttpResponse
 
 
 LEVEL3_4_FLAG = os.getenv("PURPLEDROID_LEVEL3_4_FLAG", "FLAG{DEEP_FIELDS_LEAK_TOO}")
-LEVEL3_4_DECOY_FLAG = "FLAG{SUPPORT_PREVIEW_CANARY}"
+LEVEL3_4_DECOY_FLAG = "FLAG{SUPPORT_PREVIEW_MARKER}"
 DEFAULT_TICKET_ID = "SUP-1004"
 
 
@@ -61,7 +61,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "all",
-                "text": "FLAG처럼 보이는 값이 있어도 canary일 수 있다. 주변 key 이름을 같이 봐.",
+                "text": "FLAG처럼 보이는 값이 있어도 검증 표식일 수 있다. 주변 key 이름을 같이 봐.",
             },
             {
                 "platform": "all",
@@ -139,7 +139,7 @@ def flag_feedback(flag: str) -> str:
     value = flag.strip()
     if value == LEVEL3_4_DECOY_FLAG:
         return (
-            "그건 support preview canary야. AEGIS가 redaction 상태를 확인하려고 심어둔 값이고, "
+            "그건 support preview marker야. AEGIS가 redaction 상태를 확인하려고 심어둔 값이고, "
             "Evidence는 audit shard 문맥 안에 있어."
         )
     if value.startswith("FLAG{"):
@@ -210,7 +210,7 @@ def ticket_payload(ticket_id: str = DEFAULT_TICKET_ID) -> Dict[str, Any]:
                 "renderMode": "preview",
                 "redaction": {
                     "status": "normalized",
-                    "canary": LEVEL3_4_DECOY_FLAG,
+                    "integrityMarker": LEVEL3_4_DECOY_FLAG,
                 },
                 "internal": {
                     "archive": {

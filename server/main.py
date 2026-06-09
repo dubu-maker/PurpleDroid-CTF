@@ -657,7 +657,7 @@ class AdminAuditReq(BaseModel):
 
 
 class LockerUnlockReq(BaseModel):
-    locker_id: str = Field(default="SL-01", min_length=3, max_length=20)
+    locker_id: str = Field(default="RL-MIRA-07", min_length=3, max_length=32)
     pin: str = Field(..., min_length=1, max_length=16)
 
 
@@ -887,7 +887,7 @@ def level3_4_get_ticket(
 @app.get("/api/v1/challenges/level3_5/actions/locker/hint")
 def level3_5_locker_hint(
     authorization: Optional[str] = Header(None),
-    locker_id: str = Query(default="SL-01", min_length=3, max_length=20),
+    locker_id: str = Query(default="RL-MIRA-07", min_length=3, max_length=32),
 ):
     _, session = _get_session(authorization)
     from levels.level3_5 import get_locker_hint_payload

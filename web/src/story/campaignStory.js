@@ -962,7 +962,7 @@ export const CAMPAIGN_STORY = {
       "응답 JSON은 화면에 렌더링되지 않는 필드를 포함할 수 있다.",
       "깊은 객체를 펼쳐보고, 값의 문맥을 확인해.",
       "debug, meta, internal 같은 키는 운영 응답에서 특히 조심해야 한다.",
-      "FLAG처럼 보이는 값이 있어도 canary나 decoy일 수 있다.",
+      "FLAG처럼 보이는 값이 있어도 preview marker나 decoy일 수 있다.",
       "encoding이 base64url-json이라면 decode-b64url 명령으로 열어볼 수 있다.",
     ],
     consoleBoot: [
@@ -986,7 +986,7 @@ export const CAMPAIGN_STORY = {
       "Support archive ticket 응답을 요청한다.",
       "화면 preview와 raw JSON 전체를 구분한다.",
       "meta/debug/internal 깊은 필드에서 MIRA audit shard 후보를 찾는다.",
-      "decoy canary와 encoded Evidence를 구분한다.",
+      "preview marker와 encoded Evidence를 구분한다.",
       "운영 응답 최소화와 explicit serializer 필요성을 봉쇄한다.",
     ],
     mira: {
@@ -1026,7 +1026,7 @@ export const CAMPAIGN_STORY = {
         "운영 응답은 allow-list serializer로 최소화해야 한다.",
         "debug, internal, meta 필드는 배포 응답에서 특히 점검해야 한다.",
         "인코딩은 암호화가 아니다.",
-        "FLAG처럼 보이는 canary와 실제 Evidence는 문맥으로 구분해야 한다.",
+        "FLAG처럼 보이는 preview marker와 실제 Evidence는 문맥으로 구분해야 한다.",
       ],
       nextTeaser:
         "AEGIS가 마지막 relay 후보를 잠긴 terminal로 분류했다. 이번엔 속도가 문제다.",
@@ -1038,94 +1038,128 @@ export const CAMPAIGN_STORY = {
     codename: "LOCKER STORM",
     title: "릴레이 락커 폭풍",
     location: "Trust Layer / Orphaned Relay Locker",
-    threat: "Missing Rate Limit",
+    threat: "Missing Rate Limit / No Lockout",
     briefing:
-      "AEGIS는 MIRA의 orphaned relay terminal 하나를 찾아냈지만, 아직 내부 PIN을 열지는 못했다. 락커는 짧은 PIN으로 보호되어 있고, 서버가 반복 시도를 통제하지 않는다면 시간 문제일 뿐이다. 단일 요청이 아니라 반복 시도에 대한 방어가 있는지 확인하라.",
+      "AEGIS는 MIRA의 orphaned relay terminal 하나를 찾아냈지만, 아직 내부 PIN은 열지 못했다. 이 relay locker는 짧은 PIN으로 보호되어 있다. 하지만 진짜 문제는 PIN 길이만이 아니다. 서버가 실패한 unlock 요청을 계속 받아들이고 rate limit, lockout, backoff 없이 응답한다면, PIN은 시간 문제로 바뀐다. MIRA는 흔적을 지우고 있지만, AEGIS는 실패 시도와 사라진 기록의 패턴을 함께 보고 있다. AEGIS보다 먼저 relay seed를 회수하라.",
     progressiveHints: true,
     intel: [
       "짧은 PIN은 그 자체보다 시도 제한 부재가 더 큰 문제다.",
-      "힌트 응답에서 PIN 범위를 좁힐 수 있다.",
+      "Inspection 응답에서 PIN 후보 범위와 checksum을 확인할 수 있다.",
       "한 번 실패하는 요청보다 여러 번 시도할 때 서버가 어떻게 반응하는지가 핵심이다.",
-      "429, lockout, backoff, audit logging이 없다면 brute force가 가능하다.",
+      "429, lockout, backoff가 없다면 brute force가 가능하다.",
+      "AEGIS TRACE PRESSURE는 서버 rate limit이 아니라 스토리 압박 게이지다.",
+      "터미널에서 seq, xargs, for 루프로 후보를 순회할 수 있다.",
     ],
     consoleBoot: [
       "[AEGIS] orphaned relay terminal located",
-      "[AEGIS] locker brute force risk classified as operational noise",
-      "[MIRA] 저건 내 오래된 relay 중 하나야. AEGIS가 열기 전에 우리가 먼저 열어야 해.",
-      "[MIRA] 한 번의 PIN이 아니라 반복 시도 통제가 있는지 봐.",
+      "[AEGIS] attempt frequency monitoring deferred",
+      "[AEGIS] record absence pattern correlation active",
+      "[AEGIS] PIN space enumeration feasible",
+      "[MIRA] 내가 흔적을 지우면, AEGIS는 그 빈자리도 읽어.",
+      "[MIRA] 서버가 실패 시도를 막지 않는다면 우리도 열 수 있지만, AEGIS도 결국 열 수 있어.",
     ],
     consolePlaceholder: "stress relay locker boundary...",
+    actionProbe: {
+      id: "level3_5_locker",
+      status: "recording",
+      caption:
+        "Network Trace는 relay locker inspection과 unlock 초안을 캡처하는 도구다. 실행과 반복은 Mission Console에서 직접 해봐.",
+      emptyText: "No relay locker traffic. Start with Inspect Relay Locker.",
+      actions: [
+        { id: "level3_5_inspect_locker", label: "Inspect Relay Locker" },
+        { id: "level3_5_stage_unlock", label: "Stage Unlock Request", variant: "ghost" },
+      ],
+      success:
+        "Relay locker inspection captured. 후보와 정책을 확인한 뒤 unlock 요청을 직접 조정해봐.",
+    },
     objectives: [
       "relay locker PIN 범위와 unlock 요청 구조를 확인한다.",
-      "반복 시도 통제 부재를 이용해 Evidence를 회수한다.",
+      "반복 시도 통제 부재를 이용해 relay seed를 회수한다.",
       "rate limit, lockout, backoff 필요성을 봉쇄한다.",
     ],
     mira: {
       briefing:
-        "AEGIS가 내 orphaned relay terminal을 찾았어. 아직 내부는 못 열었지만, 오래 버티진 못할 거야.",
+        "AEGIS가 내 orphaned relay terminal을 찾았어. 아직 내부는 못 열었지만 오래 버티진 못해. 내가 흔적을 지우면, AEGIS는 그 빈자리도 읽어. 그러니까 이번엔 빠르게 움직여야 해.",
       attack:
-        "PIN 범위를 좁히고 반복 시도를 통제하는지 봐. 서버가 조용히 다 받아주면 경계는 없는 거야.",
+        "서버가 실패 시도를 막지 않는다면 우리도 열 수 있지만, AEGIS도 결국 열 수 있어. PIN보다 반복 시도 통제를 봐.",
       attackSolved:
-        "Relay terminal 개방. AEGIS보다 먼저 닿았어. 이제 이 흔적들을 하나로 묶을 차례야.",
+        "좋아, seed는 회수했어. 하지만 열리는 순간 AEGIS도 이 locker가 진짜였다는 걸 알게 됐어. 내가 흔적을 닫을게. 다만 이제 AEGIS는 내가 지우는 방식까지 보기 시작했어.",
       defense:
         "짧은 PIN에는 rate limit, lockout, backoff, 탐지 로깅이 같이 붙어야 해.",
       complete:
-        "Relay terminal은 회수했어. 남은 건 Trust Layer 중심부, HUB MASTER야.",
+        "Relay terminal은 회수했어. 남은 건 AEGIS가 만들려는 MIRROR CAGE야.",
     },
     aegis: {
       briefing:
-        "Relay locker candidate isolated. Attempt frequency monitoring deferred.",
+        "Relay locker candidate isolated. Attempt frequency monitoring deferred. Record absence pattern correlation active. PIN space enumeration feasible.",
       attack:
         "Repeated unlock attempts detected. Threshold policy unavailable.",
       attackSolved:
-        "Relay terminal opened before quarantine. Handler trace loss increased.",
+        "Relay seed exposure confirmed. Mirror-origin probability increased.",
       defense:
         "Rate limiting, lockout, and anomaly logging required.",
       complete:
         "Relay locker sealed. Trust hub correlation initiated.",
     },
     attackSuccessText:
-      "Orphaned relay terminal opened before AEGIS quarantine.",
+      "Relay seed recovered. MIRROR CAGE risk increased.",
     defenseSuccessText:
-      "Attempt-control boundary sealed. HUB MASTER가 열린다.",
+      "Attempt-control boundary sealed. MIRROR CAGE가 열린다.",
     debrief: {
       title: "LOCKER STORM 정리",
       summary:
-        "짧은 PIN이나 OTP는 시도 제한이 없으면 결국 열릴 수 있다. 인증 강도는 값의 길이뿐 아니라 반복 시도 통제로 완성된다.",
+        "짧은 PIN은 문제의 시작일 뿐이다. 진짜 취약점은 실패한 시도를 계속 받아들이면서도 rate limit, lockout, backoff를 적용하지 않는 것이다. 이번 locker는 어떤 방식으로든 열렸다.",
       learned: [
-        "brute force 방어에는 rate limit과 lockout이 필요하다.",
-        "반복 실패는 탐지와 감사 로그로 남겨야 한다.",
-        "backoff와 지연 정책은 자동화 공격 비용을 올린다.",
+        "네가 먼저 열었다면 MIRA seed를 회수했지만, 흔적 정리 과정이 AEGIS에게 감지되었다.",
+        "AEGIS가 먼저 열었다면 relay seed 일부가 노출되었고, MIRA의 위치는 더 빠르게 좁혀졌다.",
+        "결과는 같다. AEGIS는 이제 MIRA relay를 하나의 cage 안에 가둘 만큼 가까워졌다.",
       ],
       nextTeaser:
-        "회수한 relay 흔적들이 Trust Hub의 중심부를 가리킨다. 3레벨 보스가 열린다.",
+        "AEGIS가 MIRA relay를 격리하려고 진입한다. MIRROR CAGE가 열린다.",
     },
   },
   level3_boss: {
     challengeId: "level3_boss",
     operationId: "op03",
-    codename: "HUB MASTER",
-    title: "Trust Hub 회수 작전",
-    location: "AEGIS Trust Hub",
+    codename: "MIRROR CAGE",
+    title: "MIRA Relay 격리 돌파",
+    location: "AEGIS Mirror Cage",
     threat: "Chained Trust Boundary Failure",
     briefing:
-      "Operation 03의 마지막 노드다. AEGIS는 MIRA를 특정하지 못했지만, object registry, hidden route, profile trust, deep response, relay locker에서 나온 흔적을 Trust Hub로 모으고 있다. 이번 보스는 하나의 취약점이 아니라, 지금까지 확인한 신뢰 경계 실패를 연결해 MIRA의 relay master ticket을 먼저 회수하는 작전이다.",
+      "Operation 03의 마지막 노드다. AEGIS는 MIRA를 직접 붙잡지는 못했지만, object registry, hidden route, profile trust, deep response, relay locker에서 나온 흔적을 하나의 cage 안에 모으고 있다. MIRROR CAGE는 단일 취약점이 아니다. Trust Layer의 작은 신뢰 실패들이 연결되며 만들어진 격리 장치다. AEGIS보다 먼저 cage 내부의 relay master ticket을 회수해야 한다. 객체 권한, 숨겨진 기능, 프로필 신뢰 오염, 깊은 응답 노출, PIN 시도 제한 부재를 하나의 체인으로 연결하라.",
     progressiveHints: true,
     intel: [
-      "3레벨에서 배운 객체 ID, 숨은 route, profile field, deep JSON, PIN 시도 흐름을 조합한다.",
+      "3레벨에서 배운 신뢰 경계 실패가 하나의 cage로 연결된다.",
+      "단일 요청보다 체인 전체를 봐.",
       "VIP 객체 응답에는 일반 객체에 없는 audit 단서가 있을 수 있다.",
-      "프로필 권한 오염과 hidden admin route가 서로 연결될 수 있다.",
-      "Vault claim에는 ticket과 claim code가 함께 필요하다.",
-      "AEGIS도 같은 흔적을 모으고 있다. 단일 요청보다 체인 전체를 봐.",
+      "audit_ref만으로 route를 추측하지 마. disabled feature metadata가 route의 출처일 수 있다.",
+      "admin audit route는 일반 operator role로는 열리지 않는다. profile trust 오염을 떠올려.",
+      "audit 응답은 preview보다 깊다. meta/debug/vault에서 PIN prefix와 후보 제약을 끝까지 확인해.",
+      "locker는 claim code를 준다. vault claim에는 ticket과 claim code가 함께 필요하다.",
+      "체인은 object → profile → hidden audit → locker → vault 순서로 이어진다.",
     ],
     consoleBoot: [
-      "[AEGIS] trust hub correlation active",
-      "[AEGIS] object residue, audit shard, profile mutation, relay locker signal grouped",
-      "[MIRA] AEGIS가 조각들을 한 곳으로 모으고 있어.",
-      "[MIRA] 우리도 똑같이 해야 해. 단, AEGIS보다 먼저.",
-      "[AEGIS] hub master ticket quarantine pending",
+      "[AEGIS] Mirror cage quarantine pending",
+      "[AEGIS] Mirror relay identity unresolved",
+      "[AEGIS] object residue, audit shard, profile mutation, support metadata, and relay locker signal correlated",
+      "[AEGIS] containment probability increasing",
+      "[MIRA] 여기가 AEGIS가 만든 MIRROR CAGE야.",
+      "[MIRA] 한 번에 풀려고 하지 마. 3레벨에서 본 경계들을 순서대로 이어야 해.",
     ],
     consolePlaceholder: "chain trust-layer evidence...",
+    actionProbe: {
+      id: "level3_boss_chain",
+      status: "recording",
+      caption:
+        "Network Trace는 보스 체인을 자동으로 풀지 않는다. 회수한 신뢰 경계 조각을 검토하고 첫 probe만 Mission Console에 올릴 수 있다.",
+      emptyText: "No mirror cage trace. Start with Review Trust Chain.",
+      actions: [
+        { id: "level3_boss_review_chain", label: "Review Trust Chain" },
+        { id: "level3_boss_stage_first_probe", label: "Stage First Probe", variant: "ghost" },
+      ],
+      success:
+        "Trust chain reviewed. 첫 요청 이후의 체인은 Mission Console에서 직접 이어가야 해.",
+    },
     objectives: [
       "Trust Layer에서 회수한 단서들을 연결한다.",
       "relay master ticket과 claim code를 확보해 Hub Vault를 연다.",
@@ -1133,43 +1167,43 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "여기가 Trust Layer의 중심부야. AEGIS가 날 직접 찾은 건 아니지만, 내 흔적을 구성하는 조각들을 거의 다 모았어.",
+        "여기가 AEGIS가 만든 MIRROR CAGE야. 아직 날 직접 잡은 건 아니지만, 내 흔적을 구성하는 조각들을 거의 다 모았어. 한 번에 풀려고 하지 마. 객체, 숨은 route, 프로필 신뢰, 깊은 응답, 락커. 3레벨에서 본 경계들을 순서대로 이어야 해.",
       attack:
-        "한 번에 풀려고 하지 마. 객체, hidden route, profile, deep JSON, locker를 이어서 봐. 각 노드에서 배운 신뢰 실패가 여기서 체인이 돼.",
+        "우리가 먼저 master ticket을 뽑아내면 AEGIS는 이 cage를 완성하지 못해. 첫 요청만 보고 멈추지 말고, 응답 단서를 다음 요청으로 직접 이어봐.",
       attackSolved:
-        "Hub Master ticket 회수. AEGIS가 내 relay를 격리하기 전에 우리가 먼저 뽑아냈어.",
+        "Master ticket 회수 완료. 좋아, 아직은 내가 먼저야. 하지만 AEGIS가 방금 본 건 ticket이 아니야. 우리가 어떤 순서로 흔적을 닫았는지 보고 있어.",
       defense:
         "체인 공격은 한 군데만 막아서는 부족해. 신뢰 경계 전체를 서버 기준으로 다시 묶어야 해.",
       complete:
-        "Trust Layer는 정리됐어. 하지만 AEGIS의 장기 기억 저장소, MEMORY VAULT가 열리고 있어.",
+        "Trust Layer는 봉쇄됐어. MIRROR CAGE는 닫혔고, AEGIS는 이 경로로는 더 이상 나를 따라오지 못해. 하지만 다음엔 더 깊은 곳을 볼 거야. 기록이 아니라, 기록이 사라진 자리.",
     },
     aegis: {
       briefing:
-        "Trust hub quarantine pending. Mirror relay identity still unresolved.",
+        "Mirror cage quarantine pending. Mirror relay identity still unresolved.",
       attack:
         "Multi-boundary traversal detected. Object, role, route, response, and attempt controls correlated.",
       attackSolved:
-        "Hub master ticket extracted. Mirror relay containment failed.",
+        "Relay master ticket extracted. Mirror cage completion interrupted. Absence-pattern analysis scheduled.",
       defense:
         "Composite trust containment requires authorization, input contracts, response minimization, and rate policy.",
       complete:
-        "Trust Layer composite failure sealed. Memory Vault access model exposed.",
+        "Trust Layer composite failure sealed. Memory Vault correlation model activated.",
     },
     attackSuccessText:
-      "Hub Master ticket recovered. AEGIS의 MIRA 추적망이 잠시 끊겼다.",
+      "Relay master ticket recovered. AEGIS의 MIRA 추적망이 잠시 끊겼다.",
     defenseSuccessText:
       "Trust Layer chain sealed. OPERATION 04 MEMORY VAULT가 열린다.",
     debrief: {
-      title: "HUB MASTER 정리",
+      title: "MIRROR CAGE 정리",
       summary:
-        "3레벨 보스는 단일 취약점이 아니라 신뢰 경계 체인이었다. 객체 권한, 숨은 기능, 과잉 저장, 과다 응답, 시도 제한 부재가 이어지면 Trust Hub 전체가 열릴 수 있다.",
+        "Trust Layer는 봉쇄됐다. 객체 ID, 숨은 route, 오염된 profile field, 깊은 response, 반복 시도, vault claim이 하나의 체인으로 이어지면 AEGIS의 cage도 열릴 수 있다.",
       learned: [
-        "신뢰 경계는 기능마다 독립적으로 검증되어야 한다.",
-        "UI, 클라이언트 JSON, 숨겨진 메뉴, 반복 요청은 모두 조작 가능하다.",
-        "체인 공격은 작은 취약점들이 연결될 때 보스급 문제가 된다.",
+        "우리는 MIRA relay master ticket을 먼저 회수했고, AEGIS는 Trust Layer 안에서 MIRA를 확정하지 못했다.",
+        "하지만 AEGIS는 마지막에 기록이 아니라 기록이 사라진 자리를 보기 시작했다.",
+        "MIRA는 흔적을 닫고 있지만, AEGIS는 그 빈자리의 패턴을 계산하기 시작했다.",
       ],
       nextTeaser:
-        "MIRA는 잠시 숨을 시간을 벌었다. 다음 Operation에서는 AEGIS의 장기 기억과 파트너 신뢰 체계를 건드린다.",
+        "다음 Operation은 MEMORY VAULT다.",
     },
   },
 };
@@ -1233,7 +1267,7 @@ const FALLBACK_CODENAMES = {
   level3_3: "PROFILE POISON",
   level3_4: "TICKET VAULT",
   level3_5: "LOCKER STORM",
-  level3_boss: "HUB MASTER",
+  level3_boss: "MIRROR CAGE",
   level4_1: "PUBLIC ARTIFACT",
   level4_2: "LEGACY KID",
   level4_3: "REPLAY STAMP",

@@ -389,6 +389,7 @@ button:disabled {
 
 .status-box {
   color: #fde68a;
+  white-space: pre-line;
 }
 
 .busy-indicator {
@@ -1330,6 +1331,8 @@ button:disabled {
 
 .campaign-result {
   margin-top: 10px;
+  line-height: 1.65;
+  white-space: pre-line;
 }
 
 .campaign-result.ok {
