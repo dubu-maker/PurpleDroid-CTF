@@ -23,8 +23,8 @@ PASS_AUDIENCE = "partner-admin"
 STATIC: Dict[str, Any] = {
     "id": "level4_2",
     "level": 4,
-    "title": "4-2 Key Roulette Partner Pass",
-    "summary": "kid 조작으로 검증 키 선택이 바뀌면 파트너 패스 위조가 가능해진다.",
+    "title": "4-2 KEY MEMORY SLOT",
+    "summary": "kid selector가 deprecated legacy key slot을 가리키면 PartnerPass 검증 경로가 무너진다.",
     "description": (
         "미션: PartnerPass의 kid를 조작해 서버가 legacy 경로로 검증하도록 만들고, "
         "admin/audit 호출로 FLAG를 획득해라."
@@ -75,13 +75,60 @@ STATIC: Dict[str, Any] = {
         "flagFormat": "FLAG{...}",
     },
     "defense": {
-        "enabled": False,
+        "enabled": True,
         "instruction": (
-            "kid 화이트리스트/alg pinning/클레임 검증(iss, aud, exp)과 서버 권한 재검증을 함께 적용해 "
-            "키 선택 조작과 legacy 우회 경로를 차단하라."
+            "PartnerPass의 key selection과 claim trust boundary를 봉쇄할 정책 카드를 선택하세요. "
+            "legacy kid 제거, alg pinning, signature-before-claims, 서버 측 admin 권한 검증이 핵심입니다."
         ),
-        "code": {},
+        "code": {
+            "language": "policy",
+            "lines": [
+                {"no": 1, "text": "Reject deprecated kid", "patchableId": "policy_reject_deprecated_kid"},
+                {"no": 2, "text": "Pin algorithm per key", "patchableId": "policy_pin_algorithm"},
+                {"no": 3, "text": "Verify signature before claims", "patchableId": "policy_verify_signature_first"},
+                {"no": 4, "text": "Bind admin access server-side", "patchableId": "policy_server_side_admin"},
+                {"no": 5, "text": "Validate issuer/audience/expiry", "patchableId": "bonus_validate_common_claims"},
+                {"no": 6, "text": "Hide JWKS endpoint", "patchableId": "decoy_hide_jwks"},
+                {"no": 7, "text": "Rename kid", "patchableId": "decoy_rename_kid"},
+                {"no": 8, "text": "Base64 encode PartnerPass", "patchableId": "decoy_base64_pass"},
+                {"no": 9, "text": "Trust token header alg", "patchableId": "decoy_trust_header_alg"},
+                {"no": 10, "text": "Disable admin UI button", "patchableId": "decoy_disable_admin_ui"},
+            ],
+        },
     },
+}
+
+
+REQUIRED_PATCH_IDS = {
+    "policy_reject_deprecated_kid",
+    "policy_pin_algorithm",
+    "policy_verify_signature_first",
+    "policy_server_side_admin",
+}
+
+BONUS_PATCH_IDS = {"bonus_validate_common_claims"}
+
+PATCH_CORRECT_FEEDBACK = {
+    "policy_reject_deprecated_kid": "맞아. deprecated/legacy kid는 verifier에서 제거하거나 명시적으로 거부해야 해.",
+    "policy_pin_algorithm": "맞아. kid별 허용 alg는 token header가 아니라 서버 설정으로 고정해야 해.",
+    "policy_verify_signature_first": "맞아. payload claim은 signature 검증이 끝난 뒤에만 신뢰해야 해.",
+    "policy_server_side_admin": "맞아. admin audit 권한은 role/scope claim만으로 열지 말고 서버 측 정책과 묶어야 해.",
+    "bonus_validate_common_claims": "좋아. iss/aud/exp 검증도 중요한 방어층이지만, 이번 필수 봉쇄점은 legacy key selection과 claim trust야.",
+}
+
+PATCH_WRONG_FEEDBACK = {
+    "decoy_hide_jwks": "JWKS를 숨겨도 verifier 안의 legacy kid 경로가 살아 있으면 문제는 남아.",
+    "decoy_rename_kid": "kid 이름만 바꿔도 deprecated verifier가 남아 있으면 같은 취약점이 반복돼.",
+    "decoy_base64_pass": "Base64는 인코딩이지 보호가 아니야. token header/payload는 원래 읽을 수 있어.",
+    "decoy_trust_header_alg": "token header는 클라이언트가 제어할 수 있어. header alg를 신뢰하면 key confusion이 더 쉬워져.",
+    "decoy_disable_admin_ui": "UI 버튼을 숨겨도 API의 admin audit 권한 검증을 대신하지 못해.",
+}
+
+PATCH_MISSING_LABELS = {
+    "policy_reject_deprecated_kid": "deprecated kid 거부",
+    "policy_pin_algorithm": "kid별 alg pinning",
+    "policy_verify_signature_first": "signature-before-claims",
+    "policy_server_side_admin": "server-side admin authorization",
 }
 
 
@@ -89,8 +136,47 @@ def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL4_2_FLAG
 
 
-def judge_patch(_patched: list[str]) -> bool:
-    return False
+def flag_feedback(flag: str) -> str:
+    value = flag.strip()
+    if value == "FLAG{LEGACY_SLOT_CANARY}":
+        return (
+            "그건 legacy slot canary야. 이번 문제는 FLAG 문자열 찾기가 아니라 "
+            "kid가 어떤 verifier path를 열고 claim을 어디서 신뢰하는지 보는 문제야."
+        )
+    if value.startswith("FLAG{"):
+        return "FLAG처럼 보이지만 이번 Evidence Shard가 아니야. legacy kid와 admin claim 조합을 검증해봐."
+    return "Key Slot Wheel에서 legacy verifier path를 열고, admin claim mutation을 연결해야 Evidence Shard가 복원돼."
+
+
+def judge_patch(patched: list[str]) -> bool:
+    selected = set(patched)
+    return REQUIRED_PATCH_IDS.issubset(selected) and not (selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS)
+
+
+def patch_feedback(patched: list[str]) -> str:
+    selected = set(patched)
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for pid in patched:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    missing = REQUIRED_PATCH_IDS - selected
+    if missing:
+        missing_names = ", ".join(PATCH_MISSING_LABELS[pid] for pid in sorted(missing))
+        messages.append(f"아직 닫히지 않은 경계가 있어: {missing_names}.")
+
+    extra_wrong = selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS
+    if extra_wrong:
+        messages.append("decoy 정책은 빼고, verifier와 admin 권한 경계에 직접 작동하는 control만 남겨봐.")
+
+    return "\n".join(messages) if messages else "정책 카드를 선택해줘. kid selection과 claim trust boundary를 같이 닫아야 해."
 
 
 def _b64u_encode(raw: bytes) -> str:

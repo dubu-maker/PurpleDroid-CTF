@@ -641,19 +641,20 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 
   level4_1: {
     id: "level4_1",
-    title: "4-1 Leaky Build Artifact - 배포물에서 새는 시크릿",
+    title: "4-1 ABSENCE MAP - 사라진 소스맵의 지도",
     shortSummary:
-      "배포된 프론트 산출물은 공개 자료다. 클라이언트에 넣은 파트너 키는 결국 노출되고, 곧 권한 엔드포인트 악용으로 이어진다.",
+      "배포된 프론트 산출물은 공개 자료다. AEGIS가 source map을 없다고 기록해도 bundle의 sourceMappingURL과 public map이 원본 코드와 secret residue를 노출할 수 있다.",
     markdown: `
 ## 오늘 미션에서 한 일
-- bundle-hint로 공개 자산 파일 경로를 확인했다.
-- 공개 번들 파일을 열어 PARTNER_KEY를 찾아냈다.
-- 유출된 키를 X-Partner-Key 헤더로 넣어 partner/handshake를 호출했다.
-- 응답에서 FLAG를 획득해 제출했다.
+- AEGIS Memory Index의 sourceMap=normalized_absent 주장과 Public Bundle Shard의 sourceMappingURL을 비교했다.
+- 공개 source map을 따라 sourcesContent에 남은 원본 partnerGate 코드를 확인했다.
+- FLAG처럼 보이는 canary와 실제 위험한 PARTNER_KEY residue를 구분했다.
+- Partner Handshake Evidence를 복원해 Evidence Shard를 획득했다.
 
 ## 왜 이게 위험한가
 - 웹 빌드 산출물(JS 번들/설정/소스맵)은 공격자도 동일하게 받는다.
 - UI에 안 보여도 파일이 배포되면 누구나 다운로드해 검색/분석할 수 있다.
+- source map의 sourcesContent는 원본 소스, 주석, 설정값을 그대로 담을 수 있다.
 - 즉, 클라이언트에 시크릿을 넣는 순간 그 값은 시간 문제로 유출된다.
 
 ## 실전에서 자주 터지는 패턴
@@ -673,7 +674,7 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 - 키 로테이션, 최소 권한 스코프, TTL, 레이트리밋/모니터링으로 유출 피해를 제한한다.
 
 ## 결론
-"UI에 안 보인다"는 보안이 아니다. 배포된 파일은 공개 자산이고, 시크릿은 서버에 있어야 한다.
+"없다고 기록됐다"는 보안이 아니다. 배포된 파일은 공개 기억이고, 시크릿은 서버에 있어야 한다.
 `,
     keyTakeaways: [
       "배포된 프론트 산출물은 공격자도 동일하게 열람 가능하다.",
@@ -695,7 +696,7 @@ Security by obscurity(숨겨서 보호)는 보안이 아니다. 권한 검사는
 
   level4_2: {
     id: "level4_2",
-    title: "4-2 Key Roulette Partner Pass - kid 검증 키 선택 조작",
+    title: "4-2 KEY MEMORY SLOT - kid 검증 키 선택 조작",
     shortSummary:
       "토큰 보안의 핵심은 검증 로직이다. kid를 그대로 신뢰하면 공격자가 서버의 검증 키 선택을 조작할 수 있다.",
     markdown: `

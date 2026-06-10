@@ -21,11 +21,11 @@ ASSET_MAP_PATH = f"/api/v1/challenges/level4_1/actions/public/assets/{ASSET_MAP_
 STATIC: Dict[str, Any] = {
     "id": "level4_1",
     "level": 4,
-    "title": "4-1 Leaky Build Artifact",
-    "summary": "배포 산출물에서 유출된 파트너 키는 곧 권한 엔드포인트 악용으로 이어진다.",
+    "title": "4-1 ABSENCE MAP",
+    "summary": "사라졌다고 기록된 source map이 공개 bundle shard에 남아 partner key residue를 노출한다.",
     "description": (
-        "미션: 공개 번들 산출물에서 PARTNER_KEY를 찾아, "
-        "X-Partner-Key 헤더로 partner/handshake를 호출해 FLAG를 획득해라."
+        "미션: AEGIS Memory Index와 공개 build artifact의 모순을 비교하고, "
+        "source map의 sourcesContent에서 client-side secret residue를 복원해라."
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
@@ -95,11 +95,90 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "클라이언트 빌드 산출물에 시크릿을 넣지 마라. "
-            "서명/파트너 인증은 서버에서 처리하고, 운영 배포에서 소스맵/디버그 산출물을 제거하라."
+            "Memory Vault의 공개 artifact leak을 봉쇄할 정책 카드를 선택하세요. "
+            "값을 더 숨기는 것이 아니라 secret 경계, source map 배포, 유출된 key 수명, credential scope를 함께 닫아야 합니다."
         ),
-        "code": {},
+        "code": {
+            "language": "policy",
+            "lines": [
+                {
+                    "no": 1,
+                    "text": "Keep secrets server-side",
+                    "patchableId": "policy_server_side",
+                },
+                {
+                    "no": 2,
+                    "text": "Disable production sourcemaps",
+                    "patchableId": "policy_disable_sourcemaps",
+                },
+                {
+                    "no": 3,
+                    "text": "Rotate leaked partner keys",
+                    "patchableId": "policy_rotate_keys",
+                },
+                {
+                    "no": 4,
+                    "text": "Scope partner credentials",
+                    "patchableId": "policy_scope_credentials",
+                },
+                {
+                    "no": 5,
+                    "text": "Rename PARTNER_KEY variable",
+                    "patchableId": "decoy_rename_variable",
+                },
+                {
+                    "no": 6,
+                    "text": "Minify harder",
+                    "patchableId": "decoy_minify_harder",
+                },
+                {
+                    "no": 7,
+                    "text": "Base64 encode the key",
+                    "patchableId": "decoy_base64_encode",
+                },
+                {
+                    "no": 8,
+                    "text": "Hide sourceMappingURL comment only",
+                    "patchableId": "decoy_hide_mapping_comment",
+                },
+                {
+                    "no": 9,
+                    "text": "Trust client config",
+                    "patchableId": "decoy_trust_client_config",
+                },
+            ],
+        },
     },
+}
+
+
+REQUIRED_PATCH_IDS = {
+    "policy_server_side",
+    "policy_disable_sourcemaps",
+    "policy_rotate_keys",
+    "policy_scope_credentials",
+}
+
+PATCH_CORRECT_FEEDBACK = {
+    "policy_server_side": "맞아. partner key는 client bundle이 아니라 서버에서만 사용해야 해.",
+    "policy_disable_sourcemaps": "맞아. 운영 source map과 sourcesContent는 공개 배포에서 제거하거나 접근 제한해야 해.",
+    "policy_rotate_keys": "맞아. 이미 public artifact에 노출된 key는 폐기하고 새로 발급해야 해.",
+    "policy_scope_credentials": "맞아. partner credential은 서비스/origin/권한 범위를 최소화해야 해.",
+}
+
+PATCH_WRONG_FEEDBACK = {
+    "decoy_rename_variable": "변수명을 바꿔도 값은 bundle이나 source map에 남아. 이름 숨기기는 봉쇄가 아니야.",
+    "decoy_minify_harder": "minification은 분석을 늦출 뿐 secret 보호 경계가 아니야.",
+    "decoy_base64_encode": "Base64는 인코딩이지 암호화가 아니야. client에 있으면 복원 가능해.",
+    "decoy_hide_mapping_comment": "sourceMappingURL 주석만 지워도 public map 파일이 남아 있으면 직접 접근될 수 있어.",
+    "decoy_trust_client_config": "client config는 공격자가 읽고 바꿀 수 있어. 신뢰 경계가 될 수 없어.",
+}
+
+PATCH_MISSING_LABELS = {
+    "policy_server_side": "server-side secret",
+    "policy_disable_sourcemaps": "production sourcemap 통제",
+    "policy_rotate_keys": "leaked key rotation",
+    "policy_scope_credentials": "credential scope 제한",
 }
 
 
@@ -107,8 +186,42 @@ def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL4_1_FLAG
 
 
-def judge_patch(_patched: list[str]) -> bool:
-    return False
+def flag_feedback(flag: str) -> str:
+    value = flag.strip()
+    if value == "FLAG{SOURCE_MAP_CANARY}":
+        return (
+            "그건 source map canary야. AEGIS가 redaction 상태를 확인하려고 심어둔 표식이지 Evidence Shard가 아니야. "
+            "진짜 문제는 partner key가 client memory에 남아 있다는 거야."
+        )
+    if value.startswith("FLAG{"):
+        return "FLAG처럼 보이지만 이번 Evidence Shard가 아니야. Partner Handshake Evidence를 복원해봐."
+    return "Memory Board에서 partner key residue를 handshake impact와 연결해야 Evidence Shard가 복원돼."
+
+
+def judge_patch(patched: list[str]) -> bool:
+    return set(patched) == REQUIRED_PATCH_IDS
+
+
+def patch_feedback(patched: list[str]) -> str:
+    selected = set(patched)
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for pid in patched:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    missing = REQUIRED_PATCH_IDS - selected
+    if missing:
+        missing_names = ", ".join(PATCH_MISSING_LABELS[pid] for pid in sorted(missing))
+        messages.append(f"아직 닫히지 않은 경계가 있어: {missing_names}.")
+
+    return "\n".join(messages) if messages else "정책 카드를 선택해줘. 숨기기보다 secret 경계와 배포 산출물 통제가 핵심이야."
 
 
 def bundle_hint_payload() -> Dict[str, Any]:

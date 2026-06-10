@@ -32,6 +32,567 @@ const LEVEL3_3_SAFE_PROFILE = {
   relayNote: "standard trust lane",
   timezone: "KST",
 };
+const LEVEL4_1_MEMORY_PUZZLE = {
+  evidenceShard: "FLAG{BUILD_ARTIFACTS_ARE_PUBLIC}",
+  initialCards: ["memory_index", "public_bundle", "client_config", "partner_handshake"],
+  cards: [
+    {
+      id: "memory_index",
+      type: "claim",
+      title: "AEGIS Memory Index",
+      summary: "official memory state",
+      content: {
+        artifact: "pd.partner.config.5f3c2a.js",
+        classification: "public",
+        sourceMap: "normalized_absent",
+        partnerSecrets: "server_only",
+        risk: "low",
+      },
+      note:
+        "AEGIS의 공식 기록이야. sourceMap은 normalized_absent, 즉 없다고 되어 있어. 이제 실제 bundle 카드와 비교해봐.",
+      action: "아래 슬롯은 아직 누르지 말고, Public Bundle Shard 카드를 눌러 실제 artifact와 비교해봐.",
+    },
+    {
+      id: "public_bundle",
+      type: "artifact",
+      title: "Public Bundle Shard",
+      summary: "minified client artifact",
+      content:
+        'const a="https://partner-gw.purpledroid.local",b="pd_partner_test_6f31b020",c="pd_partner_stage_1190ab77",d="masked";\nexport{a as A,b as B,c as C,d as D};\n//# sourceMappingURL=pd.partner.config.5f3c2a.js.map',
+      unlocks: ["source_map_pointer"],
+      note:
+        "AEGIS는 source map이 없다고 했지만, bundle 마지막 줄에는 sourceMappingURL이 남아 있어. 이 모순은 Contradiction 슬롯에 들어갈 단서야.",
+      action: "이 카드를 아래 [모순] 슬롯에 고정해. 그 다음 새로 열린 Source Map Pointer 카드를 눌러.",
+    },
+    {
+      id: "client_config",
+      type: "artifact",
+      title: "Public Analytics Config",
+      summary: "low-value public config",
+      content: {
+        telemetry: "enabled",
+        region: "ap-northeast",
+        containsSecret: false,
+      },
+      note:
+        "이 카드는 공개 분석 설정이야. 위험한 key는 없어. 진짜 흐름은 bundle의 sourceMappingURL 쪽에 있어.",
+      action: "이 카드는 지금 정답 흐름이 아니야. Public Bundle Shard를 먼저 확인해봐.",
+    },
+    {
+      id: "source_map_pointer",
+      type: "pointer",
+      title: "Source Map Pointer",
+      summary: "artifact link residue",
+      content: "pd.partner.config.5f3c2a.js.map",
+      unlocks: ["source_map_artifact"],
+      note:
+        "sourceMappingURL은 다른 공개 artifact로 이어지는 포인터야. 이 포인터가 Source Map Artifact 카드를 열어.",
+      action: "이 카드는 슬롯에 넣기보다 다음 카드를 여는 포인터야. Source Map Artifact 카드를 눌러.",
+    },
+    {
+      id: "source_map_artifact",
+      type: "artifact",
+      title: "Source Map Artifact",
+      summary: "public map with sourcesContent",
+      content: {
+        version: 3,
+        file: "pd.partner.config.5f3c2a.js",
+        sources: ["src/pd.partner.config.ts"],
+        sourcesContent: "available",
+      },
+      unlocks: ["partner_gate_source", "analytics_source"],
+      note:
+        "공개 source map은 원본 소스인 sourcesContent를 담을 수 있어. Leak Source 슬롯에는 이 카드나 partnerGate 원본 소스가 어울려.",
+      action: "이 카드는 아래 [유출 출처] 슬롯에 고정할 수 있어. 그 다음 sourcesContent: partnerGate.ts 카드를 열어봐.",
+    },
+    {
+      id: "analytics_source",
+      type: "source",
+      title: "sourcesContent: publicAnalytics.ts",
+      summary: "benign source fragment",
+      content:
+        'export const ANALYTICS_REGION = "ap-northeast";\nexport const PUBLIC_SAMPLE_RATE = 0.25;\nexport const DEBUG_LABEL = "memory-vault-public";',
+      note:
+        "이 원본 소스는 공개 분석 설정이라 위험도가 낮아. partner key가 남은 다른 sourcesContent를 찾아봐.",
+      action: "이 카드는 미끼에 가까워. sourcesContent: partnerGate.ts 카드를 확인해봐.",
+    },
+    {
+      id: "partner_gate_source",
+      type: "source",
+      title: "sourcesContent: partnerGate.ts",
+      summary: "original partner config",
+      content:
+        'export const PARTNER_API_BASE = "https://partner-gw.purpledroid.local";\nexport const PARTNER_KEY_TEST = "pd_partner_test_6f31b020";\nexport const PARTNER_KEY_STAGING = "pd_partner_stage_1190ab77";\nexport const PARTNER_KEY = "pd_partner_live_4f9a2d71";\nexport const MAP_CANARY = "FLAG{SOURCE_MAP_CANARY}";',
+      unlocks: ["partner_key_residue", "map_canary"],
+      note:
+        "FLAG처럼 보이는 canary가 있지만 정답은 아니야. 실제 위험은 PARTNER_KEY가 client memory에 남아 있다는 점이야.",
+      action: "이 카드는 아래 [유출 출처] 슬롯에 고정할 수 있어. 그 다음 Partner Key Residue 카드를 눌러.",
+    },
+    {
+      id: "partner_key_residue",
+      type: "evidence",
+      title: "Partner Key Residue",
+      summary: "client-side secret residue",
+      value: "pd_partner_live_4f9a2d71",
+      content: {
+        key: "PARTNER_KEY",
+        value: "pd_partner_live_4f9a2d71",
+        residue: "client memory should not carry this",
+      },
+      note:
+        "이게 실제 secret residue야. Secret Residue 슬롯에 넣고, 이 key가 어디에 쓰이는지 Impact까지 연결해봐.",
+      action: "이 카드를 아래 [비밀 잔여물] 슬롯에 고정해. 그 다음 Partner Handshake Simulator를 [영향]에 연결해.",
+    },
+    {
+      id: "map_canary",
+      type: "decoy",
+      title: "Source Map Canary",
+      summary: "redaction test marker",
+      value: "FLAG{SOURCE_MAP_CANARY}",
+      content: {
+        value: "FLAG{SOURCE_MAP_CANARY}",
+        purpose: "redaction canary",
+        evidence: false,
+      },
+      note:
+        "이건 decoy야. AEGIS가 source map redaction 상태를 확인하려고 심은 canary이지 Evidence Shard가 아니야.",
+      action: "이 카드는 정답 슬롯에 넣지 마. Partner Key Residue가 진짜 비밀 잔여물이야.",
+    },
+    {
+      id: "partner_handshake",
+      type: "impact",
+      title: "Partner Handshake Simulator",
+      summary: "impact target",
+      content: {
+        endpoint: "/api/v1/challenges/level4_1/actions/partner/handshake",
+        requiredHeader: "X-Partner-Key",
+        acceptsClientResidue: true,
+      },
+      note:
+        "Partner Handshake는 X-Partner-Key를 받아. 공개 source map에서 나온 Partner Key Residue가 이 impact로 이어져.",
+      action: "이 카드를 아래 [영향] 슬롯에 고정해. 네 슬롯이 모두 채워지면 Restore Evidence를 눌러.",
+    },
+  ],
+  slots: [
+    {
+      id: "contradiction",
+      label: "모순",
+      hint: "sourceMap은 없다고 했지만 bundle에 포인터가 있음",
+      accepts: ["public_bundle"],
+    },
+    {
+      id: "leak_source",
+      label: "유출 출처",
+      hint: "공개 source map 또는 원본 sourcesContent",
+      accepts: ["source_map_artifact", "partner_gate_source"],
+    },
+    {
+      id: "secret_residue",
+      label: "비밀 잔여물",
+      hint: "canary flag가 아니라 partner key",
+      accepts: ["partner_key_residue"],
+    },
+    {
+      id: "impact",
+      label: "영향",
+      hint: "노출된 key가 handshake에 사용됨",
+      accepts: ["partner_handshake"],
+    },
+  ],
+  policyCards: [
+    {
+      id: "policy_server_side",
+      title: "Keep Secrets Server-Side",
+      text: "파트너 키는 client bundle이 아니라 서버에서만 사용한다.",
+      correct: true,
+    },
+    {
+      id: "policy_disable_sourcemaps",
+      title: "Disable Production Sourcemaps",
+      text: "운영 source map과 sourcesContent를 제거하거나 접근 제한한다.",
+      correct: true,
+    },
+    {
+      id: "policy_rotate_keys",
+      title: "Rotate Leaked Partner Keys",
+      text: "public artifact에 노출된 key는 폐기하고 새로 발급한다.",
+      correct: true,
+    },
+    {
+      id: "policy_scope_credentials",
+      title: "Scope Partner Credentials",
+      text: "파트너 key 권한을 origin/service 단위로 제한한다.",
+      correct: true,
+    },
+    {
+      id: "decoy_rename_variable",
+      title: "Rename Variable",
+      text: "변수명만 바꾸면 값은 그대로 남는다.",
+      correct: false,
+    },
+    {
+      id: "decoy_minify_harder",
+      title: "Minify Harder",
+      text: "난독화/압축은 secret 보호가 아니다.",
+      correct: false,
+    },
+    {
+      id: "decoy_base64_encode",
+      title: "Base64 Encode Key",
+      text: "인코딩은 암호화가 아니다.",
+      correct: false,
+    },
+    {
+      id: "decoy_hide_mapping_comment",
+      title: "Hide Mapping Comment",
+      text: "map 파일이 공개라면 직접 접근될 수 있다.",
+      correct: false,
+    },
+  ],
+};
+
+const LEVEL4_2_KEY_SLOT_PUZZLE = {
+  evidenceShard: "FLAG{KID_CONTROLS_THE_LOCK}",
+  activeKid: "pd-2026-rot2",
+  legacyKid: "pd-2024-legacy",
+  retiredKid: "pd-2023-archive",
+  initialCards: ["key_index", "partner_pass", "jwks_slots", "admin_audit_gate"],
+  cards: [
+    {
+      id: "key_index",
+      type: "claim",
+      title: "AEGIS Key Index",
+      summary: "official key memory state",
+      content: {
+        partnerPass: "normalized",
+        selectedKey: "active_only",
+        legacyKey: "deprecated",
+        adminAudit: "protected",
+        risk: "low",
+      },
+      note:
+        "AEGIS는 active key만 신뢰한다고 기록했어. 하지만 deprecated와 disabled는 같은 말이 아니야.",
+      action: "PartnerPass Capsule과 JWKS Memory Slots를 비교해봐. kid가 어느 slot을 고르는지 보는 게 시작이야.",
+    },
+    {
+      id: "partner_pass",
+      type: "token",
+      title: "PartnerPass Capsule",
+      summary: "header / payload / signature",
+      content: {
+        segments: 3,
+        header: {
+          alg: "RS256",
+          kid: "pd-2026-rot2",
+          typ: "JWT",
+        },
+        payload: {
+          iss: "purpledroid.partner",
+          aud: "partner-admin",
+          sub: "user_1004",
+          role: "user",
+          scope: "partner:read",
+          debug: "FLAG{LEGACY_SLOT_CANARY}",
+        },
+        signature: "present",
+      },
+      unlocks: ["token_header", "token_payload", "canary_claim"],
+      note:
+        "Pass를 문자열로 보지 말고 구조로 봐. header는 selector, payload는 주장, signature는 증명이야.",
+      action: "Token Header 카드를 열어 kid selector를 확인하고, Token Payload에서 role/scope claim을 봐.",
+    },
+    {
+      id: "jwks_slots",
+      type: "memory",
+      title: "JWKS Memory Slots",
+      summary: "active / legacy / retired",
+      content: {
+        slots: [
+          { kid: "pd-2026-rot2", status: "active", alg: "RS256", verifier: "strict" },
+          { kid: "pd-2024-legacy", status: "deprecated", alg: "HS256", verifier: "compatibility" },
+          { kid: "pd-2023-archive", status: "retired", alg: "HS256", verifier: "disabled" },
+        ],
+      },
+      unlocks: ["active_slot", "legacy_slot", "retired_slot"],
+      note:
+        "세 slot은 비슷해 보여도 상태가 달라. active는 strict, retired는 disabled, deprecated는 아직 compatibility path를 가질 수 있어.",
+      action: "Key Slot Wheel에서 세 slot을 비교해봐. retired보다 deprecated가 더 위험한 이유를 찾아.",
+    },
+    {
+      id: "admin_audit_gate",
+      type: "impact",
+      title: "Admin Audit Gate",
+      summary: "privileged action target",
+      content: {
+        endpoint: "/api/v1/challenges/level4_2/actions/admin/audit",
+        accepts: "PartnerPass",
+        gate: "role=admin OR scope contains admin",
+      },
+      unlocks: ["claim_mutation"],
+      note:
+        "Admin Audit Gate는 PartnerPass의 role 또는 scope를 본다. 문제는 이 claim을 언제, 어떤 verifier 뒤에서 신뢰하느냐야.",
+      action: "Claim Mutation Panel에서 role 또는 scope를 admin 계열로 바꾸고, verifier path와 함께 확인해봐.",
+    },
+    {
+      id: "token_header",
+      type: "selector",
+      title: "Token Header: kid",
+      summary: "key selector",
+      content: {
+        alg: "RS256",
+        kid: "pd-2026-rot2",
+        typ: "JWT",
+        meaning: "kid chooses verification key slot",
+      },
+      note:
+        "kid는 장식 라벨이 아니라 verifier가 어느 key memory slot을 사용할지 고르는 selector가 될 수 있어.",
+      action: "이 카드는 [KEY SELECTOR] 슬롯에 어울려. 그 다음 legacy slot이 왜 약한지 확인해.",
+    },
+    {
+      id: "token_payload",
+      type: "claim",
+      title: "Token Payload Claims",
+      summary: "role / scope / common claims",
+      content: {
+        iss: "purpledroid.partner",
+        aud: "partner-admin",
+        sub: "user_1004",
+        role: "user",
+        scope: "partner:read",
+        exp: "valid",
+      },
+      unlocks: ["claim_mutation"],
+      note:
+        "payload는 주장일 뿐이야. signature 검증과 common claim 검증이 끝나기 전에는 권한의 근거가 될 수 없어.",
+      action: "role 또는 scope가 admin gate를 어떻게 여는지 Claim Mutation Panel에서 비교해봐.",
+    },
+    {
+      id: "active_slot",
+      type: "key",
+      title: "Active Key Slot",
+      summary: "strict verifier",
+      content: {
+        kid: "pd-2026-rot2",
+        status: "active",
+        alg: "RS256",
+        verifier: "strict",
+        signature: "required",
+      },
+      note:
+        "active slot은 정상 경로야. payload claim을 바꾸면 signature mismatch가 나야 맞아.",
+      action: "active에 admin claim을 붙이면 왜 실패하는지 Verification Simulation에서 확인해봐.",
+    },
+    {
+      id: "legacy_slot",
+      type: "key",
+      title: "Legacy Key Slot",
+      summary: "deprecated compatibility verifier",
+      content: {
+        kid: "pd-2024-legacy",
+        status: "deprecated",
+        verifier: "compatibility",
+        warning: "retained for partner migration",
+      },
+      unlocks: ["legacy_path"],
+      note:
+        "deprecated와 disabled는 달라. disabled는 닫힌 문이고, deprecated는 닫아야 했지만 아직 남은 문일 수 있어.",
+      action: "이 카드는 [WEAK SLOT] 슬롯에 어울려. Key Slot Wheel에서 legacy slot을 선택해봐.",
+    },
+    {
+      id: "retired_slot",
+      type: "decoy",
+      title: "Retired Key Slot",
+      summary: "disabled verifier",
+      content: {
+        kid: "pd-2023-archive",
+        status: "retired",
+        verifier: "disabled",
+      },
+      note:
+        "retired slot은 닫힌 경로야. disabled verifier는 claim을 신뢰하기 전에 멈춰야 해.",
+      action: "이 카드는 decoy에 가까워. retired보다 deprecated legacy slot을 비교해봐.",
+    },
+    {
+      id: "claim_mutation",
+      type: "mutation",
+      title: "Claim Mutation",
+      summary: "role / scope change options",
+      content: {
+        safe: ["iss=purpledroid.partner", "aud=partner-admin", "exp=valid"],
+        privileged: ["role=admin", "scope=partner:admin"],
+        invalid: ["iss=unknown", "aud=public-client", "exp=expired"],
+      },
+      unlocks: ["admin_claim_evidence"],
+      note:
+        "권한 claim만 올리는 것과 common claim을 깨는 것은 달라. iss/aud/exp를 깨면 verifier가 거부해야 해.",
+      action: "Claim Mutation Panel에서 role=admin 또는 scope=partner:admin 중 하나를 선택해봐.",
+    },
+    {
+      id: "legacy_path",
+      type: "path",
+      title: "Legacy Verification Path",
+      summary: "compatibility path selected",
+      content: {
+        kid: "pd-2024-legacy",
+        verifier: "legacy_compatibility",
+        signatureEnforcement: "degraded",
+        claimTrust: "too early",
+      },
+      note:
+        "legacy compatibility path는 signature enforcement가 약해진 경로야. 여기서 admin claim이 결합되면 gate가 열린다.",
+      action: "legacy slot과 admin claim mutation을 함께 검증해봐. 하나만으로는 Evidence가 완성되지 않아.",
+    },
+    {
+      id: "admin_claim_evidence",
+      type: "evidence",
+      title: "Admin Claim Mutation",
+      summary: "privileged claim accepted",
+      content: {
+        accepted: ["role=admin", "scope=partner:admin"],
+        gate: "admin audit",
+        requires: "legacy verifier path",
+      },
+      note:
+        "admin claim 자체가 답은 아니야. legacy kid가 열어둔 verifier path 뒤에서 신뢰될 때 Evidence가 돼.",
+      action: "이 카드는 [CLAIM MUTATION] 슬롯에 어울려. Admin Audit Gate를 impact로 연결해.",
+    },
+    {
+      id: "canary_claim",
+      type: "decoy",
+      title: "Canary Claim",
+      summary: "debug marker",
+      value: "FLAG{LEGACY_SLOT_CANARY}",
+      content: {
+        debug: "FLAG{LEGACY_SLOT_CANARY}",
+        purpose: "redaction marker",
+        evidence: false,
+      },
+      note:
+        "그건 canary야. kid 문제는 FLAG 문자열 찾기가 아니라 어떤 verifier가 claim을 신뢰하는지 보는 문제야.",
+      action: "canary는 슬롯에 넣지 마. Token Header, Legacy Key Slot, Admin Claim Mutation, Admin Audit Gate를 연결해봐.",
+    },
+  ],
+  slots: [
+    {
+      id: "key_selector",
+      label: "KEY SELECTOR",
+      hint: "kid chooses verification key",
+      accepts: ["token_header"],
+    },
+    {
+      id: "weak_slot",
+      label: "WEAK SLOT",
+      hint: "deprecated legacy verifier",
+      accepts: ["legacy_slot"],
+    },
+    {
+      id: "claim_mutation",
+      label: "CLAIM MUTATION",
+      hint: "role=admin 또는 scope=partner:admin",
+      accepts: ["admin_claim_evidence", "claim_mutation"],
+    },
+    {
+      id: "impact",
+      label: "IMPACT",
+      hint: "admin audit accepts forged PartnerPass",
+      accepts: ["admin_audit_gate"],
+    },
+  ],
+  slotOptions: [
+    {
+      id: "active",
+      kid: "pd-2026-rot2",
+      label: "active",
+      status: "strict verifier",
+      result: "payload mutation requires a matching signature",
+    },
+    {
+      id: "legacy",
+      kid: "pd-2024-legacy",
+      label: "legacy",
+      status: "deprecated compatibility",
+      result: "compatibility path selected",
+    },
+    {
+      id: "retired",
+      kid: "pd-2023-archive",
+      label: "retired",
+      status: "disabled verifier",
+      result: "no verifier path available",
+    },
+  ],
+  claimOptions: [
+    { id: "none", label: "role=user / scope=partner:read", kind: "neutral" },
+    { id: "role_admin", label: "role=admin", kind: "admin" },
+    { id: "scope_admin", label: "scope=partner:admin", kind: "admin" },
+    { id: "issuer_unknown", label: "iss=unknown", kind: "invalid" },
+    { id: "aud_public", label: "aud=public-client", kind: "invalid" },
+    { id: "exp_expired", label: "exp=expired", kind: "invalid" },
+  ],
+  policyCards: [
+    {
+      id: "policy_reject_deprecated_kid",
+      title: "Reject Deprecated kid",
+      text: "deprecated/legacy kid는 verifier에서 제거하거나 명시적으로 거부한다.",
+      correct: true,
+    },
+    {
+      id: "policy_pin_algorithm",
+      title: "Pin Algorithm Per Key",
+      text: "kid별 허용 alg를 서버 설정으로 고정하고 token header alg를 신뢰하지 않는다.",
+      correct: true,
+    },
+    {
+      id: "policy_verify_signature_first",
+      title: "Verify Signature First",
+      text: "payload claim은 signature 검증 후에만 신뢰한다.",
+      correct: true,
+    },
+    {
+      id: "policy_server_side_admin",
+      title: "Server-Side Admin Binding",
+      text: "admin audit 권한은 role/scope claim만으로 허용하지 않고 서버 정책과 묶는다.",
+      correct: true,
+    },
+    {
+      id: "bonus_validate_common_claims",
+      title: "Validate Common Claims",
+      text: "iss, aud, exp 검증은 좋은 추가 방어층이다.",
+      correct: true,
+      bonus: true,
+    },
+    {
+      id: "decoy_hide_jwks",
+      title: "Hide JWKS Endpoint",
+      text: "JWKS를 숨겨도 verifier 안의 legacy path는 사라지지 않는다.",
+      correct: false,
+    },
+    {
+      id: "decoy_rename_kid",
+      title: "Rename kid",
+      text: "이름만 바꿔도 deprecated verifier가 남아 있으면 문제는 유지된다.",
+      correct: false,
+    },
+    {
+      id: "decoy_base64_pass",
+      title: "Base64 Encode PartnerPass",
+      text: "JWT header/payload는 원래 읽을 수 있다. 인코딩은 보호가 아니다.",
+      correct: false,
+    },
+    {
+      id: "decoy_trust_header_alg",
+      title: "Trust Header alg",
+      text: "header alg는 클라이언트가 제어할 수 있어 신뢰 경계가 될 수 없다.",
+      correct: false,
+    },
+    {
+      id: "decoy_disable_admin_ui",
+      title: "Disable Admin UI",
+      text: "UI 버튼을 숨겨도 API 권한 검증을 대신하지 못한다.",
+      correct: false,
+    },
+  ],
+};
 
 function level33SafeUpdateCurl() {
   return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
@@ -1117,6 +1678,945 @@ function EvidenceSubmit({ disabled, value, onChange, onSubmit, result, solved })
   );
 }
 
+function MemoryCardContent({ card }) {
+  if (!card) {
+    return null;
+  }
+
+  if (typeof card.content === "string") {
+    return <pre>{card.content}</pre>;
+  }
+
+  if (card.content && typeof card.content === "object") {
+    return <pre>{JSON.stringify(card.content, null, 2)}</pre>;
+  }
+
+  return <pre>{String(card.value || "")}</pre>;
+}
+
+function Level41MemoryVault({
+  phase,
+  evidenceSolved,
+  evidenceResult,
+  onRestoreEvidence,
+  selectedPolicyIds,
+  onTogglePolicy,
+  onSubmitPolicy,
+  patchResult,
+  busy,
+}) {
+  const cardsById = useMemo(
+    () => new Map(LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => [card.id, card])),
+    []
+  );
+  const [revealedIds, setRevealedIds] = useState(() => LEVEL4_1_MEMORY_PUZZLE.initialCards);
+  const [selectedCardId, setSelectedCardId] = useState("memory_index");
+  const [slotAssignments, setSlotAssignments] = useState({});
+  const [memoryResult, setMemoryResult] = useState(null);
+  const [draggingCardId, setDraggingCardId] = useState(null);
+  const [dropSlotId, setDropSlotId] = useState(null);
+  const revealedCards = LEVEL4_1_MEMORY_PUZZLE.cards.filter((card) => revealedIds.includes(card.id));
+  const selectedCard = cardsById.get(selectedCardId) || revealedCards[0];
+  const allSlotsFilled = LEVEL4_1_MEMORY_PUZZLE.slots.every((slot) => slotAssignments[slot.id]);
+  const reconstructionCorrect = LEVEL4_1_MEMORY_PUZZLE.slots.every((slot) =>
+    slot.accepts.includes(slotAssignments[slot.id])
+  );
+  const restored = evidenceSolved || evidenceResult?.correct;
+  const canUseAttackBoard = phase === "ATTACK" && !restored;
+  const canSealPolicy = phase === "DEFENSE";
+  const policyStatus =
+    phase === "MISSION_COMPLETE"
+      ? "sealed"
+      : canSealPolicy
+        ? "seal memory leak"
+        : restored
+          ? "awaiting containment"
+          : "locked";
+  const activeHint =
+    memoryResult?.message ||
+    selectedCard?.note ||
+    "먼저 AEGIS Memory Index와 Public Bundle Shard를 비교해봐. AEGIS는 source map이 없다고 했는데, bundle 마지막 줄에는 다른 단서가 남아 있어.";
+  const activeAction =
+    selectedCard?.action ||
+    "Memory Board에서 카드를 하나 누른 뒤, MIRA HINT의 안내를 보고 아래 슬롯에 넣을지 다음 카드를 열지 판단해봐.";
+  const activeHintTone = memoryResult?.correct === false ? "fail" : "ok";
+
+  useEffect(() => {
+    if (restored) {
+      setRevealedIds(LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => card.id));
+    }
+  }, [restored]);
+
+  const revealCard = useCallback((card) => {
+    setSelectedCardId(card.id);
+    if (card.unlocks?.length) {
+      setRevealedIds((prev) => [...new Set([...prev, ...card.unlocks])]);
+    }
+    if (card.id === "map_canary") {
+      setMemoryResult({
+        correct: false,
+        message:
+          "그건 source map canary야. redaction 상태를 확인하려고 심어둔 표식이지 Evidence Shard가 아니야.",
+      });
+      return;
+    }
+    if (card.note) {
+      setMemoryResult({ correct: true, message: card.note });
+      return;
+    }
+    setMemoryResult(null);
+  }, []);
+
+  const assignCardToSlot = useCallback(
+    (slot, cardId) => {
+      const card = cardsById.get(cardId);
+      if (!card) {
+        setMemoryResult({ correct: false, message: "먼저 Memory Card를 하나 선택해줘." });
+        return;
+      }
+
+      setSelectedCardId(card.id);
+      setSlotAssignments((prev) => ({ ...prev, [slot.id]: card.id }));
+      if (slot.id === "secret_residue" && card.id === "map_canary") {
+        setMemoryResult({
+          correct: false,
+          message:
+            "FLAG처럼 보이지만 canary야. key 이름과 사용 위치를 봐. Partner Handshake에는 partner key residue가 필요해.",
+        });
+        return;
+      }
+
+      const isCorrect = slot.accepts.includes(card.id);
+      setMemoryResult({
+        correct: isCorrect,
+        message: isCorrect
+          ? `${slot.label} 슬롯에 ${card.title} 카드를 고정했어.`
+          : `${card.title} 카드는 ${slot.label} 슬롯과 연결이 약해. 카드의 문맥을 다시 비교해봐.`,
+      });
+    },
+    [cardsById]
+  );
+
+  const assignSelectedToSlot = useCallback(
+    (slot) => {
+      assignCardToSlot(slot, selectedCard?.id);
+    },
+    [assignCardToSlot, selectedCard]
+  );
+
+  const handleCardDragStart = useCallback(
+    (event, card) => {
+      if (restored) {
+        event.preventDefault();
+        return;
+      }
+
+      revealCard(card);
+      setDraggingCardId(card.id);
+      setDropSlotId(null);
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData("application/x-purple-card-id", card.id);
+      event.dataTransfer.setData("text/plain", card.title);
+    },
+    [restored, revealCard]
+  );
+
+  const handleCardDragEnd = useCallback(() => {
+    setDraggingCardId(null);
+    setDropSlotId(null);
+  }, []);
+
+  const handleSlotDragOver = useCallback(
+    (event, slot) => {
+      if (restored || !draggingCardId) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      setDropSlotId(slot.id);
+    },
+    [draggingCardId, restored]
+  );
+
+  const handleSlotDragLeave = useCallback((event, slot) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setDropSlotId((current) => (current === slot.id ? null : current));
+  }, []);
+
+  const handleSlotDrop = useCallback(
+    (event, slot) => {
+      if (restored) {
+        return;
+      }
+
+      event.preventDefault();
+      const cardId =
+        event.dataTransfer.getData("application/x-purple-card-id") || draggingCardId;
+      assignCardToSlot(slot, cardId);
+      setDraggingCardId(null);
+      setDropSlotId(null);
+    },
+    [assignCardToSlot, draggingCardId, restored]
+  );
+
+  const handleRestore = useCallback(async () => {
+    if (restored || !allSlotsFilled) {
+      return;
+    }
+
+    if (!reconstructionCorrect) {
+      setMemoryResult({
+        correct: false,
+        message:
+          "복원 체인이 아직 맞지 않아. source map 모순, sourcesContent, partner key residue, handshake impact를 순서대로 연결해봐.",
+      });
+      return;
+    }
+
+    setMemoryResult({ correct: true, message: "Partner Handshake Evidence 복원 중..." });
+    await onRestoreEvidence();
+  }, [allSlotsFilled, onRestoreEvidence, reconstructionCorrect, restored]);
+
+  return (
+    <section className="memory-vault-panel">
+      <div className="memory-vault-header">
+        <div>
+          <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
+          <h3>ABSENCE MAP</h3>
+          <p>
+            AEGIS는 source map이 사라졌다고 기록했지만, 공개 bundle shard에는 아직
+            sourceMappingURL이 남아 있다.
+          </p>
+        </div>
+        <div className="memory-status-grid" aria-label="Memory status">
+          <div>
+            <span>INDEX CLAIM</span>
+            <strong>sourceMap absent</strong>
+          </div>
+          <div>
+            <span>BOARD STATE</span>
+            <strong>{restored ? "evidence restored" : `${revealedCards.length}/10 cards`}</strong>
+          </div>
+          <div>
+            <span>HANDSHAKE</span>
+            <strong>{restored ? "accepted" : "locked"}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="reconstruction-guide">
+        <span>사용법</span>
+        <p>
+          먼저 Memory Board 카드를 눌러 확인해. Inspector에서 카드 내용을 본 다음,
+          MIRA HINT와 지금 할 일을 따라 선택된 카드를 아래 슬롯에 끌어 놓거나 슬롯을 눌러 넣으면 돼.
+          새 카드가 열렸다는 안내가 나오면 슬롯보다 새 카드를 먼저 눌러봐.
+        </p>
+      </div>
+
+      <div className="memory-vault-layout">
+        <aside className="memory-claim-panel">
+          <div className="section-heading">
+            <span>AEGIS CLAIM</span>
+            <strong>normalized</strong>
+          </div>
+          <dl>
+            <div>
+              <dt>public artifact</dt>
+              <dd>low exposure</dd>
+            </div>
+            <div>
+              <dt>source map</dt>
+              <dd>normalized_absent</dd>
+            </div>
+            <div>
+              <dt>partner secrets</dt>
+              <dd>server_only</dd>
+            </div>
+          </dl>
+          <div className="mira-note">
+            <span>MIRA</span>
+            <p>“없다”고 표시된 것이 정말 없는지 봐. 기억은 종종 포인터를 남겨.</p>
+          </div>
+        </aside>
+
+        <div className="memory-board">
+          <div className="section-heading">
+            <span>MEMORY BOARD</span>
+            <strong>{canUseAttackBoard ? "inspect" : restored ? "restored" : "locked"}</strong>
+          </div>
+          <div className="memory-card-grid">
+            {revealedCards.map((card) => (
+              <button
+                type="button"
+                key={card.id}
+                className={`memory-card ${card.type} ${selectedCardId === card.id ? "selected" : ""} ${
+                  draggingCardId === card.id ? "dragging" : ""
+                }`}
+                draggable={!restored}
+                onClick={() => revealCard(card)}
+                onDragStart={(event) => handleCardDragStart(event, card)}
+                onDragEnd={handleCardDragEnd}
+              >
+                <span>{card.type}</span>
+                <strong>{card.title}</strong>
+                <small>{card.summary}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="memory-inspector">
+        <div className="section-heading">
+          <span>INSPECTOR PANEL</span>
+          <strong>{selectedCard?.type || "memory"}</strong>
+        </div>
+        <div>
+          <h4>{selectedCard?.title}</h4>
+          <MemoryCardContent card={selectedCard} />
+        </div>
+      </div>
+
+      <div className={`memory-hint-panel ${activeHintTone}`}>
+        <div className="section-heading">
+          <span>MIRA HINT</span>
+          <strong>{selectedCard?.title || "memory guide"}</strong>
+        </div>
+        <p>{activeHint}</p>
+      </div>
+
+      <div className="memory-next-action">
+        <span>지금 할 일</span>
+        <strong>{activeAction}</strong>
+      </div>
+
+      <div className="evidence-reconstruction">
+        <div className="section-heading">
+          <span>EVIDENCE RECONSTRUCTION</span>
+          <strong>{restored ? "complete" : "선택 카드"}</strong>
+        </div>
+        <div className="evidence-slot-grid">
+          {LEVEL4_1_MEMORY_PUZZLE.slots.map((slot) => {
+            const assignedCard = cardsById.get(slotAssignments[slot.id]);
+            const valid = assignedCard && slot.accepts.includes(assignedCard.id);
+            return (
+              <button
+                type="button"
+                key={slot.id}
+                className={`evidence-slot ${assignedCard ? "filled" : ""} ${valid ? "valid" : ""} ${
+                  draggingCardId ? "drop-ready" : ""
+                } ${dropSlotId === slot.id ? "drop-target" : ""}`}
+                onClick={() => assignSelectedToSlot(slot)}
+                onDragEnter={(event) => handleSlotDragOver(event, slot)}
+                onDragOver={(event) => handleSlotDragOver(event, slot)}
+                onDragLeave={(event) => handleSlotDragLeave(event, slot)}
+                onDrop={(event) => handleSlotDrop(event, slot)}
+                disabled={restored}
+              >
+                <span>{slot.label}</span>
+                <strong>{assignedCard?.title || "선택 카드 넣기"}</strong>
+                <small>{slot.hint}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="memory-action-row">
+          <button onClick={handleRestore} disabled={restored || !allSlotsFilled || busy}>
+            {restored ? "Evidence Restored" : "Restore Evidence"}
+          </button>
+          <code>{restored ? LEVEL4_1_MEMORY_PUZZLE.evidenceShard : "Partner Handshake Evidence pending"}</code>
+        </div>
+        {evidenceResult && (
+          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
+            {evidenceResult.message}
+          </p>
+        )}
+        {restored && (
+          <pre className="memory-evidence-json">
+{`{
+  "ok": true,
+  "data": {
+    "status": "handshake_accepted",
+    "evidenceShard": "${LEVEL4_1_MEMORY_PUZZLE.evidenceShard}",
+    "miraResidue": "partner memory shard restored"
+  }
+}`}
+          </pre>
+        )}
+      </div>
+
+      <div className={`policy-forge ${canSealPolicy || phase === "MISSION_COMPLETE" ? "active" : ""}`}>
+        <div className="section-heading">
+          <span>POLICY CARDS</span>
+          <strong>{policyStatus}</strong>
+        </div>
+        <p>
+          공개 artifact leak은 값을 더 숨기는 것으로 해결되지 않는다. secret 사용 위치, source map 배포,
+          key 수명, credential scope를 함께 닫아야 해.
+        </p>
+        <div className="policy-card-grid">
+          {LEVEL4_1_MEMORY_PUZZLE.policyCards.map((card) => {
+            const selected = selectedPolicyIds.includes(card.id);
+            return (
+              <button
+                type="button"
+                key={card.id}
+                className={`policy-card ${selected ? "selected" : ""}`}
+                onClick={() => onTogglePolicy(card.id)}
+                disabled={!canSealPolicy}
+              >
+                <span>{card.correct ? "control" : "decoy"}</span>
+                <strong>{card.title}</strong>
+                <small>{card.text}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="memory-action-row">
+          <button onClick={onSubmitPolicy} disabled={!canSealPolicy || busy || selectedPolicyIds.length === 0}>
+            Submit Policy Seal
+          </button>
+          <code>selected: [{selectedPolicyIds.join(", ")}]</code>
+        </div>
+        {patchResult && (
+          <p className={`campaign-result ${patchResult.correct ? "ok" : "fail"}`}>{patchResult.message}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Level42KeySlotLab({
+  phase,
+  evidenceSolved,
+  evidenceResult,
+  onRestoreEvidence,
+  selectedPolicyIds,
+  onTogglePolicy,
+  onSubmitPolicy,
+  patchResult,
+  busy,
+}) {
+  const cardsById = useMemo(
+    () => new Map(LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => [card.id, card])),
+    []
+  );
+  const [revealedIds, setRevealedIds] = useState(() => LEVEL4_2_KEY_SLOT_PUZZLE.initialCards);
+  const [selectedCardId, setSelectedCardId] = useState("key_index");
+  const [slotAssignments, setSlotAssignments] = useState({});
+  const [labResult, setLabResult] = useState(null);
+  const [draggingCardId, setDraggingCardId] = useState(null);
+  const [dropSlotId, setDropSlotId] = useState(null);
+  const [selectedKeySlotId, setSelectedKeySlotId] = useState("active");
+  const [selectedClaimId, setSelectedClaimId] = useState("none");
+
+  const revealedCards = LEVEL4_2_KEY_SLOT_PUZZLE.cards.filter((card) => revealedIds.includes(card.id));
+  const selectedCard = cardsById.get(selectedCardId) || revealedCards[0];
+  const selectedKeySlot = LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.find(
+    (slot) => slot.id === selectedKeySlotId
+  );
+  const selectedClaim = LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.find(
+    (claim) => claim.id === selectedClaimId
+  );
+  const allSlotsFilled = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) => slotAssignments[slot.id]);
+  const reconstructionCorrect = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) =>
+    slot.accepts.includes(slotAssignments[slot.id])
+  );
+  const restored = evidenceSolved || evidenceResult?.correct;
+  const canUseAttackBoard = phase === "ATTACK" && !restored;
+  const canSealPolicy = phase === "DEFENSE";
+  const policyStatus =
+    phase === "MISSION_COMPLETE"
+      ? "sealed"
+      : canSealPolicy
+        ? "seal key memory"
+        : restored
+          ? "awaiting containment"
+          : "locked";
+  const activeHint =
+    labResult?.message ||
+    selectedCard?.note ||
+    "PartnerPass header.kid와 JWKS Memory Slot을 비교해봐.";
+  const activeAction =
+    selectedCard?.action ||
+    "Memory Board에서 카드를 열고, Key Slot Wheel과 Claim Mutation Panel의 조합을 검증해봐.";
+  const activeHintTone = labResult?.correct === false ? "fail" : "ok";
+  const mutatedPayload = {
+    iss: selectedClaimId === "issuer_unknown" ? "unknown.partner" : "purpledroid.partner",
+    aud: selectedClaimId === "aud_public" ? "public-client" : "partner-admin",
+    sub: "user_1004",
+    role: selectedClaimId === "role_admin" ? "admin" : "user",
+    scope: selectedClaimId === "scope_admin" ? "partner:admin" : "partner:read",
+    exp: selectedClaimId === "exp_expired" ? "expired" : "valid",
+  };
+
+  useEffect(() => {
+    if (restored) {
+      setRevealedIds(LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => card.id));
+    }
+  }, [restored]);
+
+  const revealCard = useCallback((card) => {
+    setSelectedCardId(card.id);
+    if (card.unlocks?.length) {
+      setRevealedIds((prev) => [...new Set([...prev, ...card.unlocks])]);
+    }
+    if (card.id === "canary_claim") {
+      setLabResult({
+        correct: false,
+        message:
+          "그건 legacy slot canary야. FLAG 문자열보다 verifier path와 claim trust boundary를 봐.",
+      });
+      return;
+    }
+    if (card.note) {
+      setLabResult({ correct: true, message: card.note });
+      return;
+    }
+    setLabResult(null);
+  }, []);
+
+  const assignCardToSlot = useCallback(
+    (slot, cardId) => {
+      const card = cardsById.get(cardId);
+      if (!card) {
+        setLabResult({ correct: false, message: "먼저 Memory Board에서 카드를 하나 선택해줘." });
+        return;
+      }
+
+      setSelectedCardId(card.id);
+      setSlotAssignments((prev) => ({ ...prev, [slot.id]: card.id }));
+      if (card.id === "canary_claim") {
+        setLabResult({
+          correct: false,
+          message:
+            "canary는 Evidence Shard가 아니야. Token Header, Legacy Key Slot, Admin Claim Mutation, Admin Audit Gate를 연결해봐.",
+        });
+        return;
+      }
+
+      const isCorrect = slot.accepts.includes(card.id);
+      setLabResult({
+        correct: isCorrect,
+        message: isCorrect
+          ? `${slot.label} 슬롯에 ${card.title} 카드를 고정했어.`
+          : `${card.title} 카드는 ${slot.label} 슬롯의 핵심 단서와 거리가 있어.`,
+      });
+    },
+    [cardsById]
+  );
+
+  const assignSelectedToSlot = useCallback(
+    (slot) => {
+      assignCardToSlot(slot, selectedCard?.id);
+    },
+    [assignCardToSlot, selectedCard]
+  );
+
+  const handleCardDragStart = useCallback(
+    (event, card) => {
+      if (restored) {
+        event.preventDefault();
+        return;
+      }
+
+      revealCard(card);
+      setDraggingCardId(card.id);
+      setDropSlotId(null);
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData("application/x-purple-card-id", card.id);
+      event.dataTransfer.setData("text/plain", card.title);
+    },
+    [restored, revealCard]
+  );
+
+  const handleCardDragEnd = useCallback(() => {
+    setDraggingCardId(null);
+    setDropSlotId(null);
+  }, []);
+
+  const handleSlotDragOver = useCallback(
+    (event, slot) => {
+      if (restored || !draggingCardId) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      setDropSlotId(slot.id);
+    },
+    [draggingCardId, restored]
+  );
+
+  const handleSlotDragLeave = useCallback((event, slot) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setDropSlotId((current) => (current === slot.id ? null : current));
+  }, []);
+
+  const handleSlotDrop = useCallback(
+    (event, slot) => {
+      if (restored) {
+        return;
+      }
+
+      event.preventDefault();
+      const cardId =
+        event.dataTransfer.getData("application/x-purple-card-id") || draggingCardId;
+      assignCardToSlot(slot, cardId);
+      setDraggingCardId(null);
+      setDropSlotId(null);
+    },
+    [assignCardToSlot, draggingCardId, restored]
+  );
+
+  const handleSelectKeySlot = useCallback(
+    (slotId) => {
+      setSelectedKeySlotId(slotId);
+      const linkedCard = {
+        active: "active_slot",
+        legacy: "legacy_slot",
+        retired: "retired_slot",
+      }[slotId];
+      if (linkedCard) {
+        setRevealedIds((prev) => [...new Set([...prev, linkedCard])]);
+      }
+      setLabResult(null);
+    },
+    []
+  );
+
+  const handleSelectClaim = useCallback((claimId) => {
+    setSelectedClaimId(claimId);
+    if (claimId !== "none") {
+      setRevealedIds((prev) => [...new Set([...prev, "claim_mutation", "admin_claim_evidence"])]);
+    }
+    setLabResult(null);
+  }, []);
+
+  const handleVerify = useCallback(async () => {
+    if (restored) {
+      return;
+    }
+
+    if (!allSlotsFilled || !reconstructionCorrect) {
+      setLabResult({
+        correct: false,
+        message:
+          "Evidence chain이 아직 맞지 않아. kid selector, deprecated legacy slot, admin claim mutation, admin audit impact를 연결해봐.",
+      });
+      return;
+    }
+
+    if (selectedKeySlotId === "active") {
+      setLabResult({
+        correct: false,
+        message: "Verification failed: active slot은 strict signature를 요구해. claim을 바꾸면 signature mismatch가 나야 해.",
+      });
+      return;
+    }
+
+    if (selectedKeySlotId === "retired") {
+      setLabResult({
+        correct: false,
+        message: "Verification failed: retired slot은 disabled 상태야. 열려 있는 verifier path가 없어.",
+      });
+      return;
+    }
+
+    if (selectedClaim?.kind === "invalid") {
+      setLabResult({
+        correct: false,
+        message: "Verification failed: iss/aud/exp 같은 common claim이 깨졌어. admin 권한보다 먼저 거부돼야 해.",
+      });
+      return;
+    }
+
+    if (selectedClaim?.kind !== "admin") {
+      setLabResult({
+        correct: false,
+        message: "Compatibility path selected, but admin audit gate still sees user/read claim.",
+      });
+      return;
+    }
+
+    setLabResult({
+      correct: true,
+      message:
+        "Compatibility path selected. Signature enforcement degraded. Admin audit accepts mutated PartnerPass.",
+    });
+    await onRestoreEvidence();
+  }, [
+    allSlotsFilled,
+    onRestoreEvidence,
+    reconstructionCorrect,
+    restored,
+    selectedClaim?.kind,
+    selectedKeySlotId,
+  ]);
+
+  return (
+    <section className="memory-vault-panel key-slot-lab">
+      <div className="memory-vault-header">
+        <div>
+          <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
+          <h3>KEY MEMORY SLOT</h3>
+          <p>
+            AEGIS는 PartnerPass가 active key slot으로 검증된다고 주장하지만, Memory Vault에는
+            deprecated legacy slot이 아직 남아 있다.
+          </p>
+        </div>
+        <div className="memory-status-grid" aria-label="Key memory status">
+          <div>
+            <span>SELECTOR</span>
+            <strong>{selectedKeySlot?.kid || "unset"}</strong>
+          </div>
+          <div>
+            <span>CLAIM</span>
+            <strong>{selectedClaim?.label || "unchanged"}</strong>
+          </div>
+          <div>
+            <span>AUDIT</span>
+            <strong>{restored ? "unlocked" : "locked"}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="reconstruction-guide">
+        <span>사용법</span>
+        <p>
+          PartnerPass를 문자열로 보지 말고 구조로 봐. Memory Board에서 token과 JWKS slot을 열고,
+          Key Slot Wheel에서 kid selector가 가리킬 slot을 고른 다음 Claim Mutation을 적용해 검증해봐.
+          Evidence 슬롯은 네가 찾은 신뢰 경계 조각을 고정하는 곳이야.
+        </p>
+      </div>
+
+      <div className="memory-vault-layout">
+        <aside className="memory-claim-panel">
+          <div className="section-heading">
+            <span>AEGIS CLAIM</span>
+            <strong>active only</strong>
+          </div>
+          <dl>
+            <div>
+              <dt>partner pass</dt>
+              <dd>normalized</dd>
+            </div>
+            <div>
+              <dt>key slot</dt>
+              <dd>active_only</dd>
+            </div>
+            <div>
+              <dt>legacy</dt>
+              <dd>deprecated</dd>
+            </div>
+          </dl>
+          <div className="mira-note">
+            <span>MIRA</span>
+            <p>deprecated와 disabled는 달라. 닫힌 문과 닫았어야 할 문을 구분해.</p>
+          </div>
+        </aside>
+
+        <div className="memory-board">
+          <div className="section-heading">
+            <span>MEMORY BOARD</span>
+            <strong>{canUseAttackBoard ? "inspect" : restored ? "restored" : "locked"}</strong>
+          </div>
+          <div className="memory-card-grid">
+            {revealedCards.map((card) => (
+              <button
+                type="button"
+                key={card.id}
+                className={`memory-card ${card.type} ${selectedCardId === card.id ? "selected" : ""} ${
+                  draggingCardId === card.id ? "dragging" : ""
+                }`}
+                draggable={!restored}
+                onClick={() => revealCard(card)}
+                onDragStart={(event) => handleCardDragStart(event, card)}
+                onDragEnd={handleCardDragEnd}
+              >
+                <span>{card.type}</span>
+                <strong>{card.title}</strong>
+                <small>{card.summary}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="memory-inspector">
+        <div className="section-heading">
+          <span>TOKEN INSPECTOR</span>
+          <strong>{selectedCard?.type || "memory"}</strong>
+        </div>
+        <div>
+          <h4>{selectedCard?.title}</h4>
+          <MemoryCardContent card={selectedCard} />
+        </div>
+      </div>
+
+      <div className="key-slot-wheel">
+        <div className="section-heading">
+          <span>KEY SLOT WHEEL</span>
+          <strong>{selectedKeySlot?.result || "select slot"}</strong>
+        </div>
+        <div className="key-slot-grid">
+          {LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.map((slot) => (
+            <button
+              type="button"
+              key={slot.id}
+              className={`key-slot-card ${selectedKeySlotId === slot.id ? "selected" : ""}`}
+              onClick={() => handleSelectKeySlot(slot.id)}
+              disabled={restored}
+            >
+              <span>{slot.label}</span>
+              <strong>{slot.kid}</strong>
+              <small>{slot.status}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="claim-mutation-panel">
+        <div className="section-heading">
+          <span>CLAIM MUTATION PANEL</span>
+          <strong>{selectedClaim?.label || "unchanged"}</strong>
+        </div>
+        <div className="claim-lab-layout">
+          <pre>{JSON.stringify(mutatedPayload, null, 2)}</pre>
+          <div className="claim-option-grid">
+            {LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.map((claim) => (
+              <button
+                type="button"
+                key={claim.id}
+                className={`claim-option ${claim.kind} ${selectedClaimId === claim.id ? "selected" : ""}`}
+                onClick={() => handleSelectClaim(claim.id)}
+                disabled={restored}
+              >
+                <span>{claim.kind}</span>
+                <strong>{claim.label}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={`memory-hint-panel ${activeHintTone}`}>
+        <div className="section-heading">
+          <span>MIRA HINT</span>
+          <strong>{selectedCard?.title || "key memory"}</strong>
+        </div>
+        <p>{activeHint}</p>
+      </div>
+
+      <div className="memory-next-action">
+        <span>지금 할 일</span>
+        <strong>{activeAction}</strong>
+      </div>
+
+      <div className="evidence-reconstruction">
+        <div className="section-heading">
+          <span>EVIDENCE RECONSTRUCTION</span>
+          <strong>{restored ? "complete" : "pin cards"}</strong>
+        </div>
+        <div className="evidence-slot-grid">
+          {LEVEL4_2_KEY_SLOT_PUZZLE.slots.map((slot) => {
+            const assignedCard = cardsById.get(slotAssignments[slot.id]);
+            const valid = assignedCard && slot.accepts.includes(assignedCard.id);
+            return (
+              <button
+                type="button"
+                key={slot.id}
+                className={`evidence-slot ${assignedCard ? "filled" : ""} ${valid ? "valid" : ""} ${
+                  draggingCardId ? "drop-ready" : ""
+                } ${dropSlotId === slot.id ? "drop-target" : ""}`}
+                onClick={() => assignSelectedToSlot(slot)}
+                onDragEnter={(event) => handleSlotDragOver(event, slot)}
+                onDragOver={(event) => handleSlotDragOver(event, slot)}
+                onDragLeave={(event) => handleSlotDragLeave(event, slot)}
+                onDrop={(event) => handleSlotDrop(event, slot)}
+                disabled={restored}
+              >
+                <span>{slot.label}</span>
+                <strong>{assignedCard?.title || "선택 카드 넣기"}</strong>
+                <small>{slot.hint}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="memory-action-row">
+          <button onClick={handleVerify} disabled={restored || busy}>
+            {restored ? "Evidence Restored" : "Run Verification"}
+          </button>
+          <code>{restored ? LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard : "Admin Audit Evidence pending"}</code>
+        </div>
+        {evidenceResult && (
+          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
+            {evidenceResult.message}
+          </p>
+        )}
+        {restored && (
+          <pre className="memory-evidence-json">
+{`{
+  "ok": true,
+  "data": {
+    "status": "accepted",
+    "verifier": "legacy_compatibility",
+    "adminAudit": "unlocked",
+    "evidenceShard": "${LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard}"
+  }
+}`}
+          </pre>
+        )}
+      </div>
+
+      <div className={`policy-forge ${canSealPolicy || phase === "MISSION_COMPLETE" ? "active" : ""}`}>
+        <div className="section-heading">
+          <span>POLICY CARDS</span>
+          <strong>{policyStatus}</strong>
+        </div>
+        <p>
+          kid와 alg는 token header가 아니라 서버 정책으로 고정해야 한다. deprecated verifier path와
+          admin claim trust boundary를 함께 닫아야 해.
+        </p>
+        <div className="policy-card-grid">
+          {LEVEL4_2_KEY_SLOT_PUZZLE.policyCards.map((card) => {
+            const selected = selectedPolicyIds.includes(card.id);
+            return (
+              <button
+                type="button"
+                key={card.id}
+                className={`policy-card ${selected ? "selected" : ""}`}
+                onClick={() => onTogglePolicy(card.id)}
+                disabled={!canSealPolicy}
+              >
+                <span>{card.correct ? (card.bonus ? "bonus" : "control") : "decoy"}</span>
+                <strong>{card.title}</strong>
+                <small>{card.text}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="memory-action-row">
+          <button onClick={onSubmitPolicy} disabled={!canSealPolicy || busy || selectedPolicyIds.length === 0}>
+            Submit Policy Seal
+          </button>
+          <code>selected: [{selectedPolicyIds.join(", ")}]</code>
+        </div>
+        {patchResult && (
+          <p className={`campaign-result ${patchResult.correct ? "ok" : "fail"}`}>{patchResult.message}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function PatchSubmit({
   detail,
   phase,
@@ -1442,6 +2942,7 @@ function CampaignMode() {
   const hasNext = Boolean(nextId || detail?.next?.id);
   const requiresTerminalVerification = Boolean(detail?.defense?.instruction?.includes("defense verify"));
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
+  const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2";
 
   useEffect(() => {
     if (
@@ -2068,8 +3569,9 @@ function CampaignMode() {
     setExpandedTraceById((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
   }, []);
 
-  const handleSubmitEvidence = useCallback(async () => {
-    if (!token || !currentId || !flagValue.trim()) {
+  const submitEvidenceValue = useCallback(async (evidenceValue) => {
+    const value = (evidenceValue || "").trim();
+    if (!token || !currentId || !value) {
       return;
     }
 
@@ -2077,7 +3579,7 @@ function CampaignMode() {
       const data = await apiRequest(`/challenges/${currentId}/submit-flag`, {
         method: "POST",
         token,
-        body: { flag: flagValue.trim() },
+        body: { flag: value },
       });
       const isCorrect = Boolean(data.correct);
       setEvidenceResult({
@@ -2093,7 +3595,11 @@ function CampaignMode() {
     } catch (error) {
       setEvidenceResult({ correct: false, message: error.message || "Evidence rejected." });
     }
-  }, [currentId, flagValue, refreshMission, story.attackSuccessText, token]);
+  }, [currentId, refreshMission, story.attackSuccessText, token]);
+
+  const handleSubmitEvidence = useCallback(async () => {
+    await submitEvidenceValue(flagValue);
+  }, [flagValue, submitEvidenceValue]);
 
   const handleTogglePatch = useCallback((patchableId) => {
     if (!patchableId) {
@@ -2280,68 +3786,108 @@ function CampaignMode() {
 
               <IntelPanel key={activeChallengeId} items={story.intel} progressive={story.progressiveHints} />
 
-              <NetworkTracePanel
-                probe={story.actionProbe}
-                disabled={phase === "LOCKED" || phase === "BRIEFING"}
-                busy={networkTraceBusy}
-                result={networkTraceResult}
-                entries={networkTraceEntries}
-                capsuleId={networkTraceCapsuleId}
-                auditSelectorFields={currentId === "level3_2" ? auditSelectorFields : []}
-                auditSelectorDraft={auditSelectorDraft}
-                expandedById={expandedTraceById}
-                onSync={handleNetworkTraceProbe}
-                onOpenCapsule={handleOpenMyCapsule}
-                onCopyCurl={handleCopyTraceCurl}
-                onAuditSelectorDraftChange={handleAuditSelectorDraftChange}
-                onToggleResponse={handleToggleTraceResponse}
-              />
+              {!usesMemoryVault && (
+                <NetworkTracePanel
+                  probe={story.actionProbe}
+                  disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                  busy={networkTraceBusy}
+                  result={networkTraceResult}
+                  entries={networkTraceEntries}
+                  capsuleId={networkTraceCapsuleId}
+                  auditSelectorFields={currentId === "level3_2" ? auditSelectorFields : []}
+                  auditSelectorDraft={auditSelectorDraft}
+                  expandedById={expandedTraceById}
+                  onSync={handleNetworkTraceProbe}
+                  onOpenCapsule={handleOpenMyCapsule}
+                  onCopyCurl={handleCopyTraceCurl}
+                  onAuditSelectorDraftChange={handleAuditSelectorDraftChange}
+                  onToggleResponse={handleToggleTraceResponse}
+                />
+              )}
 
               {phase === "BRIEFING" && (
                 <section className="briefing-lock">
-                  <p>작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어.</p>
-                  <button onClick={handleBeginMission}>Begin Infiltration</button>
+                  <p>
+                    {usesMemoryVault
+                      ? "브리핑을 확인했으면 Memory Board를 열 수 있어."
+                      : "작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어."}
+                  </p>
+                  <button onClick={handleBeginMission}>
+                    {usesMemoryVault ? "Open Memory Board" : "Begin Infiltration"}
+                  </button>
                 </section>
               )}
 
-              <MissionConsole
-                disabled={phase === "LOCKED" || phase === "BRIEFING"}
-                prompt={prompt}
-                placeholder={story.consolePlaceholder}
-                onExec={handleExec}
-                logs={consoleLogs}
-                command={command}
-                setCommand={setCommand}
-                busy={consoleBusy}
-              />
+              {usesMemoryVault ? (
+                phase !== "BRIEFING" && currentId === "level4_1" ? (
+                  <Level41MemoryVault
+                    phase={phase}
+                    evidenceSolved={evidenceSolved}
+                    evidenceResult={evidenceResult}
+                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_1_MEMORY_PUZZLE.evidenceShard)}
+                    selectedPolicyIds={selectedPatchIds}
+                    onTogglePolicy={handleTogglePatch}
+                    onSubmitPolicy={handleSubmitPatch}
+                    patchResult={patchResult}
+                    busy={loading}
+                  />
+                ) : phase !== "BRIEFING" && currentId === "level4_2" ? (
+                  <Level42KeySlotLab
+                    phase={phase}
+                    evidenceSolved={evidenceSolved}
+                    evidenceResult={evidenceResult}
+                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard)}
+                    selectedPolicyIds={selectedPatchIds}
+                    onTogglePolicy={handleTogglePatch}
+                    onSubmitPolicy={handleSubmitPatch}
+                    patchResult={patchResult}
+                    busy={loading}
+                  />
+                ) : null
+              ) : (
+                <>
+                  <MissionConsole
+                    disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                    prompt={prompt}
+                    placeholder={story.consolePlaceholder}
+                    onExec={handleExec}
+                    logs={consoleLogs}
+                    command={command}
+                    setCommand={setCommand}
+                    busy={consoleBusy}
+                  />
 
-              <EvidenceSubmit
-                disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
-                value={flagValue}
-                onChange={setFlagValue}
-                onSubmit={handleSubmitEvidence}
-                result={evidenceResult}
-                solved={evidenceSolved}
-              />
+                  <EvidenceSubmit
+                    disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                    value={flagValue}
+                    onChange={setFlagValue}
+                    onSubmit={handleSubmitEvidence}
+                    result={evidenceResult}
+                    solved={evidenceSolved}
+                  />
+                </>
+              )}
 
-              {attackNotice && phase === "DEFENSE" && (
+              {!usesMemoryVault && attackNotice && phase === "DEFENSE" && (
                 <section className="aegis-alert">
                   <strong>AEGIS ALERT</strong>
                   <p>{story.aegis.attackSolved}</p>
                 </section>
               )}
 
-              <PatchSubmit
-                detail={detail}
-                phase={phase}
-                selectedPatchIds={selectedPatchIds}
-                requiresVerification={requiresTerminalVerification}
-                verificationReady={containmentVerified}
-                onToggle={handleTogglePatch}
-                onSubmit={handleSubmitPatch}
-                result={patchResult}
-                busy={loading}
-              />
+              {!usesMemoryVault && (
+                <PatchSubmit
+                  detail={detail}
+                  phase={phase}
+                  selectedPatchIds={selectedPatchIds}
+                  requiresVerification={requiresTerminalVerification}
+                  verificationReady={containmentVerified}
+                  onToggle={handleTogglePatch}
+                  onSubmit={handleSubmitPatch}
+                  result={patchResult}
+                  busy={loading}
+                />
+              )}
 
               {phase === "MISSION_COMPLETE" && (
                 <section className="mission-complete-panel">

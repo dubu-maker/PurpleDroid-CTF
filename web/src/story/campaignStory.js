@@ -39,7 +39,8 @@ export const CAMPAIGN_OPERATIONS = [
     title: "OPERATION 04",
     name: "MEMORY VAULT",
     range: ["level4_1", "level4_2", "level4_3", "level4_4", "level4_5", "level4_boss"],
-    summary: "AEGIS의 장기 기억 저장소와 파트너 노드 서명 체계를 침투한다.",
+    summary:
+      "AEGIS가 남은 기록이 아니라 사라진 기록의 패턴을 보기 시작한다. Memory Board에서 빈칸, 포인터, revision gap을 읽어낸다.",
   },
 ];
 
@@ -1206,6 +1207,144 @@ export const CAMPAIGN_STORY = {
         "다음 Operation은 MEMORY VAULT다.",
     },
   },
+  level4_1: {
+    challengeId: "level4_1",
+    operationId: "op04",
+    codename: "ABSENCE MAP",
+    title: "사라진 소스맵의 지도",
+    location: "Memory Vault / Public Artifact Index",
+    threat: "Public Build Artifact / Source Map Exposure",
+    briefing:
+      "Trust Layer는 봉쇄됐다. AEGIS는 MIRA를 직접 특정하지 못했지만, 이제 기록이 아니라 기록이 사라진 자리를 보기 시작했다. Operation 04의 첫 번째 Memory Vault shard는 공개 client artifact에 남아 있다. AEGIS의 Memory Index는 source map을 normalized_absent로 표시하지만, bundle shard에는 아직 sourceMappingURL 흔적이 남아 있다. 이번 노드는 명령어로 여는 미션이 아니다. Memory Board에서 card 사이의 모순을 찾고, 공개 artifact -> source map -> sourcesContent -> partner key residue의 관계를 복원하라.",
+    progressiveHints: true,
+    intel: [
+      "AEGIS의 Memory Index와 실제 artifact가 항상 일치한다고 믿지 마.",
+      "public artifact는 화면에 표시되지 않는 기억 조각을 가질 수 있다.",
+      "minified bundle도 다른 artifact를 가리킬 수 있다.",
+      "sourceMappingURL은 다른 memory artifact를 가리키는 포인터일 수 있다.",
+      "source map은 sourcesContent를 포함할 수 있고, 그 안에는 원본 소스가 남을 수 있다.",
+      "FLAG처럼 보이는 값이 있어도 canary일 수 있다. key 이름과 사용 위치를 봐.",
+      "Partner Handshake에 필요한 것은 canary flag가 아니라 partner key residue다.",
+    ],
+    consoleBoot: [],
+    consolePlaceholder: "memory board active...",
+    objectives: [
+      "AEGIS Memory Index와 Public Bundle Shard의 모순을 찾는다.",
+      "source map과 sourcesContent에서 partner key residue를 복원한다.",
+      "공개 artifact leak을 막는 정책 카드를 선택한다.",
+    ],
+    mira: {
+      briefing:
+        "이번엔 명령어로는 안 돼. AEGIS는 기록이 사라졌다고 말하지만, 사라졌다는 기록과 실제 artifact가 서로 맞지 않을 때가 있어. bundle을 봐. map을 봐. 그리고 없다고 표시된 것이 정말 없는지 확인해.",
+      attack:
+        "기억의 모양을 읽어야 해. sourceMap은 absent라고 되어 있지만, public bundle의 마지막 줄이 다른 말을 하고 있어.",
+      attackSolved:
+        "Partner memory shard 복원 완료. 좋아, 이건 flag 문자열을 찾은 게 아니라 공개 source map이 secret residue를 끌고 나온 케이스야.",
+      defense:
+        "이번엔 기록을 지우는 게 아니라 잘못 공개된 기억의 경계를 닫아야 해. server-side secret, source map 통제, key rotation, credential scope를 같이 봐.",
+      complete:
+        "ABSENCE MAP 봉쇄 완료. 이제 AEGIS가 비어 있는 기록을 읽어도, 잘못 공개된 client memory가 다시 신호를 만들지는 못해.",
+    },
+    aegis: {
+      briefing:
+        "Public artifact normalized. Source map state: absent. Client bundle classified as low exposure.",
+      attack:
+        "No server-side secret detected. Public memory classification remains low risk.",
+      attackSolved:
+        "Memory index inconsistency detected. Public source map reference should not exist.",
+      defense:
+        "Public artifact risk reclassification pending. Credential exposure controls required.",
+      complete:
+        "Public artifact risk reclassified. Memory index inconsistency sealed.",
+    },
+    attackSuccessText:
+      "Partner Handshake Evidence restored. AEGIS의 normalized_absent 기록이 깨졌다.",
+    defenseSuccessText:
+      "Policy seal accepted. Public artifact memory boundary sealed.",
+    debrief: {
+      title: "ABSENCE MAP 정리",
+      summary:
+        "운영 bundle이 minified 되어 있어도 안전한 것은 아니다. sourceMappingURL이 public source map으로 이어지고, source map이 sourcesContent를 포함하면 원본 코드와 client-side secret residue가 그대로 노출될 수 있다.",
+      learned: [
+        "minification은 보안 경계가 아니다.",
+        "source map은 원본 코드와 config를 노출할 수 있다.",
+        "client bundle 안의 secret은 secret이 아니다.",
+        "FLAG처럼 보이는 canary와 실제 credential은 문맥으로 구분해야 한다.",
+        "방어는 server-side secret, production sourcemap 통제, key rotation, credential scope 제한이다.",
+      ],
+      nextTeaser:
+        "다음 Memory Vault에서는 공개된 key가 어떤 legacy key slot과 연결되는지 확인한다.",
+    },
+  },
+  level4_2: {
+    challengeId: "level4_2",
+    operationId: "op04",
+    codename: "KEY MEMORY SLOT",
+    title: "Partner Pass 키 슬롯 룰렛",
+    location: "Memory Vault / PartnerPass Verifier",
+    threat: "JWT kid Key Confusion / Legacy Verifier Bypass",
+    briefing:
+      "ABSENCE MAP에서 공개 source map은 사라지지 않았고, partner key residue는 Memory Vault에 남아 있었다. 이번 노드는 PartnerPass 검증 경로다. AEGIS는 모든 PartnerPass가 active key slot으로 검증된다고 주장하지만, Memory Vault에는 deprecated legacy slot이 아직 남아 있다. PartnerPass header의 kid는 단순한 라벨이 아니라 검증기가 어떤 key memory slot을 사용할지 결정하는 selector다. active slot은 signature를 요구하지만, legacy slot이 아직 살아 있고 그 경로가 claim을 너무 쉽게 신뢰한다면 PartnerPass는 신분증이 아니라 룰렛이 된다.",
+    progressiveHints: true,
+    intel: [
+      "PartnerPass는 header, payload, signature로 나뉜다.",
+      "kid는 key id다. key id는 verifier가 사용할 key slot을 고를 수 있다.",
+      "active slot은 signature를 요구한다. claim을 바꾸면 signature가 맞지 않아야 한다.",
+      "deprecated key slot은 disabled key slot과 다르다.",
+      "admin audit은 payload의 role 또는 scope claim을 본다.",
+      "legacy kid와 admin claim이 같은 verifier path에서 만나는지 확인해봐.",
+    ],
+    consoleBoot: [],
+    consolePlaceholder: "key slot wheel active...",
+    objectives: [
+      "PartnerPass header.kid와 JWKS Memory Slots의 key id를 비교한다.",
+      "deprecated legacy verifier path와 disabled retired slot을 구분한다.",
+      "legacy kid와 admin claim mutation을 연결해 Admin Audit Evidence를 복원한다.",
+      "kid/alg/claim trust boundary를 막는 정책 카드를 선택한다.",
+    ],
+    mira: {
+      briefing:
+        "4-1에서 봤지? AEGIS가 없다고 기록한 것도 실제 artifact 안에는 남아 있었어. 이번엔 key memory야. Pass를 문자열로 보지 말고 구조로 봐. header는 어떤 slot을 고르는지, payload는 무엇을 주장하는지, signature는 그 주장을 증명하는지 확인해.",
+      attack:
+        "AEGIS는 active key만 쓰인다고 말하지만, verifier는 오래된 slot을 기억할 수 있어. deprecated와 disabled를 헷갈리지 마.",
+      attackSolved:
+        "Admin Audit Evidence 복원 완료. kid가 기억의 방향을 바꾸고, legacy path가 claim을 너무 일찍 신뢰했어.",
+      defense:
+        "이제 key memory를 봉쇄해야 해. deprecated kid 거부, alg pinning, signature-before-claims, server-side admin binding을 같이 봐.",
+      complete:
+        "KEY MEMORY SLOT 봉쇄 완료. kid는 이제 verifier path를 속일 수 없어.",
+    },
+    aegis: {
+      briefing:
+        "PartnerPass verification normalized. Active key slot selected. Legacy verifier retained for compatibility. Claim trust boundary classified as stable.",
+      attack:
+        "PartnerPass mutation observed. Key selector variance within compatibility threshold.",
+      attackSolved:
+        "Legacy verifier path abused. Admin audit trust boundary violated.",
+      defense:
+        "Legacy verifier removal and key policy pinning required.",
+      complete:
+        "Legacy verifier path removed. PartnerPass trust boundary reclassified.",
+    },
+    attackSuccessText:
+      "Admin Audit Evidence restored. legacy compatibility path가 드러났다.",
+    defenseSuccessText:
+      "Policy seal accepted. PartnerPass key memory boundary sealed.",
+    debrief: {
+      title: "KEY MEMORY SLOT 정리",
+      summary:
+        "JWT header의 kid는 단순한 장식이 아니다. 검증기가 어떤 key slot을 사용할지 결정하는 selector가 될 수 있고, deprecated legacy slot이 compatibility 경로로 남아 있으면 payload claim이 너무 쉽게 신뢰될 수 있다.",
+      learned: [
+        "kid는 key selection에 영향을 줄 수 있다.",
+        "deprecated key는 disabled key가 아니다.",
+        "signature 검증 전 payload claim은 신뢰하면 안 된다.",
+        "alg/kid 정책은 token header가 아니라 서버 설정으로 고정해야 한다.",
+        "admin 권한은 token claim만이 아니라 서버 측 정책으로 검증해야 한다.",
+      ],
+      nextTeaser:
+        "다음 Memory Vault에서는 정상 이벤트와 재전송된 이벤트를 시간선 위에서 구분해야 한다.",
+    },
+  },
 };
 
 export const CAMPAIGN_INTERMISSIONS = {
@@ -1268,8 +1407,8 @@ const FALLBACK_CODENAMES = {
   level3_4: "TICKET VAULT",
   level3_5: "LOCKER STORM",
   level3_boss: "MIRROR CAGE",
-  level4_1: "PUBLIC ARTIFACT",
-  level4_2: "LEGACY KID",
+  level4_1: "ABSENCE MAP",
+  level4_2: "KEY MEMORY SLOT",
   level4_3: "REPLAY STAMP",
   level4_4: "FORWARDED MASK",
   level4_5: "WEBHOOK ECHO",
