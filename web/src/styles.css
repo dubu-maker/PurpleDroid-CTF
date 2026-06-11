@@ -1423,6 +1423,37 @@ button:disabled {
   gap: 12px;
 }
 
+.key-slot-lab .lab-section {
+  border: 1px solid rgba(var(--section-accent), 0.46);
+  background:
+    linear-gradient(180deg, rgba(var(--section-accent), 0.08), rgba(5, 7, 14, 0.72)),
+    rgba(5, 7, 14, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(var(--section-accent), 0.05);
+}
+
+.key-slot-lab .lab-section-memory {
+  --section-accent: 255, 214, 102;
+}
+
+.key-slot-lab .lab-section-key {
+  --section-accent: 98, 210, 255;
+}
+
+.key-slot-lab .lab-section-evidence {
+  --section-accent: 185, 119, 255;
+}
+
+.key-slot-lab .lab-section .section-heading span {
+  color: rgb(var(--section-accent));
+}
+
+.key-slot-lab .lab-section-summary {
+  margin: -4px 0 2px;
+  color: #c7d1ea;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .memory-claim-panel dl {
   display: grid;
   gap: 8px;
@@ -1468,6 +1499,10 @@ button:disabled {
 
 .memory-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.key-slot-lab .memory-board {
+  padding: 14px;
 }
 
 .memory-card,

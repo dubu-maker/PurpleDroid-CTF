@@ -2423,11 +2423,14 @@ function Level42KeySlotLab({
           </div>
         </aside>
 
-        <div className="memory-board">
+        <div className="memory-board lab-section lab-section-memory">
           <div className="section-heading">
             <span>MEMORY BOARD</span>
             <strong>{canUseAttackBoard ? "inspect" : restored ? "restored" : "locked"}</strong>
           </div>
+          <p className="lab-section-summary">
+            증거 조사. PartnerPass와 JWKS 조각을 열어 신뢰 경계 단서를 찾는다.
+          </p>
           <div className="memory-card-grid">
             {revealedCards.map((card) => (
               <button
@@ -2461,11 +2464,14 @@ function Level42KeySlotLab({
         </div>
       </div>
 
-      <div className="key-slot-wheel">
+      <div className="key-slot-wheel lab-section lab-section-key">
         <div className="section-heading">
           <span>KEY SLOT WHEEL</span>
           <strong>{selectedKeySlot?.result || "select slot"}</strong>
         </div>
+        <p className="lab-section-summary">
+          검증 경로 실험. kid selector가 어떤 key slot을 타는지 비교한다.
+        </p>
         <div className="key-slot-grid">
           {LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.map((slot) => (
             <button
@@ -2520,11 +2526,14 @@ function Level42KeySlotLab({
         <strong>{activeAction}</strong>
       </div>
 
-      <div className="evidence-reconstruction">
+      <div className="evidence-reconstruction lab-section lab-section-evidence">
         <div className="section-heading">
           <span>EVIDENCE RECONSTRUCTION</span>
           <strong>{restored ? "complete" : "pin cards"}</strong>
         </div>
+        <p className="lab-section-summary">
+          결론 고정. 조사한 카드로 공격 흐름의 핵심 조각을 슬롯에 고정한다.
+        </p>
         <div className="evidence-slot-grid">
           {LEVEL4_2_KEY_SLOT_PUZZLE.slots.map((slot) => {
             const assignedCard = cardsById.get(slotAssignments[slot.id]);

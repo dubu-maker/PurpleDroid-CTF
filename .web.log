@@ -8,3 +8,7 @@
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://10.255.255.254:5173/
   ➜  Network: http://172.22.245.200:5173/
+12:08:36 PM [vite] hmr update /src/campaign/CampaignMode.jsx
+12:08:55 PM [vite] hmr update /src/styles.css
+12:09:44 PM [vite] hmr update /src/styles.css
+12:10:16 PM [vite] hmr update /src/campaign/CampaignMode.jsx
