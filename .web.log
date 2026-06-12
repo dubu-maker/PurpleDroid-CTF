@@ -3,31 +3,16 @@
 > vite --host 0.0.0.0 --port 5173
 
 
-  VITE v5.4.21  ready in 189 ms
+  VITE v5.4.21  ready in 192 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://10.255.255.254:5173/
   ➜  Network: http://172.22.245.200:5173/
-9:51:36 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-9:52:08 AM [vite] hmr update /src/styles.css
-9:52:20 AM [vite] hmr update /src/styles.css
-9:53:37 AM [vite] hmr update /src/styles.css
-9:54:00 AM [vite] hmr update /src/styles.css
-10:13:45 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:14:21 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:15:49 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:17:27 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:18:08 AM [vite] hmr update /src/styles.css
-10:18:42 AM [vite] hmr update /src/styles.css
-10:19:51 AM [vite] hmr update /src/styles.css
-10:49:38 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:50:00 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-10:50:29 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-11:21:31 AM [vite] hmr update /src/campaign/CampaignMode.jsx
-11:21:59 AM [vite] hmr update /src/styles.css
-12:39:57 PM [vite] hmr update /src/campaign/CampaignMode.jsx
-12:40:19 PM [vite] hmr update /src/styles.css
-12:45:41 PM [vite] hmr update /src/campaign/CampaignMode.jsx
-1:19:37 PM [vite] hmr update /src/campaign/CampaignMode.jsx
-1:29:14 PM [vite] hmr update /src/campaign/CampaignMode.jsx
-1:29:38 PM [vite] hmr update /src/styles.css
+9:27:18 AM [vite] hmr update /src/styles.css
+9:34:47 AM [vite] hmr update /src/campaign/CampaignMode.jsx
+9:35:08 AM [vite] hmr update /src/styles.css
+9:55:56 AM [vite] hmr update /src/campaign/CampaignMode.jsx
+9:56:11 AM [vite] hmr update /src/styles.css
+10:04:42 AM [vite] hmr update /src/campaign/CampaignMode.jsx
+10:05:01 AM [vite] hmr update /src/campaign/CampaignMode.jsx
+10:10:47 AM [vite] hmr update /src/campaign/CampaignMode.jsx

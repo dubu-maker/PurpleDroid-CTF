@@ -292,11 +292,10 @@ const LEVEL4_2_KEY_SLOT_PUZZLE = {
           sub: "user_1004",
           role: "user",
           scope: "partner:read",
-          debug: "FLAG{LEGACY_SLOT_CANARY}",
         },
         signature: "present",
       },
-      unlocks: ["token_header", "token_payload", "canary_claim"],
+      unlocks: ["token_header", "token_payload"],
       note:
         "Pass를 구조로 봐. header는 selector, payload는 claim, signature는 proof야.",
       action: "Token Header 카드를 열어 kid selector를 확인하고, Token Payload에서 role/scope claim을 봐.",
@@ -455,21 +454,6 @@ const LEVEL4_2_KEY_SLOT_PUZZLE = {
       note:
         "권한 claim 자체만으로는 증거가 아니야. 어떤 verifier 뒤에서 받아들여지는지 확인해봐.",
       action: "이 카드는 [CLAIM MUTATION] 슬롯에 어울려. Admin Audit Gate를 impact로 연결해.",
-    },
-    {
-      id: "canary_claim",
-      type: "decoy",
-      title: "Canary Claim",
-      summary: "debug marker",
-      value: "FLAG{LEGACY_SLOT_CANARY}",
-      content: {
-        debug: "FLAG{LEGACY_SLOT_CANARY}",
-        purpose: "redaction marker",
-        evidence: false,
-      },
-      note:
-        "debug marker가 섞여 있어. 값 자체보다 PartnerPass 구조를 계속 봐.",
-      action: "canary는 슬롯에 넣지 마. Token Header, Legacy Key Slot, Admin Claim Mutation, Admin Audit Gate를 연결해봐.",
     },
   ],
   slots: [
@@ -2116,8 +2100,6 @@ function Level42KeySlotLab({
   const [dropSlotId, setDropSlotId] = useState(null);
   const [selectedKeySlotId, setSelectedKeySlotId] = useState(null);
   const [selectedClaimId, setSelectedClaimId] = useState("none");
-  const [canaryProbeValue, setCanaryProbeValue] = useState("");
-  const [canaryProbeResult, setCanaryProbeResult] = useState(null);
 
   const revealedCards = LEVEL4_2_KEY_SLOT_PUZZLE.cards.filter((card) => revealedIds.includes(card.id));
   const selectedCard = cardsById.get(selectedCardId) || revealedCards[0];
@@ -2127,7 +2109,6 @@ function Level42KeySlotLab({
   const selectedClaim = LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.find(
     (claim) => claim.id === selectedClaimId
   );
-  const legacyCanaryValue = cardsById.get("canary_claim")?.value || "FLAG{LEGACY_SLOT_CANARY}";
   const allSlotsFilled = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) => slotAssignments[slot.id]);
   const reconstructionCorrect = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) =>
     slot.accepts.includes(slotAssignments[slot.id])
@@ -2138,6 +2119,7 @@ function Level42KeySlotLab({
   const hasInspectedJwks = inspectedIds.includes("jwks_slots");
   const canUseKeyWheel = restored || stackVerified;
   const canUseClaimPanel = restored || selectedKeySlotId === "legacy";
+  const showFinalEvidencePanel = restored || canUseClaimPanel;
   const canSealPolicy = phase === "DEFENSE";
   const showPolicyForge = restored || canSealPolicy || phase === "MISSION_COMPLETE";
   const policyStatus =
@@ -2230,6 +2212,27 @@ function Level42KeySlotLab({
       text: "legacy key slot과 admin claim mutation이 Admin Audit Gate까지 이어지는지 검증해.",
     };
   })();
+  const claimPanelLock = (() => {
+    if (!canUseKeyWheel || canUseClaimPanel) {
+      return null;
+    }
+    if (selectedKeySlotId === "active") {
+      return {
+        title: "strict path blocked",
+        text: "ACTIVE는 정상 검증 경로라 payload를 바꾸려면 matching signature가 필요해. claim mutation panel은 열리지 않아.",
+      };
+    }
+    if (selectedKeySlotId === "retired") {
+      return {
+        title: "disabled path blocked",
+        text: "RETIRED는 disabled 상태라 verifier path가 없어. claim을 보기 전에 멈추는 비교 경로야.",
+      };
+    }
+    return {
+      title: "slot 선택 필요",
+      text: "위에서 LEGACY를 선택하면 claim mutation 실험이 열린다. ACTIVE와 RETIRED는 왜 막히는지 비교하는 경로야.",
+    };
+  })();
   const mutatedPayload = {
     iss: selectedClaimId === "issuer_unknown" ? "unknown.partner" : "purpledroid.partner",
     aud: selectedClaimId === "aud_public" ? "public-client" : "partner-admin",
@@ -2282,15 +2285,6 @@ function Level42KeySlotLab({
       setSelectedKeySlotId(null);
       setSelectedClaimId("none");
       setVerificationNotice(null);
-      if (card.id === "canary_claim") {
-        setLabResult({
-          correct: false,
-          message:
-            "그건 legacy slot canary야. FLAG 문자열보다 verifier path와 claim trust boundary를 봐.",
-        });
-        return;
-      }
-
       const isCorrect = slot.accepts.includes(card.id);
       setLabResult({
         correct: isCorrect,
@@ -2411,33 +2405,6 @@ function Level42KeySlotLab({
             : "neutral claim이야. Admin Audit Gate를 열 권한 변화는 아직 없어.",
     });
   }, []);
-
-  const handleCanaryProbe = useCallback(() => {
-    const probe = canaryProbeValue.trim();
-    if (!probe) {
-      return;
-    }
-
-    if (probe === legacyCanaryValue) {
-      setCanaryProbeResult({
-        correct: false,
-        message:
-          "CANARY_REJECTED. 이 값은 Evidence Shard가 아니라 legacy slot canary야. 이 미션은 FLAG 직접 입력 방식이 아니고, Verification Stack으로 Evidence를 복원해야 해.",
-      });
-      setLabResult({
-        correct: false,
-        message:
-          "그건 legacy slot canary야. FLAG 문자열보다 verifier path와 claim trust boundary를 봐.",
-      });
-      return;
-    }
-
-    setCanaryProbeResult({
-      correct: false,
-      message:
-        "probe mismatch. 이 입력칸은 canary 확인용이야. 최종 Evidence는 FLAG 입력이 아니라 Verification Stack 검증으로 복원돼.",
-    });
-  }, [canaryProbeValue, legacyCanaryValue]);
 
   const handleVerify = useCallback(async () => {
     if (restored) {
@@ -2577,41 +2544,6 @@ function Level42KeySlotLab({
           <h4>{selectedCard?.title}</h4>
           <MemoryCardContent card={selectedCard} />
         </div>
-        {selectedCard?.id === "canary_claim" && (
-          <div className="canary-probe-panel">
-            <div>
-              <span>CANARY PROBE</span>
-              <strong>not an evidence input</strong>
-            </div>
-            <p>
-              FLAG처럼 보이면 여기서 확인해볼 수 있어. 단, 이 미션은 FLAG 직접 입력 방식이 아니야.
-            </p>
-            <div className="canary-probe-row">
-              <input
-                value={canaryProbeValue}
-                onChange={(event) => {
-                  setCanaryProbeValue(event.target.value);
-                  setCanaryProbeResult(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    handleCanaryProbe();
-                  }
-                }}
-                placeholder="FLAG{...}"
-                disabled={restored}
-              />
-              <button onClick={handleCanaryProbe} disabled={restored || !canaryProbeValue.trim()}>
-                Probe
-              </button>
-            </div>
-            {canaryProbeResult && (
-              <p className={`canary-probe-result ${canaryProbeResult.correct ? "ok" : "fail"}`}>
-                {canaryProbeResult.message}
-              </p>
-            )}
-          </div>
-        )}
         <div className={`inspector-hint ${activeHintTone}`}>
           <span>MIRA HINT</span>
           <p>{activeHint}</p>
@@ -2682,40 +2614,20 @@ function Level42KeySlotLab({
             );
           })}
         </div>
-        <div className="memory-action-row">
-          <button onClick={handleVerify} disabled={restored || busy}>
-            {restored ? "Evidence Restored" : stackVerified ? "Restore Evidence" : "Run Verification"}
-          </button>
-          <code>
-            {restored
-              ? LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard
-              : stackVerified
-                ? "Key Slot Wheel unlocked"
-                : "Admin Audit Evidence pending"}
-          </code>
-        </div>
-        {verificationNotice && (
-          <p className={`campaign-result ${verificationNotice.correct ? "ok" : "fail"}`}>
-            {verificationNotice.message}
-          </p>
-        )}
-        {evidenceResult && (
-          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
-            {evidenceResult.message}
-          </p>
-        )}
-        {restored && (
-          <pre className="memory-evidence-json">
-{`{
-  "ok": true,
-  "data": {
-    "status": "accepted",
-    "verifier": "legacy_compatibility",
-    "adminAudit": "unlocked",
-    "evidenceShard": "${LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard}"
-  }
-}`}
-          </pre>
+        {!stackVerified && !restored && (
+          <>
+            <div className="memory-action-row">
+              <button onClick={handleVerify} disabled={busy}>
+                Run Verification
+              </button>
+              <code>Admin Audit Evidence pending</code>
+            </div>
+            {verificationNotice && (
+              <p className={`campaign-result ${verificationNotice.correct ? "ok" : "fail"}`}>
+                {verificationNotice.message}
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -2726,7 +2638,7 @@ function Level42KeySlotLab({
             <strong>{selectedKeySlot?.result || "select slot"}</strong>
           </div>
           <p className="lab-section-summary">
-            검증 경로 실험. kid selector가 어떤 key slot을 사용하는지 비교한다.
+            검증 경로 실험. ACTIVE/RETIRED는 막힌 비교 경로이고, LEGACY를 선택하면 아래 claim mutation 실험이 열린다.
           </p>
           <div className="key-slot-grid">
             {LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.map((slot) => (
@@ -2758,6 +2670,11 @@ function Level42KeySlotLab({
             <span>CLAIM MUTATION PANEL</span>
             <strong>{selectedClaim?.label || "unchanged"}</strong>
           </div>
+          <p className="claim-panel-summary">
+            {selectedClaim?.kind === "admin"
+              ? "admin claim이 선택됐어. 아래 Restore Evidence로 최종 검증해봐."
+              : "role=admin 또는 scope=partner:admin 중 하나를 선택해 admin gate 변화를 확인해봐."}
+          </p>
           <div className="claim-lab-layout">
             <pre>{JSON.stringify(mutatedPayload, null, 2)}</pre>
             <div className="claim-option-grid">
@@ -2776,13 +2693,54 @@ function Level42KeySlotLab({
             </div>
           </div>
         </div>
-      ) : canUseKeyWheel ? (
-        <div className="lab-locked-panel">
+      ) : claimPanelLock ? (
+        <div className="lab-locked-panel key-slot-blocked-panel">
           <span>CLAIM MUTATION PANEL</span>
-          <strong>locked</strong>
-          <p>legacy compatibility path를 선택하면 claim mutation 실험이 열린다.</p>
+          <strong>{claimPanelLock.title}</strong>
+          <p>{claimPanelLock.text}</p>
         </div>
       ) : null}
+
+      {showFinalEvidencePanel && (
+        <div className="final-evidence-panel lab-section lab-section-evidence">
+          <div className="section-heading">
+            <span>ADMIN AUDIT VERIFICATION</span>
+            <strong>{restored ? "complete" : "restore evidence"}</strong>
+          </div>
+          <p className="lab-section-summary">
+            LEGACY verifier path와 admin claim mutation을 함께 검증해 Evidence를 복원한다.
+          </p>
+          <div className="memory-action-row">
+            <button onClick={handleVerify} disabled={restored || busy}>
+              {restored ? "Evidence Restored" : "Restore Evidence"}
+            </button>
+            <code>{restored ? LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard : "Admin Audit Evidence pending"}</code>
+          </div>
+          {verificationNotice && (
+            <p className={`campaign-result ${verificationNotice.correct ? "ok" : "fail"}`}>
+              {verificationNotice.message}
+            </p>
+          )}
+          {evidenceResult && (
+            <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
+              {evidenceResult.message}
+            </p>
+          )}
+          {restored && (
+            <pre className="memory-evidence-json">
+{`{
+  "ok": true,
+  "data": {
+    "status": "accepted",
+    "verifier": "legacy_compatibility",
+    "adminAudit": "unlocked",
+    "evidenceShard": "${LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard}"
+  }
+}`}
+            </pre>
+          )}
+        </div>
+      )}
 
       {showPolicyForge ? (
         <div className={`policy-forge ${canSealPolicy || phase === "MISSION_COMPLETE" ? "active" : ""}`}>
@@ -2805,7 +2763,6 @@ function Level42KeySlotLab({
                 onClick={() => onTogglePolicy(card.id)}
                 disabled={!canSealPolicy}
               >
-                <span>{card.correct ? (card.bonus ? "bonus" : "control") : "decoy"}</span>
                 <strong>{card.title}</strong>
                 <small>{card.text}</small>
               </button>

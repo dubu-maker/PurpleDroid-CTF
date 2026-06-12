@@ -1499,64 +1499,6 @@ button:disabled {
   color: #ffadc2;
 }
 
-.canary-probe-panel {
-  border: 1px solid rgba(255, 0, 85, 0.34);
-  background: rgba(255, 0, 85, 0.07);
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-}
-
-.canary-probe-panel > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.canary-probe-panel span {
-  color: #ff8fab;
-  font-family: var(--font-display);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.canary-probe-panel strong {
-  color: #edf2ff;
-  font-size: 13px;
-}
-
-.canary-probe-panel p {
-  color: #c9d4ef;
-  line-height: 1.45;
-}
-
-.canary-probe-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.canary-probe-row input {
-  min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(5, 7, 12, 0.8);
-  color: #edf2ff;
-  padding: 10px;
-}
-
-.canary-probe-row input:focus {
-  outline: 1px solid rgba(255, 0, 85, 0.54);
-}
-
-.canary-probe-result {
-  border-left: 2px solid rgba(255, 0, 85, 0.68);
-  background: rgba(255, 0, 85, 0.08);
-  color: #ffadc2;
-  padding: 8px 10px;
-}
-
 .memory-claim-panel,
 .memory-board {
   display: grid;
@@ -1834,6 +1776,12 @@ button:disabled {
   gap: 10px;
 }
 
+.claim-panel-summary {
+  margin: -4px 0 10px;
+  color: #c7d1ea;
+  line-height: 1.45;
+}
+
 .claim-lab-layout pre {
   margin: 0;
   max-height: 300px;
@@ -1863,6 +1811,10 @@ button:disabled {
 }
 
 .verification-stack .evidence-slot {
+  border-color: rgba(98, 210, 255, 0.44);
+  background:
+    linear-gradient(180deg, rgba(98, 210, 255, 0.08), rgba(9, 16, 30, 0.74)),
+    rgba(9, 16, 30, 0.74);
   min-height: 96px;
 }
 
@@ -1896,6 +1848,15 @@ button:disabled {
 .policy-lock-panel p {
   color: #b8c4df;
   line-height: 1.45;
+}
+
+.key-slot-blocked-panel {
+  border-color: rgba(98, 210, 255, 0.34);
+  background: rgba(98, 210, 255, 0.06);
+}
+
+.key-slot-blocked-panel strong {
+  color: #b7e8ff;
 }
 
 .reconstruction-guide {
