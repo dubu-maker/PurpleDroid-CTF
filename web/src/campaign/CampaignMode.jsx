@@ -578,8 +578,167 @@ const LEVEL4_2_KEY_SLOT_PUZZLE = {
   ],
 };
 
+const LEVEL4_3_REPLAY_PUZZLE = {
+  evidenceShard: "FLAG{REPLAY_NEEDS_IDEMPOTENCY}",
+  sampleEventId: "EVT-2026-DEL-001",
+  target: 5,
+  windowSec: 5,
+  cards: [
+    {
+      id: "delivered_template",
+      type: "event",
+      title: "Delivered Event Template",
+      summary: "normal delivered webhook body",
+      content: {
+        event_id: "EVT-2026-DEL-001",
+        parcel_id: "PD-1004",
+        status: "delivered",
+      },
+      note:
+        "첫 요청은 정상 이벤트처럼 보여. 문제는 같은 배송 완료를 event_id만 바꿔 반복할 때 서버가 또 stamp를 주는지야.",
+      action: "Stage Delivered Event로 첫 window를 열고 Stamp Ledger를 확인해봐.",
+    },
+    {
+      id: "stamp_window",
+      type: "window",
+      title: "Stamp Window",
+      summary: "5 seconds / 5 stamps",
+      content: {
+        target: 5,
+        windowSec: 5,
+        startsAt: "first accepted delivered event",
+        expires: "counter no longer yields evidence",
+      },
+      note:
+        "시간 제한 자체가 방어는 아니야. window 안에서 논리적으로 같은 배송이 여러 번 처리되는지가 핵심이야.",
+      action: "첫 이벤트를 보낸 뒤 Stamp Check로 count와 remainingSec를 확인해.",
+    },
+    {
+      id: "replay_ledger",
+      type: "ledger",
+      title: "Replay Ledger",
+      summary: "credited vs duplicate",
+      content: {
+        duplicateRule: "same event_id is not credited",
+        vulnerableRule: "new event_id with same parcel/status is credited",
+        replayProtection: "event_id only",
+      },
+      note:
+        "같은 event_id는 중복으로 잡혀. 하지만 parcel_id와 status가 같은데 event_id만 새로우면 어떻게 되는지 비교해야 해.",
+      action: "Duplicate Probe와 Next Event를 번갈아 보면서 credited 값이 어떻게 달라지는지 봐.",
+    },
+    {
+      id: "stamp_vault",
+      type: "vault",
+      title: "Stamp Vault",
+      summary: "evidence opens at target count",
+      content: {
+        opensWhen: "count >= target within active window",
+        evidenceShard: "stored in stamps response",
+        debrief: "idempotency must bind logical delivery, not just event_id",
+      },
+      note:
+        "Stamp Vault는 count가 목표에 도달했을 때만 Evidence를 보여줘. FLAG를 직접 찍는 미션이 아니라 상태를 만들어 회수하는 흐름이야.",
+      action: "count가 target에 닿으면 Stamp Check를 실행하고 Evidence를 복원해.",
+    },
+    {
+      id: "event_sequencer",
+      type: "sequencer",
+      title: "Event Sequencer",
+      summary: "stage repeated event_id variants",
+      content: {
+        pattern: "EVT-2026-DEL-00$i",
+        range: "1..5",
+        warning: "same logical delivery, new event ids",
+      },
+      note:
+        "Event Sequencer는 자동 풀이 버튼이 아니라 반복 패턴을 준비하는 초안이야. 왜 count가 오르는지 Ledger를 같이 봐.",
+      action: "Replay Ledger에서 중복/credited 차이를 봤다면 Burst Draft로 같은 배송의 변형 이벤트를 빠르게 stage해봐.",
+    },
+  ],
+  policyCards: [
+    {
+      id: "policy_logical_idempotency",
+      title: "Logical Delivery Idempotency",
+      text: "event_id가 달라도 같은 parcel/status 전환은 한 번만 처리한다.",
+      correct: true,
+    },
+    {
+      id: "policy_persist_event_ids",
+      title: "Persist Processed Events",
+      text: "처리한 event_id를 서버 저장소에 남겨 재사용을 거부한다.",
+      correct: true,
+    },
+    {
+      id: "policy_reject_duplicate_state",
+      title: "Reject Duplicate State Transition",
+      text: "이미 delivered인 parcel은 다시 delivered stamp를 받지 못한다.",
+      correct: true,
+    },
+    {
+      id: "policy_replay_window_audit",
+      title: "Replay Window Audit",
+      text: "짧은 시간 안의 반복 상태 전환을 감사 로그와 알림으로 남긴다.",
+      correct: true,
+    },
+    {
+      id: "bonus_rate_limit_burst",
+      title: "Rate Limit Burst Events",
+      text: "burst rate limit은 좋은 보조 방어지만 idempotency를 대신하지는 못한다.",
+      correct: true,
+      bonus: true,
+    },
+    {
+      id: "decoy_event_id_format",
+      title: "Check event_id Format",
+      text: "형식 검사는 새 event_id로 반복되는 논리적 중복을 막지 못한다.",
+      correct: false,
+    },
+    {
+      id: "decoy_increase_window",
+      title: "Increase Window to 30s",
+      text: "window를 늘리면 공격자가 stamp를 누적할 시간이 늘어난다.",
+      correct: false,
+    },
+    {
+      id: "decoy_hide_stamps",
+      title: "Hide Stamps Endpoint",
+      text: "조회 화면을 숨겨도 delivered 처리 로직의 중복 처리는 남는다.",
+      correct: false,
+    },
+    {
+      id: "decoy_require_ui",
+      title: "Require UI Button",
+      text: "UI 버튼을 요구해도 API 재전송은 막지 못한다.",
+      correct: false,
+    },
+    {
+      id: "decoy_trust_status",
+      title: "Trust delivered Status",
+      text: "status=delivered는 클라이언트 입력이므로 서버 상태 전환으로 검증해야 한다.",
+      correct: false,
+    },
+  ],
+};
+
 function level33SafeUpdateCurl() {
   return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
+}
+
+function level43EventCurl(eventId = LEVEL4_3_REPLAY_PUZZLE.sampleEventId) {
+  return `curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d '{"event_id":"${eventId}","parcel_id":"PD-1004","status":"delivered"}'`;
+}
+
+function level43StampsCurl() {
+  return 'curl -v -X GET "/api/v1/challenges/level4_3/actions/stamps" -H "Authorization: Bearer $SESSION_TOKEN"';
+}
+
+function level43BurstCurl() {
+  return 'for i in $(seq 1 5); do curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"event_id":"EVT-2026-DEL-00$i","parcel_id":"PD-1004","status":"delivered"}\'; done';
+}
+
+function padReplayEventNumber(value) {
+  return String(Math.max(1, Math.min(999, value))).padStart(3, "0");
 }
 
 async function apiRequest(path, { method = "GET", token, body } = {}) {
@@ -2792,6 +2951,501 @@ function Level42KeySlotLab({
   );
 }
 
+function Level43ReplayStampLab({
+  phase,
+  evidenceSolved,
+  evidenceResult,
+  onRestoreEvidence,
+  selectedPolicyIds,
+  onTogglePolicy,
+  onSubmitPolicy,
+  patchResult,
+  busy,
+  token,
+  prompt,
+  consoleLogs,
+  command,
+  setCommand,
+  consoleBusy,
+  onExec,
+}) {
+  const cardsById = useMemo(
+    () => new Map(LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => [card.id, card])),
+    []
+  );
+  const [selectedCardId, setSelectedCardId] = useState("delivered_template");
+  const [inspectedCardIds, setInspectedCardIds] = useState(["delivered_template"]);
+  const [labNotice, setLabNotice] = useState(null);
+  const [stampSnapshot, setStampSnapshot] = useState({
+    count: 0,
+    target: LEVEL4_3_REPLAY_PUZZLE.target,
+    status: "collecting",
+    windowSec: LEVEL4_3_REPLAY_PUZZLE.windowSec,
+    remainingSec: LEVEL4_3_REPLAY_PUZZLE.windowSec,
+    replayProtection: "event_id",
+    events: [],
+  });
+
+  const selectedCard = cardsById.get(selectedCardId) || LEVEL4_3_REPLAY_PUZZLE.cards[0];
+  const events = Array.isArray(stampSnapshot.events) ? stampSnapshot.events : [];
+  const restored = evidenceSolved || evidenceResult?.correct;
+  const canSealPolicy = phase === "DEFENSE";
+  const showPolicyForge = restored || canSealPolicy || phase === "MISSION_COMPLETE";
+  const stampReady = restored || stampSnapshot.status === "ready" || Boolean(stampSnapshot.flag);
+  const hasCreditedEvent = events.some((event) => event.credited);
+  const hasDuplicateProbe = events.some((event) => event.duplicate);
+  const sequencerUnlocked = restored || hasDuplicateProbe || Number(stampSnapshot.count || 0) >= 2;
+  const nextEventId = `EVT-2026-DEL-${padReplayEventNumber(Number(stampSnapshot.count || 0) + 1)}`;
+  const activeHint =
+    labNotice?.message ||
+    selectedCard?.note ||
+    "첫 delivered 요청을 보내고 Replay Ledger에서 credited/duplicate 차이를 확인해봐.";
+  const activeHintTone = labNotice?.correct === false ? "fail" : "ok";
+  const policyStatus =
+    phase === "MISSION_COMPLETE"
+      ? "sealed"
+      : canSealPolicy
+        ? "seal replay"
+        : restored
+          ? "awaiting containment"
+          : "locked";
+
+  const refreshStamps = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const data = await apiRequest("/challenges/level4_3/actions/stamps", { token });
+      setStampSnapshot((prev) => ({
+        ...prev,
+        ...data,
+        events: Array.isArray(data.events) ? data.events : prev.events,
+      }));
+      setLabNotice((prev) =>
+        prev?.message === "Failed to fetch" || prev?.message?.includes("Stamp 상태")
+          ? null
+          : prev
+      );
+    } catch (error) {
+      setLabNotice((prev) => prev || null);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (phase !== "LOCKED" && phase !== "BRIEFING") {
+      refreshStamps();
+    }
+  }, [phase, refreshStamps]);
+
+  useEffect(() => {
+    const last = consoleLogs[consoleLogs.length - 1];
+    const previous = consoleLogs[consoleLogs.length - 2];
+    if (!last || (last.type !== "output" && last.type !== "error")) {
+      return undefined;
+    }
+    const combined = `${previous?.text || ""}\n${last.text || ""}`;
+    if (!combined.includes("level4_3") && !combined.includes("stampCount") && !combined.includes("\"count\"")) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      refreshStamps();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [consoleLogs, refreshStamps]);
+
+  const revealCard = useCallback(
+    (card) => {
+      if (card.id === "event_sequencer" && !sequencerUnlocked) {
+        setLabNotice({
+          correct: false,
+          message:
+            "Event Sequencer는 Replay Ledger에서 duplicate와 새 event_id의 차이를 본 뒤 열려.",
+        });
+        return;
+      }
+      setSelectedCardId(card.id);
+      setInspectedCardIds((prev) => [...new Set([...prev, card.id])]);
+      setLabNotice(null);
+    },
+    [sequencerUnlocked]
+  );
+
+  const stageCommand = useCallback(
+    (nextCommand, message) => {
+      setCommand(nextCommand);
+      setLabNotice({ correct: true, message });
+    },
+    [setCommand]
+  );
+
+  const handleRestoreEvidence = useCallback(async () => {
+    if (!stampReady && !restored) {
+      setLabNotice({
+        correct: false,
+        message: "Stamp Vault가 아직 잠겨 있어. window 안에서 stamp count를 target까지 올려야 해.",
+      });
+      return;
+    }
+    await onRestoreEvidence();
+    setLabNotice({
+      correct: true,
+      message: "Stamp Vault Evidence를 복원했어. 이제 replay 방어 정책을 고르면 돼.",
+    });
+  }, [onRestoreEvidence, restored, stampReady]);
+
+  const currentGoal = (() => {
+    if (canSealPolicy || phase === "MISSION_COMPLETE") {
+      return {
+        step: "DEFENSE",
+        title: "Policy Cards로 replay stamp를 봉쇄한다.",
+        text: "event_id 중복만이 아니라 같은 배송 상태 전환이 반복 처리되지 않도록 서버 통제를 골라.",
+      };
+    }
+    if (restored) {
+      return {
+        step: "COMPLETE",
+        title: "Stamp Vault Evidence가 복원됐다.",
+        text: "curl 실험에서 드러난 재전송 흐름을 방어 카드로 봉쇄하면 돼.",
+      };
+    }
+    if (!hasCreditedEvent) {
+      return {
+        step: "STEP 1",
+        title: "delivered 이벤트로 stamp window를 연다.",
+        text: "Stage Delivered Event를 콘솔에 올리고 Run을 눌러 첫 stamp를 받아봐.",
+      };
+    }
+    if (!hasDuplicateProbe) {
+      return {
+        step: "STEP 2",
+        title: "같은 event_id 재전송이 어떻게 처리되는지 확인한다.",
+        text: "Duplicate Probe를 실행해 duplicate는 credited되지 않는다는 점을 먼저 확인해봐.",
+      };
+    }
+    if (!stampReady) {
+      return {
+        step: "STEP 3",
+        title: "event_id를 바꾼 재전송으로 stamp가 쌓이는지 본다.",
+        text: "Next Event 또는 Burst Draft로 같은 parcel/status를 새 event_id로 보내고 Ledger count를 확인해.",
+      };
+    }
+    return {
+      step: "VAULT",
+      title: "Stamp Vault에서 Evidence를 회수한다.",
+      text: "Stamp Check 응답이 ready가 됐어. Restore Evidence로 공격 단계를 마무리해.",
+    };
+  })();
+
+  return (
+    <section className="memory-vault-panel replay-stamp-lab">
+      <div className="memory-vault-header replay-stamp-header">
+        <div>
+          <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
+          <h3>REPLAY STAMP</h3>
+          <p>
+            정상 delivered 이벤트처럼 보여도, 서버가 같은 배송 완료를 여러 event_id로 계속
+            처리하면 stamp는 재전송으로 누적된다.
+          </p>
+        </div>
+        <div className="memory-status-grid" aria-label="Replay stamp status">
+          <div>
+            <span>STAMP</span>
+            <strong>
+              {stampSnapshot.count}/{stampSnapshot.target}
+            </strong>
+          </div>
+          <div>
+            <span>WINDOW</span>
+            <strong>
+              {stampSnapshot.status === "timeout"
+                ? "expired"
+                : `${stampSnapshot.remainingSec ?? stampSnapshot.windowSec}s`}
+            </strong>
+          </div>
+          <div>
+            <span>PROTECTS</span>
+            <strong>{stampSnapshot.replayProtection || "event_id"}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="objective-dock key-slot-current-goal">
+        <span>{currentGoal.step}</span>
+        <strong>{currentGoal.title}</strong>
+        <p>{currentGoal.text}</p>
+      </div>
+
+      <div className="replay-hybrid-grid">
+        <div className="replay-console-column">
+          <section className="replay-stage-panel lab-section lab-section-key">
+            <div className="section-heading">
+              <span>CURL STAGING</span>
+              <strong>{sequencerUnlocked ? "sequencer ready" : "manual probes"}</strong>
+            </div>
+            <p className="lab-section-summary">
+              버튼은 명령어를 콘솔에 올리기만 해. Run을 눌러 실행하고, 오른쪽 Replay Ledger에서
+              credited와 duplicate 차이를 확인해.
+            </p>
+            <div className="replay-stage-actions">
+              <button
+                type="button"
+                onClick={() =>
+                  stageCommand(
+                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId),
+                    "첫 delivered 이벤트를 Mission Console에 올렸어. Run으로 window를 열어봐."
+                  )
+                }
+                disabled={consoleBusy || restored}
+              >
+                Stage Delivered Event
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  stageCommand(
+                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId),
+                    "같은 event_id를 다시 올렸어. duplicate가 credited되는지 Ledger에서 확인해봐."
+                  )
+                }
+                disabled={consoleBusy || restored || !hasCreditedEvent}
+              >
+                Stage Duplicate Probe
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  stageCommand(
+                    level43EventCurl(nextEventId),
+                    `${nextEventId} 초안을 올렸어. 같은 parcel/status인데 event_id만 바뀐 요청이야.`
+                  )
+                }
+                disabled={consoleBusy || restored || !hasCreditedEvent}
+              >
+                Stage Next Event
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  stageCommand(
+                    level43BurstCurl(),
+                    "Burst Draft를 올렸어. 반복 패턴이 왜 위험한지는 Replay Ledger count로 확인해봐."
+                  )
+                }
+                disabled={consoleBusy || restored || !sequencerUnlocked}
+              >
+                Stage Burst Draft
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  stageCommand(
+                    level43StampsCurl(),
+                    "Stamp Check를 올렸어. count, status, flag 노출 여부를 확인해봐."
+                  )
+                }
+                disabled={consoleBusy}
+              >
+                Stage Stamp Check
+              </button>
+            </div>
+          </section>
+
+          <MissionConsole
+            disabled={phase === "LOCKED" || phase === "BRIEFING"}
+            prompt={prompt}
+            placeholder="stage or edit replay curl..."
+            onExec={onExec}
+            logs={consoleLogs}
+            command={command}
+            setCommand={setCommand}
+            busy={consoleBusy}
+          />
+        </div>
+
+        <aside className="replay-ledger-panel">
+          <div className="section-heading">
+            <span>REPLAY LEDGER</span>
+            <strong>{stampSnapshot.status}</strong>
+          </div>
+          <div className="stamp-metric-grid">
+            <div>
+              <span>COUNT</span>
+              <strong>
+                {stampSnapshot.count}/{stampSnapshot.target}
+              </strong>
+            </div>
+            <div>
+              <span>REMAINING</span>
+              <strong>{stampSnapshot.remainingSec ?? stampSnapshot.windowSec}s</strong>
+            </div>
+            <div>
+              <span>DUPLICATE</span>
+              <strong>{hasDuplicateProbe ? "observed" : "pending"}</strong>
+            </div>
+            <div>
+              <span>VAULT</span>
+              <strong>{stampReady ? "open" : "locked"}</strong>
+            </div>
+          </div>
+          <ul className="replay-ledger-list">
+            {events.length === 0 ? (
+              <li className="empty">아직 실행된 delivered 이벤트가 없어.</li>
+            ) : (
+              [...events].reverse().map((event, index) => (
+                <li
+                  key={`${event.event_id}-${event.at}-${index}`}
+                  className={event.credited ? "credited" : event.duplicate ? "duplicate" : "ignored"}
+                >
+                  <strong>{event.event_id}</strong>
+                  <span>
+                    {event.credited
+                      ? "credited"
+                      : event.duplicate
+                        ? "duplicate"
+                        : event.accepted
+                          ? "accepted / no stamp"
+                          : "ignored"}
+                  </span>
+                  <small>
+                    {event.parcel_id} / {event.status}
+                  </small>
+                </li>
+              ))
+            )}
+          </ul>
+        </aside>
+      </div>
+
+      <div className="memory-inspector replay-inspector">
+        <div className="section-heading">
+          <span>REPLAY INSPECTOR</span>
+          <strong>{selectedCard?.type || "event"}</strong>
+        </div>
+        <div>
+          <h4>{selectedCard?.title}</h4>
+          <MemoryCardContent card={selectedCard} />
+        </div>
+        <div className={`inspector-hint ${activeHintTone}`}>
+          <span>MIRA HINT</span>
+          <p>{activeHint}</p>
+        </div>
+      </div>
+
+      <div className="memory-board replay-card-board lab-section lab-section-memory">
+        <div className="section-heading">
+          <span>REPLAY CARDS</span>
+          <strong>inspect</strong>
+        </div>
+        <p className="lab-section-summary">
+          curl 결과를 해석하는 카드야. 콘솔에서 본 count, duplicate, credited를 카드 의미와 연결해봐.
+        </p>
+        <div className="memory-card-grid replay-card-grid">
+          {LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => {
+            const locked = card.id === "event_sequencer" && !sequencerUnlocked;
+            return (
+              <button
+                type="button"
+                key={card.id}
+                className={`memory-card ${card.type} ${selectedCardId === card.id ? "selected" : ""} ${
+                  inspectedCardIds.includes(card.id) ? "inspected" : ""
+                } ${locked ? "locked" : ""}`}
+                onClick={() => revealCard(card)}
+              >
+                <span>{locked ? "locked" : card.type}</span>
+                <strong>{card.title}</strong>
+                <small>{locked ? "duplicate/new event 차이를 먼저 확인해." : card.summary}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="final-evidence-panel replay-vault-panel lab-section lab-section-evidence">
+        <div className="section-heading">
+          <span>STAMP VAULT</span>
+          <strong>{stampReady ? "evidence ready" : "locked"}</strong>
+        </div>
+        <p className="lab-section-summary">
+          target count에 도달한 뒤 Stamp Check 응답에서 Evidence를 회수한다. 이 미션은 FLAG 직접
+          입력보다 재전송 상태를 만드는 과정이 핵심이야.
+        </p>
+        <div className="memory-action-row">
+          <button onClick={handleRestoreEvidence} disabled={busy || restored || !stampReady}>
+            {restored ? "Evidence Restored" : "Restore Evidence"}
+          </button>
+          <code>{stampReady || restored ? LEVEL4_3_REPLAY_PUZZLE.evidenceShard : "Replay Evidence pending"}</code>
+        </div>
+        {evidenceResult && (
+          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
+            {evidenceResult.message}
+          </p>
+        )}
+        {restored && (
+          <pre className="memory-evidence-json">
+{`{
+  "ok": true,
+  "data": {
+    "status": "ready",
+    "replayProtection": "event_id only",
+    "evidenceShard": "${LEVEL4_3_REPLAY_PUZZLE.evidenceShard}"
+  }
+}`}
+          </pre>
+        )}
+      </div>
+
+      {showPolicyForge ? (
+        <div className={`policy-forge ${canSealPolicy || phase === "MISSION_COMPLETE" ? "active" : ""}`}>
+          <div className="section-heading">
+            <span>POLICY CARDS</span>
+            <strong>{policyStatus}</strong>
+          </div>
+          <p>
+            event_id 중복 차단만으로는 부족하다. 논리적 배송 단위 idempotency, processed event 저장,
+            중복 상태 전환 거부, replay audit을 함께 봉쇄해야 해.
+          </p>
+          <div className="policy-card-grid">
+            {LEVEL4_3_REPLAY_PUZZLE.policyCards.map((card) => {
+              const selected = selectedPolicyIds.includes(card.id);
+              return (
+                <button
+                  type="button"
+                  key={card.id}
+                  className={`policy-card ${selected ? "selected" : ""}`}
+                  onClick={() => onTogglePolicy(card.id)}
+                  disabled={!canSealPolicy}
+                >
+                  <strong>{card.title}</strong>
+                  <small>{card.text}</small>
+                </button>
+              );
+            })}
+          </div>
+          <div className="memory-action-row">
+            <button onClick={onSubmitPolicy} disabled={!canSealPolicy || busy || selectedPolicyIds.length === 0}>
+              Submit Policy Seal
+            </button>
+            <code>selected: [{selectedPolicyIds.join(", ")}]</code>
+          </div>
+          {patchResult && (
+            <p className={`campaign-result ${patchResult.correct ? "ok" : "fail"}`}>
+              {patchResult.message}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="policy-forge policy-lock-panel">
+          <div className="section-heading">
+            <span>POLICY FORGE</span>
+            <strong>locked</strong>
+          </div>
+          <p>Stamp Vault Evidence가 복원되면 replay 방어 카드가 열린다.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PatchSubmit({
   detail,
   phase,
@@ -3117,7 +3771,7 @@ function CampaignMode() {
   const hasNext = Boolean(nextId || detail?.next?.id);
   const requiresTerminalVerification = Boolean(detail?.defense?.instruction?.includes("defense verify"));
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
-  const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2";
+  const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2" || currentId === "level4_3";
 
   useEffect(() => {
     if (
@@ -4017,6 +4671,25 @@ function CampaignMode() {
                     onSubmitPolicy={handleSubmitPatch}
                     patchResult={patchResult}
                     busy={loading}
+                  />
+                ) : phase !== "BRIEFING" && currentId === "level4_3" ? (
+                  <Level43ReplayStampLab
+                    phase={phase}
+                    evidenceSolved={evidenceSolved}
+                    evidenceResult={evidenceResult}
+                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_3_REPLAY_PUZZLE.evidenceShard)}
+                    selectedPolicyIds={selectedPatchIds}
+                    onTogglePolicy={handleTogglePatch}
+                    onSubmitPolicy={handleSubmitPatch}
+                    patchResult={patchResult}
+                    busy={loading}
+                    token={token}
+                    prompt={prompt}
+                    consoleLogs={consoleLogs}
+                    command={command}
+                    setCommand={setCommand}
+                    consoleBusy={consoleBusy}
+                    onExec={handleExec}
                   />
                 ) : null
               ) : (

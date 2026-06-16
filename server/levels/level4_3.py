@@ -17,8 +17,8 @@ BURST_WINDOW_SEC = int(os.getenv("PURPLEDROID_LEVEL4_3_WINDOW_SEC", "5"))
 STATIC: Dict[str, Any] = {
     "id": "level4_3",
     "level": 4,
-    "title": "4-3 Replay the Delivery Confirmation",
-    "summary": "요청이 유효하더라도 '새 요청'인지 검증하지 않으면 리플레이로 누적 악용된다.",
+    "title": "4-3 REPLAY STAMP",
+    "summary": "event_id 중복만 막아도 논리적 배송 단위의 idempotency가 없으면 재전송으로 stamp가 누적된다.",
     "description": (
         "미션: 첫 delivered 요청이 들어오면 짧은 시간 창이 열린다. "
         f"{BURST_WINDOW_SEC}초 안에 delivered 이벤트를 {STAMP_TARGET}회 누적해 "
@@ -54,13 +54,60 @@ STATIC: Dict[str, Any] = {
         "flagFormat": "FLAG{...}",
     },
     "defense": {
-        "enabled": False,
+        "enabled": True,
         "instruction": (
-            "event_id/idempotency key를 서버에 저장해 재사용을 차단하고, "
-            "timestamp 윈도우 + 재전송 탐지(로그/알림) + 레이트리밋을 적용해 replay를 막아라."
+            "event_id만 보는 중복 검사로는 부족합니다. 같은 parcel/status 전환이 여러 event_id로 "
+            "반복 처리되지 않도록 논리적 배송 단위의 idempotency를 강제하세요."
         ),
-        "code": {},
+        "code": {
+            "language": "policy",
+            "lines": [
+                {"no": 1, "text": "Enforce idempotency per logical delivery", "patchableId": "policy_logical_idempotency"},
+                {"no": 2, "text": "Persist processed event IDs", "patchableId": "policy_persist_event_ids"},
+                {"no": 3, "text": "Reject duplicate state transition", "patchableId": "policy_reject_duplicate_state"},
+                {"no": 4, "text": "Add replay window audit", "patchableId": "policy_replay_window_audit"},
+                {"no": 5, "text": "Rate limit burst events", "patchableId": "bonus_rate_limit_burst"},
+                {"no": 6, "text": "Check event_id format only", "patchableId": "decoy_event_id_format"},
+                {"no": 7, "text": "Increase window to 30s", "patchableId": "decoy_increase_window"},
+                {"no": 8, "text": "Hide stamps endpoint", "patchableId": "decoy_hide_stamps"},
+                {"no": 9, "text": "Require UI button", "patchableId": "decoy_require_ui"},
+                {"no": 10, "text": "Trust delivered status", "patchableId": "decoy_trust_status"},
+            ],
+        },
     },
+}
+
+
+REQUIRED_PATCH_IDS = {
+    "policy_logical_idempotency",
+    "policy_persist_event_ids",
+    "policy_reject_duplicate_state",
+    "policy_replay_window_audit",
+}
+
+BONUS_PATCH_IDS = {"bonus_rate_limit_burst"}
+
+PATCH_CORRECT_FEEDBACK = {
+    "policy_logical_idempotency": "맞아. event_id가 달라도 parcel/status 같은 논리적 배송 단위는 한 번만 처리해야 해.",
+    "policy_persist_event_ids": "맞아. 처리한 event_id는 서버 저장소에 남겨 재사용을 거부해야 해.",
+    "policy_reject_duplicate_state": "맞아. 이미 delivered인 parcel을 다시 delivered로 stamp 처리하면 안 돼.",
+    "policy_replay_window_audit": "맞아. 짧은 시간 창의 재전송 패턴은 감사 로그와 알림으로 남겨야 해.",
+    "bonus_rate_limit_burst": "좋아. burst rate limit은 좋은 보조 방어야. 다만 idempotency 자체를 대신하지는 못해.",
+}
+
+PATCH_WRONG_FEEDBACK = {
+    "decoy_event_id_format": "event_id 형식만 검사하면 EVT-002, EVT-003처럼 새 형식의 재전송은 계속 통과해.",
+    "decoy_increase_window": "window를 늘리면 공격자가 더 오래 stamp를 누적할 수 있어. 봉쇄가 아니라 완화 반대야.",
+    "decoy_hide_stamps": "stamps endpoint를 숨겨도 delivered event 처리 로직의 중복 처리는 그대로 남아.",
+    "decoy_require_ui": "UI 버튼을 요구해도 API 재전송은 막지 못해. 서버가 상태 전환을 검증해야 해.",
+    "decoy_trust_status": "status=delivered는 클라이언트가 보낸 주장일 뿐이야. 서버 상태와 전환 규칙으로 검증해야 해.",
+}
+
+PATCH_MISSING_LABELS = {
+    "policy_logical_idempotency": "논리적 배송 단위 idempotency",
+    "policy_persist_event_ids": "processed event_id 저장",
+    "policy_reject_duplicate_state": "중복 상태 전환 거부",
+    "policy_replay_window_audit": "replay window audit",
 }
 
 
@@ -68,8 +115,42 @@ def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL4_3_FLAG
 
 
-def judge_patch(_patched: list[str]) -> bool:
-    return False
+def flag_feedback(flag: str) -> str:
+    value = flag.strip()
+    if value.startswith("FLAG{"):
+        return "아직 Stamp Vault가 Evidence를 열지 않았어. delivered 이벤트 재전송과 stamps 응답을 먼저 연결해봐."
+    return "이 미션은 curl로 stamp 상태를 만들고, Stamp Vault에서 Evidence를 회수하는 흐름이야."
+
+
+def judge_patch(patched: list[str]) -> bool:
+    selected = set(patched)
+    return REQUIRED_PATCH_IDS.issubset(selected) and not (selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS)
+
+
+def patch_feedback(patched: list[str]) -> str:
+    selected = set(patched)
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for pid in patched:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    missing = REQUIRED_PATCH_IDS - selected
+    if missing:
+        missing_names = ", ".join(PATCH_MISSING_LABELS[pid] for pid in sorted(missing))
+        messages.append(f"아직 닫히지 않은 통제가 있어: {missing_names}.")
+
+    extra_wrong = selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS
+    if extra_wrong:
+        messages.append("decoy는 빼고, 재전송을 실제로 차단하는 서버 측 control만 남겨봐.")
+
+    return "\n".join(messages) if messages else "정책 카드를 선택해줘. event_id 중복과 논리적 배송 중복을 함께 닫아야 해."
 
 
 def _level_state(session: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,8 +164,24 @@ def _level_state(session: Dict[str, Any]) -> Dict[str, Any]:
     return st
 
 
+def _reset_window(st: Dict[str, Any], now: int) -> None:
+    st["stampCount"] = 0
+    st["events"] = []
+    st["seenEventIds"] = []
+    st["windowStartAt"] = 0
+    st["windowExpiresAt"] = 0
+    st["lastTimeoutAt"] = now
+
+
+def _clear_idle_ledger(st: Dict[str, Any]) -> None:
+    if not st.get("windowExpiresAt") and int(st.get("stampCount") or 0) == 0:
+        st["events"] = []
+        st["seenEventIds"] = []
+
+
 def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: str, status: str) -> Dict[str, Any]:
     st = _level_state(session)
+    _clear_idle_ledger(st)
     now = int(time.time())
 
     event_id_norm = str(event_id or "").strip()
@@ -100,11 +197,7 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
 
     timed_out = bool(st["windowExpiresAt"] and now > st["windowExpiresAt"])
     if timed_out:
-        st["stampCount"] = 0
-        st["windowStartAt"] = 0
-        st["windowExpiresAt"] = 0
-        st["lastTimeoutAt"] = now
-        st["seenEventIds"] = []
+        _reset_window(st, now)
 
     accepted = status_norm == "delivered"
 
@@ -171,7 +264,11 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
 
 def stamps_payload(session: Dict[str, Any]) -> Dict[str, Any]:
     st = _level_state(session)
+    _clear_idle_ledger(st)
     now = int(time.time())
+    if st["windowExpiresAt"] and now > st["windowExpiresAt"]:
+        _reset_window(st, now)
+
     within_window = bool(st["windowExpiresAt"] and now <= st["windowExpiresAt"])
     done = st["stampCount"] >= STAMP_TARGET and within_window
     remaining_sec = max(0, int(st["windowExpiresAt"] - now)) if st["windowExpiresAt"] else BURST_WINDOW_SEC
@@ -187,6 +284,8 @@ def stamps_payload(session: Dict[str, Any]) -> Dict[str, Any]:
         "status": status,
         "windowSec": BURST_WINDOW_SEC,
         "remainingSec": remaining_sec,
+        "replayProtection": "event_id",
+        "events": st["events"][-8:],
         "hint": message,
     }
     if done:
@@ -217,6 +316,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 

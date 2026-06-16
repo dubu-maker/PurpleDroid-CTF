@@ -1859,6 +1859,195 @@ button:disabled {
   color: #b7e8ff;
 }
 
+.replay-stamp-lab .lab-section {
+  border: 1px solid rgba(var(--section-accent), 0.46);
+  background:
+    linear-gradient(180deg, rgba(var(--section-accent), 0.08), rgba(5, 7, 14, 0.72)),
+    rgba(5, 7, 14, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(var(--section-accent), 0.05);
+}
+
+.replay-stamp-lab .lab-section-memory {
+  --section-accent: 255, 214, 102;
+}
+
+.replay-stamp-lab .lab-section-key {
+  --section-accent: 98, 210, 255;
+}
+
+.replay-stamp-lab .lab-section-evidence {
+  --section-accent: 185, 119, 255;
+}
+
+.replay-stamp-lab .lab-section .section-heading span {
+  color: rgb(var(--section-accent));
+}
+
+.replay-stamp-header .memory-status-grid strong {
+  font-size: 18px;
+}
+
+.replay-hybrid-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.24fr) minmax(280px, 0.76fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.replay-console-column {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.replay-stage-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.replay-stage-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.replay-stage-actions button {
+  min-height: 48px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.replay-ledger-panel {
+  border: 1px solid rgba(106, 255, 191, 0.24);
+  background:
+    linear-gradient(180deg, rgba(106, 255, 191, 0.08), rgba(5, 7, 14, 0.72)),
+    rgba(5, 7, 14, 0.72);
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.stamp-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stamp-metric-grid div {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  min-height: 70px;
+  padding: 10px;
+}
+
+.stamp-metric-grid span {
+  display: block;
+  color: #8fa0bf;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.stamp-metric-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: #6affbf;
+  overflow-wrap: anywhere;
+}
+
+.replay-ledger-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  max-height: 344px;
+  overflow: auto;
+  padding: 0;
+}
+
+.replay-ledger-list li {
+  border-left: 3px solid rgba(143, 160, 191, 0.42);
+  background: rgba(255, 255, 255, 0.035);
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+}
+
+.replay-ledger-list li.credited {
+  border-left-color: #6affbf;
+  background: rgba(106, 255, 191, 0.08);
+}
+
+.replay-ledger-list li.duplicate {
+  border-left-color: #ffd166;
+  background: rgba(255, 214, 102, 0.07);
+}
+
+.replay-ledger-list li.ignored {
+  border-left-color: #ff8fab;
+  background: rgba(255, 0, 85, 0.06);
+}
+
+.replay-ledger-list li.empty {
+  color: #9aa6c4;
+}
+
+.replay-ledger-list strong {
+  color: #edf2ff;
+  overflow-wrap: anywhere;
+}
+
+.replay-ledger-list span {
+  color: #6affbf;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.replay-ledger-list li.duplicate span {
+  color: #ffd166;
+}
+
+.replay-ledger-list li.ignored span {
+  color: #ffadc2;
+}
+
+.replay-ledger-list small {
+  color: #9aa6c4;
+}
+
+.replay-inspector {
+  display: grid;
+  gap: 12px;
+}
+
+.replay-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.memory-card.locked {
+  border-style: dashed;
+  opacity: 0.62;
+}
+
+.memory-card.inspected::after {
+  content: "VIEWED";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: rgba(106, 255, 191, 0.8);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.replay-vault-panel {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
 .reconstruction-guide {
   border: 1px solid rgba(106, 255, 191, 0.18);
   background: rgba(106, 255, 191, 0.05);
@@ -2388,8 +2577,13 @@ button:disabled {
 
   .memory-vault-header,
   .memory-vault-layout,
+  .replay-hybrid-grid,
   .evidence-slot-grid {
     grid-template-columns: 1fr;
+  }
+
+  .replay-stage-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2427,6 +2621,8 @@ button:disabled {
   .campaign-submit-row,
   .memory-status-grid,
   .memory-action-row,
+  .replay-stage-actions,
+  .stamp-metric-grid,
   .key-slot-grid,
   .claim-lab-layout,
   .claim-option-grid,
