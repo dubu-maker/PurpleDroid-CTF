@@ -681,6 +681,12 @@ const LEVEL4_3_REPLAY_PUZZLE = {
       correct: true,
     },
     {
+      id: "policy_verify_server_state",
+      title: "Verify Server State Transition",
+      text: "status=delivered는 클라이언트 주장이므로 서버의 현재 상태와 허용 전환 규칙으로 검증한다.",
+      correct: true,
+    },
+    {
       id: "policy_replay_window_audit",
       title: "Replay Window Audit",
       text: "짧은 시간 안의 반복 상태 전환을 감사 로그와 알림으로 남긴다.",
@@ -689,7 +695,7 @@ const LEVEL4_3_REPLAY_PUZZLE = {
     {
       id: "bonus_rate_limit_burst",
       title: "Rate Limit Burst Events",
-      text: "burst rate limit은 좋은 보조 방어지만 idempotency를 대신하지는 못한다.",
+      text: "재전송 속도를 낮추는 보조 방어다. 느린 replay까지 막으려면 idempotency가 필요하다.",
       correct: true,
       bonus: true,
     },
@@ -715,12 +721,6 @@ const LEVEL4_3_REPLAY_PUZZLE = {
       id: "decoy_require_ui",
       title: "Require UI Button",
       text: "UI 버튼을 요구해도 API 재전송은 막지 못한다.",
-      correct: false,
-    },
-    {
-      id: "decoy_trust_status",
-      title: "Trust delivered Status",
-      text: "status=delivered는 클라이언트 입력이므로 서버 상태 전환으로 검증해야 한다.",
       correct: false,
     },
   ],
@@ -3427,7 +3427,7 @@ function Level43ReplayStampLab({
           </div>
           <p>
             event_id 중복 차단만으로는 부족하다. 논리적 배송 단위 idempotency, processed event 저장,
-            중복 상태 전환 거부, replay audit을 함께 봉쇄해야 해.
+            중복 상태 전환 거부, 서버 상태 전환 검증, replay audit을 함께 봉쇄해야 해.
           </p>
           <div className="policy-card-grid">
             {LEVEL4_3_REPLAY_PUZZLE.policyCards.map((card) => {

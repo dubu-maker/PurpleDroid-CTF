@@ -1364,7 +1364,7 @@ export const CAMPAIGN_STORY = {
       "Mission Console은 &&, for i in $(seq 1 5), echo ... | xargs -I {} 같은 제한된 조합을 지원한다.",
       "Replay Ledger에서 credited와 duplicate를 구분해봐.",
       "Stamp Vault는 count가 target에 도달했을 때 Evidence를 연다.",
-      "방어는 event_id/template/via 형식 검사가 아니라 idempotency와 상태 전환 검증이다.",
+      "방어는 event_id/template/via 형식 검사가 아니라 idempotency와 서버 상태 전환 검증이다.",
     ],
     consoleBoot: [],
     consolePlaceholder: "stage replay curl...",
@@ -1382,7 +1382,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "Stamp Vault Evidence 복원 완료. event_id/template/via 가드를 붙여도 논리적 배송 단위 idempotency가 없으면 replay는 남아.",
       defense:
-        "이제 replay stamp를 봉쇄해야 해. 같은 배송 완료는 event_id가 달라도 한 번만 처리되게 묶어야 해.",
+        "이제 replay stamp를 봉쇄해야 해. 같은 배송 완료는 event_id가 달라도 한 번만 처리되고, status 주장은 서버 상태 전환 규칙으로 검증돼야 해.",
       complete:
         "REPLAY STAMP 봉쇄 완료. 배송 완료 이벤트는 이제 이름표만 바꿔 다시 찍을 수 없어.",
     },
@@ -1394,7 +1394,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "Stamp ledger inflation confirmed. Idempotency boundary missing.",
       defense:
-        "Replay controls required. Persist processed events and reject duplicate state transitions.",
+        "Replay controls required. Persist processed events, verify server state transitions, and reject duplicate state transitions.",
       complete:
         "Replay stamp boundary sealed. Duplicate logical transitions rejected.",
     },
@@ -1405,10 +1405,11 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "REPLAY STAMP 정리",
       summary:
-        "같은 event_id를 거부하고 숫자 템플릿이나 via를 검사하는 것은 시작일 뿐이다. 공격자는 event_id 모양과 routing leg를 바꿔 같은 parcel/status 전환을 반복할 수 있다. 서버는 event_id 저장과 함께 논리적 배송 단위의 idempotency, 중복 상태 전환 거부, replay window audit을 적용해야 한다.",
+        "같은 event_id를 거부하고 숫자 템플릿이나 via를 검사하는 것은 시작일 뿐이다. 공격자는 event_id 모양과 routing leg를 바꿔 같은 parcel/status 전환을 반복할 수 있다. 서버는 event_id 저장과 함께 논리적 배송 단위의 idempotency, 서버 상태 전환 검증, 중복 상태 전환 거부, replay window audit을 적용해야 한다.",
       learned: [
         "event_id/template/via 검사만으로 replay 방어가 완성되지 않는다.",
         "idempotency는 논리적 작업 단위에 묶여야 한다.",
+        "status=delivered 같은 클라이언트 주장은 서버의 현재 상태와 전환 규칙으로 검증해야 한다.",
         "이미 완료된 상태 전환은 다시 stamp를 주면 안 된다.",
         "짧은 시간 창의 반복 이벤트는 감사 로그와 알림으로 남겨야 한다.",
         "rate limit은 보조 방어이며 idempotency를 대신하지 않는다.",

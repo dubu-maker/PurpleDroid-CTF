@@ -72,7 +72,7 @@ STATIC: Dict[str, Any] = {
         "enabled": True,
         "instruction": (
             "event_id만 보는 중복 검사로는 부족합니다. 같은 parcel/status 전환이 여러 event_id로 "
-            "반복 처리되지 않도록 논리적 배송 단위의 idempotency를 강제하세요."
+            "반복 처리되지 않도록 논리적 배송 단위의 idempotency와 서버 상태 전환 검증을 강제하세요."
         ),
         "code": {
             "language": "policy",
@@ -80,13 +80,13 @@ STATIC: Dict[str, Any] = {
                 {"no": 1, "text": "Enforce idempotency per logical delivery", "patchableId": "policy_logical_idempotency"},
                 {"no": 2, "text": "Persist processed event IDs", "patchableId": "policy_persist_event_ids"},
                 {"no": 3, "text": "Reject duplicate state transition", "patchableId": "policy_reject_duplicate_state"},
-                {"no": 4, "text": "Add replay window audit", "patchableId": "policy_replay_window_audit"},
-                {"no": 5, "text": "Rate limit burst events", "patchableId": "bonus_rate_limit_burst"},
-                {"no": 6, "text": "Check event_id format only", "patchableId": "decoy_event_id_format"},
-                {"no": 7, "text": "Increase window to 30s", "patchableId": "decoy_increase_window"},
-                {"no": 8, "text": "Hide stamps endpoint", "patchableId": "decoy_hide_stamps"},
-                {"no": 9, "text": "Require UI button", "patchableId": "decoy_require_ui"},
-                {"no": 10, "text": "Trust delivered status", "patchableId": "decoy_trust_status"},
+                {"no": 4, "text": "Verify server-side state transition", "patchableId": "policy_verify_server_state"},
+                {"no": 5, "text": "Add replay window audit", "patchableId": "policy_replay_window_audit"},
+                {"no": 6, "text": "Rate limit burst events as support", "patchableId": "bonus_rate_limit_burst"},
+                {"no": 7, "text": "Check event_id format only", "patchableId": "decoy_event_id_format"},
+                {"no": 8, "text": "Increase window to 30s", "patchableId": "decoy_increase_window"},
+                {"no": 9, "text": "Hide stamps endpoint", "patchableId": "decoy_hide_stamps"},
+                {"no": 10, "text": "Require UI button", "patchableId": "decoy_require_ui"},
             ],
         },
     },
@@ -97,17 +97,20 @@ REQUIRED_PATCH_IDS = {
     "policy_logical_idempotency",
     "policy_persist_event_ids",
     "policy_reject_duplicate_state",
+    "policy_verify_server_state",
     "policy_replay_window_audit",
 }
 
 BONUS_PATCH_IDS = {"bonus_rate_limit_burst"}
+PATCH_ID_ALIASES = {"decoy_trust_status": "policy_verify_server_state"}
 
 PATCH_CORRECT_FEEDBACK = {
     "policy_logical_idempotency": "맞아. event_id가 달라도 parcel/status 같은 논리적 배송 단위는 한 번만 처리해야 해.",
     "policy_persist_event_ids": "맞아. 처리한 event_id는 서버 저장소에 남겨 재사용을 거부해야 해.",
     "policy_reject_duplicate_state": "맞아. 이미 delivered인 parcel을 다시 delivered로 stamp 처리하면 안 돼.",
+    "policy_verify_server_state": "맞아. status=delivered는 클라이언트 주장이라 서버의 현재 상태와 허용 전환 규칙으로 검증해야 해.",
     "policy_replay_window_audit": "맞아. 짧은 시간 창의 재전송 패턴은 감사 로그와 알림으로 남겨야 해.",
-    "bonus_rate_limit_burst": "좋아. burst rate limit은 좋은 보조 방어야. 다만 idempotency 자체를 대신하지는 못해.",
+    "bonus_rate_limit_burst": "좋아. burst rate limit은 보조 방어로는 의미가 있어. 다만 느리게 반복되는 replay까지 막으려면 idempotency가 필요해.",
 }
 
 PATCH_WRONG_FEEDBACK = {
@@ -115,13 +118,13 @@ PATCH_WRONG_FEEDBACK = {
     "decoy_increase_window": "window를 늘리면 공격자가 더 오래 stamp를 누적할 수 있어. 봉쇄가 아니라 완화 반대야.",
     "decoy_hide_stamps": "stamps endpoint를 숨겨도 delivered event 처리 로직의 중복 처리는 그대로 남아.",
     "decoy_require_ui": "UI 버튼을 요구해도 API 재전송은 막지 못해. 서버가 상태 전환을 검증해야 해.",
-    "decoy_trust_status": "status=delivered는 클라이언트가 보낸 주장일 뿐이야. 서버 상태와 전환 규칙으로 검증해야 해.",
 }
 
 PATCH_MISSING_LABELS = {
     "policy_logical_idempotency": "논리적 배송 단위 idempotency",
     "policy_persist_event_ids": "processed event_id 저장",
     "policy_reject_duplicate_state": "중복 상태 전환 거부",
+    "policy_verify_server_state": "서버 상태 전환 검증",
     "policy_replay_window_audit": "replay window audit",
 }
 
@@ -138,16 +141,17 @@ def flag_feedback(flag: str) -> str:
 
 
 def judge_patch(patched: list[str]) -> bool:
-    selected = set(patched)
+    selected = {PATCH_ID_ALIASES.get(pid, pid) for pid in patched}
     return REQUIRED_PATCH_IDS.issubset(selected) and not (selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS)
 
 
 def patch_feedback(patched: list[str]) -> str:
-    selected = set(patched)
+    normalized = [PATCH_ID_ALIASES.get(pid, pid) for pid in patched]
+    selected = set(normalized)
     messages: list[str] = []
     seen: set[str] = set()
 
-    for pid in patched:
+    for pid in normalized:
         if pid in seen:
             continue
         seen.add(pid)
