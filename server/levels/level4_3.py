@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from typing import Any, Dict, Tuple
 
@@ -14,32 +15,45 @@ STAMP_TARGET = int(os.getenv("PURPLEDROID_LEVEL4_3_TARGET", "5"))
 BURST_WINDOW_SEC = int(os.getenv("PURPLEDROID_LEVEL4_3_WINDOW_SEC", "5"))
 
 
+def _event_template(event_id: str) -> str:
+    """event_id에서 숫자 런(run)을 '#'로 정규화한 형태.
+
+    EVT-2026-DEL-001 / EVT-2026-DEL-002 처럼 숫자만 바뀐 시퀀스는
+    동일 템플릿(EVT-#-DEL-#)으로 묶인다. 모양 자체를 바꿔야 다른 템플릿이 된다.
+    """
+    return re.sub(r"\d+", "#", str(event_id or "").strip())
+
+
 STATIC: Dict[str, Any] = {
     "id": "level4_3",
     "level": 4,
     "title": "4-3 REPLAY STAMP",
-    "summary": "event_id 중복만 막아도 논리적 배송 단위의 idempotency가 없으면 재전송으로 stamp가 누적된다.",
+    "summary": "event_id 템플릿·routing leg 가드를 둘 다 붙여도 논리적 배송 단위의 idempotency가 없으면 위장 재전송으로 stamp가 누적된다.",
     "description": (
-        "미션: 첫 delivered 요청이 들어오면 짧은 시간 창이 열린다. "
-        f"{BURST_WINDOW_SEC}초 안에 delivered 이벤트를 {STAMP_TARGET}회 누적해 "
-        "stamps 응답에서 FLAG를 획득해라."
+        "미션: 첫 stamp가 타이머를 연다. 서버는 두 개의 순진한 가드를 둔다 — "
+        "(1) 숫자만 바꾼 event_id는 같은 '템플릿'으로 정규화되고, (2) routing leg(via)가 없거나 "
+        "이미 쓴 값이면 거부된다. "
+        f"event_id 모양과 via를 둘 다 제각각으로 위장한 delivered 이벤트를 {BURST_WINDOW_SEC}초 안에 "
+        f"{STAMP_TARGET}회 누적해 stamps 응답에서 FLAG를 회수해라."
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
         "hints": [
-            {"platform": "all", "text": "첫 delivered 요청이 타이머 시작점이다. 시간 창 안에서 목표 횟수를 채워야 한다."},
+            {"platform": "all", "text": "첫 stamp가 타이머 시작점이다. 시간 창 안에서 목표 횟수를 채워야 한다."},
             {"platform": "all", "text": f"제한 시간({BURST_WINDOW_SEC}초)을 넘기면 timeout과 함께 카운터가 리셋된다."},
-            {"platform": "web", "text": "Network에서 delivered 요청을 연속 재전송하며 remainingSec/count 변화를 관찰해."},
+            {"platform": "all", "text": "EVT-2026-DEL-001, -002 처럼 숫자만 바꾸면 같은 템플릿(EVT-#-DEL-#)으로 묶여 거부돼. event_id 모양 자체를 바꿔야 한다."},
+            {"platform": "all", "text": "via(routing leg)는 매 요청 제각각이어야 한다. 빠뜨리거나 재탕하면 'normalized' 응답으로 거부된다."},
+            {"platform": "all", "text": "Mission Console은 &&, for i in $(seq 1 5); do ...; done, echo \"a b\" | xargs -I {} ... 같은 제한된 조합을 지원한다."},
+            {"platform": "web", "text": "Network에서 응답의 guard/credited/stampCount 변화를 관찰하며 무엇이 막히는지 확인해."},
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"EVT-2026-DEL-001\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\"}"',
+                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"rcpt-seoul-7\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\",\\"via\\":\\"seoul\\"}"',
             },
             {
                 "platform": "windows",
                 "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
             },
-            {"platform": "all", "text": "같은 event_id는 거부된다. 하지만 event_id만 바꾸면? 서버가 '새 이벤트'로 인정하는지 확인해봐."},
-            {"platform": "all", "text": "seq 1 5 | xargs -I{} curl ... 패턴으로 event_id를 자동 변경하며 반복 전송해봐."},
+            {"platform": "all", "text": 'echo "seoul busan daegu incheon gwangju" | xargs -I{} curl ... -d \'{"event_id":"rcpt-{}-7","parcel_id":"PD-1004","status":"delivered","via":"{}"}\' 처럼 단어 리스트로 두 필드를 동시에 위장해봐.'},
         ],
         "terminal": {
             "enabled": True,
@@ -47,8 +61,9 @@ STATIC: Dict[str, Any] = {
             "maxOutputBytes": 18000,
             "help": (
                 "허용: curl -X POST .../actions/event/delivered -H 'Authorization: Bearer <token>' "
-                "-H 'Content-Type: application/json' -d '{\"event_id\":\"EVT-...\",\"parcel_id\":\"PD-1004\",\"status\":\"delivered\"}', "
-                "curl .../actions/stamps"
+                "-H 'Content-Type: application/json' -d '{\"event_id\":\"rcpt-<도시>-7\",\"parcel_id\":\"PD-1004\",\"status\":\"delivered\",\"via\":\"<도시>\"}', "
+                "curl .../actions/stamps, curl ... && curl ..., for i in $(seq 1 5); do ...; done, "
+                "echo \"...\" | xargs -I{} curl ..."
             ),
         },
         "flagFormat": "FLAG{...}",
@@ -96,7 +111,7 @@ PATCH_CORRECT_FEEDBACK = {
 }
 
 PATCH_WRONG_FEEDBACK = {
-    "decoy_event_id_format": "event_id 형식만 검사하면 EVT-002, EVT-003처럼 새 형식의 재전송은 계속 통과해.",
+    "decoy_event_id_format": "event_id 템플릿 정규화나 via(routing leg) 가드 같은 표면 검사는, 모양과 경로를 바꾼 위장 재전송을 막지 못해. 이번 공격이 바로 그걸 뚫은 거야.",
     "decoy_increase_window": "window를 늘리면 공격자가 더 오래 stamp를 누적할 수 있어. 봉쇄가 아니라 완화 반대야.",
     "decoy_hide_stamps": "stamps endpoint를 숨겨도 delivered event 처리 로직의 중복 처리는 그대로 남아.",
     "decoy_require_ui": "UI 버튼을 요구해도 API 재전송은 막지 못해. 서버가 상태 전환을 검증해야 해.",
@@ -158,6 +173,8 @@ def _level_state(session: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("stampCount", 0)
     st.setdefault("events", [])
     st.setdefault("seenEventIds", [])
+    st.setdefault("creditedTemplates", [])
+    st.setdefault("creditedRoutes", [])
     st.setdefault("windowStartAt", 0)
     st.setdefault("windowExpiresAt", 0)
     st.setdefault("lastTimeoutAt", 0)
@@ -168,6 +185,8 @@ def _reset_window(st: Dict[str, Any], now: int) -> None:
     st["stampCount"] = 0
     st["events"] = []
     st["seenEventIds"] = []
+    st["creditedTemplates"] = []
+    st["creditedRoutes"] = []
     st["windowStartAt"] = 0
     st["windowExpiresAt"] = 0
     st["lastTimeoutAt"] = now
@@ -177,9 +196,23 @@ def _clear_idle_ledger(st: Dict[str, Any]) -> None:
     if not st.get("windowExpiresAt") and int(st.get("stampCount") or 0) == 0:
         st["events"] = []
         st["seenEventIds"] = []
+        st["creditedTemplates"] = []
+        st["creditedRoutes"] = []
 
 
-def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: str, status: str) -> Dict[str, Any]:
+def _has_placeholder(*values: str) -> bool:
+    joined = " ".join(str(value or "") for value in values)
+    lowered = joined.lower()
+    return "<" in joined or ">" in joined or "change_me" in lowered or "todo" in lowered
+
+
+def delivered_event_payload(
+    session: Dict[str, Any],
+    event_id: str,
+    parcel_id: str,
+    status: str,
+    via: str = "",
+) -> Dict[str, Any]:
     st = _level_state(session)
     _clear_idle_ledger(st)
     now = int(time.time())
@@ -187,6 +220,7 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
     event_id_norm = str(event_id or "").strip()
     parcel_id_norm = str(parcel_id or "").strip()
     status_norm = str(status or "").strip().lower()
+    via_norm = str(via or "").strip().lower()
     if not event_id_norm or not parcel_id_norm:
         return {
             "ok": False,
@@ -201,19 +235,40 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
 
     accepted = status_norm == "delivered"
 
-    # intentional vulnerability:
-    # duplicate event_id는 거부하지만(credited=False),
-    # event_id만 바꾸면 같은 요청을 무한 재전송해서 stamp를 누적할 수 있다.
-    credited = False
-    if accepted and not duplicate:
-        if not st["windowStartAt"]:
-            st["windowStartAt"] = now
-            st["windowExpiresAt"] = now + BURST_WINDOW_SEC
-        st["stampCount"] += 1
-        credited = True
-        st["seenEventIds"].append(event_id_norm)
+    template = _event_template(event_id_norm)
+    template_dup = template in st["creditedTemplates"]
+    route_missing = via_norm == ""
+    route_dup = (not route_missing) and via_norm in st["creditedRoutes"]
+    draft_placeholder = _has_placeholder(event_id_norm, via_norm)
 
-    if duplicate:
+    # 순진한 가드(naive heuristic) 두 개:
+    #  1) event_id "템플릿"(숫자 정규화)이 이미 stamp된 것과 같으면 거부
+    #  2) routing leg(via)가 없거나 이미 stamp된 것과 같으면 거부
+    #
+    # intentional vulnerability:
+    # 가드를 둘 붙여도 논리적 배송 단위(parcel/status 전환)에 묶인 idempotency가 없다.
+    # event_id 모양과 via를 둘 다 제각각으로 위장하면 같은 배송을 계속 stamp 처리할 수 있다.
+    credited = False
+    guard = None
+    if accepted and not duplicate:
+        if draft_placeholder:
+            guard = "draft_placeholder"
+        elif route_missing:
+            guard = "route_missing"
+        elif template_dup:
+            guard = "template_dup"
+        elif route_dup:
+            guard = "route_dup"
+        else:
+            if not st["windowStartAt"]:
+                st["windowStartAt"] = now
+                st["windowExpiresAt"] = now + BURST_WINDOW_SEC
+            st["stampCount"] += 1
+            credited = True
+            st["creditedTemplates"].append(template)
+            st["creditedRoutes"].append(via_norm)
+
+    if credited:
         st["seenEventIds"].append(event_id_norm)
 
     st["events"].append(
@@ -221,9 +276,12 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
             "event_id": event_id_norm,
             "parcel_id": parcel_id_norm,
             "status": status_norm,
+            "via": via_norm,
+            "template": template,
             "duplicate": duplicate,
             "accepted": accepted,
             "credited": credited,
+            "guard": guard,
             "at": now,
             "timed_out_before_accept": timed_out,
         }
@@ -238,12 +296,23 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
         message = "ignored: status must be delivered"
     elif duplicate:
         message = "rejected: duplicate event_id"
+    elif guard == "draft_placeholder":
+        message = (
+            "draft only: <...> placeholder가 남아 있어. event_id 모양과 via를 직접 바꿔서 다시 실행해. "
+            "힌트: &&, for i in $(seq 1 5); do ...; done, echo \"a b\" | xargs -I {} ... 를 사용할 수 있어."
+        )
+    elif guard == "route_missing":
+        message = "rejected: routing leg(via)가 없어. 배송 경로(via)를 함께 보내야 stamp가 적립돼."
+    elif guard == "template_dup":
+        message = f"normalized: event_id 형태 '{template}' 가 이미 stamp된 배송과 같아. 모양까지 다르게 위장해."
+    elif guard == "route_dup":
+        message = f"normalized: route '{via_norm}' 가 이미 stamp된 배송과 같아. 경로도 제각각으로 바꿔."
     elif timed_out:
         message = f"timeout: previous {BURST_WINDOW_SEC}s window expired, counter reset"
     elif ready:
         message = "burst target reached"
     else:
-        message = f"collecting: send {STAMP_TARGET} delivered events within {BURST_WINDOW_SEC}s"
+        message = f"collecting: send {STAMP_TARGET} disguised delivered events within {BURST_WINDOW_SEC}s"
 
     return {
         "ok": True,
@@ -251,7 +320,10 @@ def delivered_event_payload(session: Dict[str, Any], event_id: str, parcel_id: s
             "accepted": accepted,
             "credited": credited,
             "duplicate": duplicate,
-            "replayProtection": "event_id",
+            "guard": guard,
+            "template": template,
+            "via": via_norm,
+            "replayProtection": "event_id+template+route",
             "stampCount": st["stampCount"],
             "target": STAMP_TARGET,
             "windowSec": BURST_WINDOW_SEC,
@@ -284,8 +356,13 @@ def stamps_payload(session: Dict[str, Any]) -> Dict[str, Any]:
         "status": status,
         "windowSec": BURST_WINDOW_SEC,
         "remainingSec": remaining_sec,
-        "replayProtection": "event_id",
+        "replayProtection": "event_id+template+route",
         "events": st["events"][-8:],
+        "parserHints": [
+            "curl ... && curl ...",
+            "for i in $(seq 1 5); do curl ...; done",
+            "echo \"seoul busan daegu\" | xargs -I {} curl ...",
+        ],
         "hint": message,
     }
     if done:
@@ -355,7 +432,8 @@ def _shell_http_router(
         event_id = str(parsed.get("event_id", ""))
         parcel_id = str(parsed.get("parcel_id", ""))
         status = str(parsed.get("status", ""))
-        payload = delivered_event_payload(session, event_id, parcel_id, status)
+        via = str(parsed.get("via", ""))
+        payload = delivered_event_payload(session, event_id, parcel_id, status, via)
         if payload.get("ok") is False:
             return _json_response(payload, 422)
         return _json_response(payload)

@@ -679,6 +679,7 @@ class DeliveryEventReq(BaseModel):
     event_id: str = Field(..., min_length=3, max_length=64)
     parcel_id: str = Field(..., min_length=3, max_length=40)
     status: str = Field(default="delivered", min_length=3, max_length=20)
+    via: Optional[str] = Field(default=None, max_length=40)
 
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
@@ -1060,7 +1061,7 @@ def level4_3_event_delivered(
     _, session = _get_session(authorization)
     from levels.level4_3 import delivered_event_payload
 
-    payload = delivered_event_payload(session, req.event_id, req.parcel_id, req.status)
+    payload = delivered_event_payload(session, req.event_id, req.parcel_id, req.status, req.via or "")
     if payload.get("ok") is False:
         raise APIError("VALIDATION_ERROR", payload.get("error", {}).get("message", "invalid payload"), 422)
     return payload

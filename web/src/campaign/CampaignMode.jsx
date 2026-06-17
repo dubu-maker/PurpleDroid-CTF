@@ -581,6 +581,7 @@ const LEVEL4_2_KEY_SLOT_PUZZLE = {
 const LEVEL4_3_REPLAY_PUZZLE = {
   evidenceShard: "FLAG{REPLAY_NEEDS_IDEMPOTENCY}",
   sampleEventId: "EVT-2026-DEL-001",
+  sampleVia: "hub",
   target: 5,
   windowSec: 5,
   cards: [
@@ -593,10 +594,11 @@ const LEVEL4_3_REPLAY_PUZZLE = {
         event_id: "EVT-2026-DEL-001",
         parcel_id: "PD-1004",
         status: "delivered",
+        via: "hub",
       },
       note:
-        "첫 요청은 정상 이벤트처럼 보여. 문제는 같은 배송 완료를 event_id만 바꿔 반복할 때 서버가 또 stamp를 주는지야.",
-      action: "Stage Delivered Event로 첫 window를 열고 Stamp Ledger를 확인해봐.",
+        "정상 이벤트엔 event_id와 routing leg(via)가 있어. 서버는 두 필드로 '같은 배송'인지 본다. 둘 다 제각각으로 위장한 재전송도 stamp를 받는지가 핵심이야.",
+      action: "Stage Delivered Event로 첫 window를 열고 Replay Ledger의 credited를 확인해봐.",
     },
     {
       id: "stamp_window",
@@ -620,12 +622,14 @@ const LEVEL4_3_REPLAY_PUZZLE = {
       summary: "credited vs duplicate",
       content: {
         duplicateRule: "same event_id is not credited",
-        vulnerableRule: "new event_id with same parcel/status is credited",
-        replayProtection: "event_id only",
+        templateRule: "same event_id template (digits normalized) is not credited",
+        routeRule: "missing or reused via is not credited",
+        vulnerableRule: "new event_id SHAPE + new via with same parcel/status is still credited",
+        replayProtection: "event_id + template + route (no logical idempotency)",
       },
       note:
-        "같은 event_id는 중복으로 잡혀. 하지만 parcel_id와 status가 같은데 event_id만 새로우면 어떻게 되는지 비교해야 해.",
-      action: "Duplicate Probe와 Next Event를 번갈아 보면서 credited 값이 어떻게 달라지는지 봐.",
+        "서버 가드는 둘이야 — event_id 템플릿(숫자 정규화)과 via 재사용. 숫자만 바꾼 EVT-...-002는 같은 템플릿이라 막히고, via를 빼거나 재탕해도 막혀. 모양과 경로를 둘 다 바꾸면 통과하는지 봐.",
+      action: "Next Event(숫자만 변경)가 왜 막히는지 본 뒤, 모양+via를 둘 다 위장하는 Disguised Burst로 넘어가.",
     },
     {
       id: "stamp_vault",
@@ -644,16 +648,17 @@ const LEVEL4_3_REPLAY_PUZZLE = {
     {
       id: "event_sequencer",
       type: "sequencer",
-      title: "Event Sequencer",
-      summary: "stage repeated event_id variants",
+      title: "Disguise Sequencer",
+      summary: "vary event_id shape AND via",
       content: {
-        pattern: "EVT-2026-DEL-00$i",
-        range: "1..5",
-        warning: "same logical delivery, new event ids",
+        naive: 'seq 1 5 → "EVT-2026-DEL-00$i" (same template → blocked)',
+        parser: 'supports &&, for i in $(seq 1 5), echo "a b" | xargs -I {}',
+        draft: 'event_id shape and via must both vary; placeholders are rejected',
+        warning: "same logical delivery, disguised shape + route still lacks idempotency",
       },
       note:
-        "Event Sequencer는 자동 풀이 버튼이 아니라 반복 패턴을 준비하는 초안이야. 왜 count가 오르는지 Ledger를 같이 봐.",
-      action: "Replay Ledger에서 중복/credited 차이를 봤다면 Burst Draft로 같은 배송의 변형 이벤트를 빠르게 stage해봐.",
+        "숫자만 바꾸는 seq는 같은 템플릿이라 막혀. 단어 리스트(xargs)나 && 체인을 쓰되, event_id 모양과 via가 둘 다 제각각이 되도록 직접 수정해야 해.",
+      action: "Replay Ledger에서 template/route 차단을 봤다면 Batch Draft를 수정해서 두 필드를 동시에 위장해봐.",
     },
   ],
   policyCards: [
@@ -725,16 +730,22 @@ function level33SafeUpdateCurl() {
   return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
 }
 
-function level43EventCurl(eventId = LEVEL4_3_REPLAY_PUZZLE.sampleEventId) {
-  return `curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d '{"event_id":"${eventId}","parcel_id":"PD-1004","status":"delivered"}'`;
+function level43EventCurl(eventId = LEVEL4_3_REPLAY_PUZZLE.sampleEventId, via = LEVEL4_3_REPLAY_PUZZLE.sampleVia) {
+  return `curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d '{"event_id":"${eventId}","parcel_id":"PD-1004","status":"delivered","via":"${via}"}'`;
 }
 
 function level43StampsCurl() {
   return 'curl -v -X GET "/api/v1/challenges/level4_3/actions/stamps" -H "Authorization: Bearer $SESSION_TOKEN"';
 }
 
-function level43BurstCurl() {
-  return 'for i in $(seq 1 5); do curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"event_id":"EVT-2026-DEL-00$i","parcel_id":"PD-1004","status":"delivered"}\'; done';
+// 순진한 seq burst (event_id 숫자만 증가) — 같은 템플릿이라 가드에 걸려 stamp가 안 쌓인다(교보재).
+function level43NumberOnlyDraftCurl() {
+  return 'curl -v -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"event_id":"EVT-2026-DEL-002","parcel_id":"PD-1004","status":"delivered","via":"<new-route>"}\'';
+}
+
+// 완성형 정답이 아니라 의도적으로 placeholder가 남은 batch draft다.
+function level43BatchDraftCurl() {
+  return 'echo "seoul busan daegu incheon gwangju" | xargs -I {} curl -X POST "/api/v1/challenges/level4_3/actions/event/delivered" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"event_id":"rcpt-{}-7","parcel_id":"PD-1004","status":"delivered","via":"<route>"}\'';
 }
 
 function padReplayEventNumber(value) {
@@ -2996,6 +3007,7 @@ function Level43ReplayStampLab({
   const hasDuplicateProbe = events.some((event) => event.duplicate);
   const sequencerUnlocked = restored || hasDuplicateProbe || Number(stampSnapshot.count || 0) >= 2;
   const nextEventId = `EVT-2026-DEL-${padReplayEventNumber(Number(stampSnapshot.count || 0) + 1)}`;
+  const replayTemplateHint = nextEventId.replace(/\d+/g, "#");
   const activeHint =
     labNotice?.message ||
     selectedCard?.note ||
@@ -3118,15 +3130,15 @@ function Level43ReplayStampLab({
     if (!hasDuplicateProbe) {
       return {
         step: "STEP 2",
-        title: "같은 event_id 재전송이 어떻게 처리되는지 확인한다.",
-        text: "Duplicate Probe를 실행해 duplicate는 credited되지 않는다는 점을 먼저 확인해봐.",
+        title: "가드가 무엇을 막는지 확인한다.",
+        text: "Duplicate Probe(같은 event_id)와 Next Event(숫자만 변경)를 실행해 duplicate/같은 템플릿이 credited되지 않는 걸 확인해봐.",
       };
     }
     if (!stampReady) {
       return {
         step: "STEP 3",
-        title: "event_id를 바꾼 재전송으로 stamp가 쌓이는지 본다.",
-        text: "Next Event 또는 Burst Draft로 같은 parcel/status를 새 event_id로 보내고 Ledger count를 확인해.",
+        title: "event_id 모양과 via를 둘 다 직접 바꿔 stamp를 쌓는다.",
+        text: "Batch Draft는 일부러 미완성이야. fake terminal이 지원하는 &&, for, xargs 중 하나로 5건을 한 번에 보내도록 수정해봐.",
       };
     }
     return {
@@ -3184,15 +3196,21 @@ function Level43ReplayStampLab({
             </div>
             <p className="lab-section-summary">
               버튼은 명령어를 콘솔에 올리기만 해. Run을 눌러 실행하고, 오른쪽 Replay Ledger에서
-              credited와 duplicate 차이를 확인해.
+              credited와 duplicate 차이를 확인해. 첫 이벤트와 duplicate만 완성형이고, 이후 draft는 직접 수정해야 해.
             </p>
+            <div className="replay-parser-notes">
+              <span>Parser notes</span>
+              <code>curl ... && curl ...</code>
+              <code>for i in $(seq 1 5); do curl ...; done</code>
+              <code>echo "a b c" | xargs -I {} curl ...</code>
+            </div>
             <div className="replay-stage-actions">
               <button
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId),
-                    "첫 delivered 이벤트를 Mission Console에 올렸어. Run으로 window를 열어봐."
+                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId, "hub"),
+                    "첫 delivered 이벤트(via=hub)를 Mission Console에 올렸어. Run으로 window를 열고 credited를 확인해봐."
                   )
                 }
                 disabled={consoleBusy || restored}
@@ -3203,7 +3221,7 @@ function Level43ReplayStampLab({
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId),
+                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId, "hub"),
                     "같은 event_id를 다시 올렸어. duplicate가 credited되는지 Ledger에서 확인해봐."
                   )
                 }
@@ -3215,25 +3233,25 @@ function Level43ReplayStampLab({
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43EventCurl(nextEventId),
-                    `${nextEventId} 초안을 올렸어. 같은 parcel/status인데 event_id만 바뀐 요청이야.`
+                    level43NumberOnlyDraftCurl(),
+                    `${nextEventId} 계열 draft를 올렸어. <new-route>를 직접 바꿔 실행해봐. 숫자만 바꾸면 같은 템플릿(${replayTemplateHint})으로 막힐 거야.`
                   )
                 }
                 disabled={consoleBusy || restored || !hasCreditedEvent}
               >
-                Stage Next Event
+                Stage Number Draft
               </button>
               <button
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43BurstCurl(),
-                    "Burst Draft를 올렸어. 반복 패턴이 왜 위험한지는 Replay Ledger count로 확인해봐."
+                    level43BatchDraftCurl(),
+                    "Batch Draft를 올렸어. 이대로는 <route> placeholder 때문에 credited되지 않아. parser notes를 보고 via까지 함께 바뀌게 수정해봐."
                   )
                 }
                 disabled={consoleBusy || restored || !sequencerUnlocked}
               >
-                Stage Burst Draft
+                Stage Batch Draft
               </button>
               <button
                 type="button"
@@ -3302,18 +3320,59 @@ function Level43ReplayStampLab({
                       ? "credited"
                       : event.duplicate
                         ? "duplicate"
-                        : event.accepted
-                          ? "accepted / no stamp"
-                          : "ignored"}
+                        : event.guard === "route_missing"
+                          ? "no via"
+                          : event.guard === "template_dup"
+                            ? "same template"
+                            : event.guard === "route_dup"
+                              ? "same route"
+                              : event.accepted
+                                ? "accepted / no stamp"
+                                : "ignored"}
                   </span>
                   <small>
                     {event.parcel_id} / {event.status}
+                    {event.via ? ` / via:${event.via}` : ""}
                   </small>
                 </li>
               ))
             )}
           </ul>
         </aside>
+      </div>
+
+      <div className="final-evidence-panel replay-vault-panel lab-section lab-section-evidence">
+        <div className="section-heading">
+          <span>STAMP VAULT</span>
+          <strong>{stampReady ? "evidence ready" : "locked"}</strong>
+        </div>
+        <p className="lab-section-summary">
+          FLAG를 직접 입력하는 미션이 아니야. target count에 도달한 뒤 Stamp Check 응답에서
+          flag가 보이면, Restore Evidence로 공격 단계를 마무리하면 돼.
+        </p>
+        <div className="memory-action-row">
+          <button onClick={handleRestoreEvidence} disabled={busy || restored || !stampReady}>
+            {restored ? "Evidence Restored" : "Restore Evidence"}
+          </button>
+          <code>{stampReady || restored ? LEVEL4_3_REPLAY_PUZZLE.evidenceShard : "Replay Evidence pending"}</code>
+        </div>
+        {evidenceResult && (
+          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
+            {evidenceResult.message}
+          </p>
+        )}
+        {restored && (
+          <pre className="memory-evidence-json">
+{`{
+  "ok": true,
+  "data": {
+    "status": "ready",
+    "replayProtection": "event_id + template + route, but no logical idempotency",
+    "evidenceShard": "${LEVEL4_3_REPLAY_PUZZLE.evidenceShard}"
+  }
+}`}
+          </pre>
+        )}
       </div>
 
       <div className="memory-inspector replay-inspector">
@@ -3358,40 +3417,6 @@ function Level43ReplayStampLab({
             );
           })}
         </div>
-      </div>
-
-      <div className="final-evidence-panel replay-vault-panel lab-section lab-section-evidence">
-        <div className="section-heading">
-          <span>STAMP VAULT</span>
-          <strong>{stampReady ? "evidence ready" : "locked"}</strong>
-        </div>
-        <p className="lab-section-summary">
-          target count에 도달한 뒤 Stamp Check 응답에서 Evidence를 회수한다. 이 미션은 FLAG 직접
-          입력보다 재전송 상태를 만드는 과정이 핵심이야.
-        </p>
-        <div className="memory-action-row">
-          <button onClick={handleRestoreEvidence} disabled={busy || restored || !stampReady}>
-            {restored ? "Evidence Restored" : "Restore Evidence"}
-          </button>
-          <code>{stampReady || restored ? LEVEL4_3_REPLAY_PUZZLE.evidenceShard : "Replay Evidence pending"}</code>
-        </div>
-        {evidenceResult && (
-          <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
-            {evidenceResult.message}
-          </p>
-        )}
-        {restored && (
-          <pre className="memory-evidence-json">
-{`{
-  "ok": true,
-  "data": {
-    "status": "ready",
-    "replayProtection": "event_id only",
-    "evidenceShard": "${LEVEL4_3_REPLAY_PUZZLE.evidenceShard}"
-  }
-}`}
-          </pre>
-        )}
       </div>
 
       {showPolicyForge ? (

@@ -1358,26 +1358,29 @@ export const CAMPAIGN_STORY = {
     intel: [
       "첫 delivered 요청은 stamp window를 연다.",
       "같은 event_id는 duplicate로 잡힐 수 있다.",
-      "event_id가 다르더라도 같은 parcel/status라면 같은 논리적 배송 완료일 수 있다.",
+      "숫자만 바꾼 event_id는 같은 template으로 정규화되어 막힐 수 있다.",
+      "via 같은 routing leg도 재사용하면 normalized 처리될 수 있다.",
+      "하지만 event_id 모양과 via가 달라도 같은 parcel/status라면 같은 논리적 배송 완료일 수 있다.",
+      "Mission Console은 &&, for i in $(seq 1 5), echo ... | xargs -I {} 같은 제한된 조합을 지원한다.",
       "Replay Ledger에서 credited와 duplicate를 구분해봐.",
       "Stamp Vault는 count가 target에 도달했을 때 Evidence를 연다.",
-      "방어는 event_id 형식 검사가 아니라 idempotency와 상태 전환 검증이다.",
+      "방어는 event_id/template/via 형식 검사가 아니라 idempotency와 상태 전환 검증이다.",
     ],
     consoleBoot: [],
     consolePlaceholder: "stage replay curl...",
     objectives: [
       "delivered 이벤트 curl로 stamp window를 연다.",
-      "같은 event_id와 새 event_id 재전송의 차이를 Replay Ledger에서 확인한다.",
+      "같은 event_id, 숫자만 바꾼 event_id, via 위장을 Replay Ledger에서 비교한다.",
       "target count에 도달하면 Stamp Vault에서 Evidence를 복원한다.",
       "논리적 배송 단위 idempotency를 닫는 정책 카드를 선택한다.",
     ],
     mira: {
       briefing:
-        "이번엔 카드만 보는 미션이 아니야. 직접 보내봐야 해. 같은 이벤트가 막히는지, 아니면 이름표만 바꾼 같은 배송이 또 stamp를 받는지 Ledger가 말해줄 거야.",
+        "이번엔 카드만 보는 미션이 아니야. 직접 보내봐야 해. 같은 이벤트가 막히는지, 숫자만 바꾼 이름표가 막히는지, 그래도 모양과 경로를 바꾼 같은 배송이 또 stamp를 받는지 Ledger가 말해줄 거야.",
       attack:
-        "event_id는 이름표야. 진짜 질문은 parcel이 이미 delivered였는지, 같은 상태 전환을 서버가 또 처리하는지야.",
+        "event_id와 via는 이름표에 가까워. 진짜 질문은 parcel이 이미 delivered였는지, 같은 상태 전환을 서버가 또 처리하는지야.",
       attackSolved:
-        "Stamp Vault Evidence 복원 완료. event_id 중복만 막는다고 replay가 사라지는 건 아니었어.",
+        "Stamp Vault Evidence 복원 완료. event_id/template/via 가드를 붙여도 논리적 배송 단위 idempotency가 없으면 replay는 남아.",
       defense:
         "이제 replay stamp를 봉쇄해야 해. 같은 배송 완료는 event_id가 달라도 한 번만 처리되게 묶어야 해.",
       complete:
@@ -1385,7 +1388,7 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Delivery event normalized. Duplicate event_id rejection active. Logical transition idempotency unverified.",
+        "Delivery event normalized. Duplicate event_id and template variance checks active. Logical transition idempotency unverified.",
       attack:
         "Replay variance detected. Event identifiers diverge while parcel transition remains equivalent.",
       attackSolved:
@@ -1396,15 +1399,15 @@ export const CAMPAIGN_STORY = {
         "Replay stamp boundary sealed. Duplicate logical transitions rejected.",
     },
     attackSuccessText:
-      "Stamp Vault Evidence restored. event_id-only replay protection이 깨졌다.",
+      "Stamp Vault Evidence restored. template/route replay guard가 논리 idempotency를 대신하지 못했다.",
     defenseSuccessText:
       "Policy seal accepted. Delivery event idempotency boundary sealed.",
     debrief: {
       title: "REPLAY STAMP 정리",
       summary:
-        "같은 event_id를 거부하는 것은 시작일 뿐이다. 공격자는 새 event_id로 같은 parcel/status 전환을 반복할 수 있다. 서버는 event_id 저장과 함께 논리적 배송 단위의 idempotency, 중복 상태 전환 거부, replay window audit을 적용해야 한다.",
+        "같은 event_id를 거부하고 숫자 템플릿이나 via를 검사하는 것은 시작일 뿐이다. 공격자는 event_id 모양과 routing leg를 바꿔 같은 parcel/status 전환을 반복할 수 있다. 서버는 event_id 저장과 함께 논리적 배송 단위의 idempotency, 중복 상태 전환 거부, replay window audit을 적용해야 한다.",
       learned: [
-        "event_id 중복 방지만으로 replay 방어가 완성되지 않는다.",
+        "event_id/template/via 검사만으로 replay 방어가 완성되지 않는다.",
         "idempotency는 논리적 작업 단위에 묶여야 한다.",
         "이미 완료된 상태 전환은 다시 stamp를 주면 안 된다.",
         "짧은 시간 창의 반복 이벤트는 감사 로그와 알림으로 남겨야 한다.",
