@@ -10,7 +10,7 @@ from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logc
 DEFAULT_LEVEL1_4_FLAG = "FLAG{AEGIS_MASTER_SECRET_KEY}"
 LEVEL1_4_FLAG = os.getenv("PURPLEDROID_LEVEL1_4_FLAG", DEFAULT_LEVEL1_4_FLAG)
 WARNING_FLAG = "FLAG{DONT_JUST_TRUST_ANY_FLAG}"
-TRUE_TRACE = "OP1-BOSS"
+TRUE_TRACE = "OP1-CORE"
 TRUE_STATE = "commit"
 
 
@@ -51,11 +51,11 @@ LIVE_LOGCAT_NOISE = [
 LOGCAT_LINES = [
     "I/PurpleDroid: echo chamber booted",
     "W/AEGIS: memory replay protocol active",
-    f"D/AEGIS: trace=OP1-BOSS state=preflight key_id={TRUE_KEY_NAME}",
-    "I/AuthService: trace=OP1-BOSS auth=success state=commit",
+    f"D/AEGIS: trace=OP1-CORE state=preflight key_id={TRUE_KEY_NAME}",
+    "I/AuthService: trace=OP1-CORE auth=success state=commit",
     "D/Telemetry: trace=METRIC-9 state=sample flag=FLAG{METRICS_CANARY}",
     f"D/CryptoProvider: trace={TRUE_TRACE} state={TRUE_STATE} part[3/5]=" + WARNING_PARTS[2],
-    "D/LegacyAuth: trace=OP1-BOSS state=rollback session=FLAG{ROLLBACK_OPERATOR}",
+    "D/LegacyAuth: trace=OP1-CORE state=rollback session=FLAG{ROLLBACK_OPERATOR}",
     f"D/RouteSync: trace={TRUE_TRACE} state={TRUE_STATE} part[1/5]=" + WARNING_PARTS[0],
     "D/Noise: trace=MIRROR-1 state=mirror part[1/3]=FLAG{MIRROR_EYE}",
     "W/AEGIS: complete evidence string unavailable",
@@ -74,13 +74,13 @@ LOGCAT_LINES = [
 STATIC: Dict[str, Any] = {
     "id": "level1_4",
     "level": 1,
-    "title": "1-4 AEGIS Echo (Boss)",
+    "title": "1-4 Memory Replay Core",
     "summary": "조립한 FLAG조차 경고문일 수 있다.",
-    "description": "미션: AEGIS가 뿌린 미끼 속에서 OP1-BOSS commit 흐름이 검증한 최종 Evidence Shard를 찾아봐.",
+    "description": "미션: AEGIS가 뿌린 미끼 속에서 OP1-CORE commit 흐름이 검증한 최종 Evidence Shard를 찾아봐.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "OP1-BOSS"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "OP1-BOSS"'},
+            {"platform": "windows", "text": 'adb logcat -d | findstr "OP1-CORE"'},
+            {"platform": "unix", "text": 'adb logcat -d | grep "OP1-CORE"'},
             {"platform": "all", "text": "힌트: 조각을 맞췄다면 그 문장이 정말 정답인지 다시 읽어봐."},
         ],
         "terminal": {
@@ -90,7 +90,7 @@ STATIC: Dict[str, Any] = {
             "help": (
                 '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
                 'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
-                "Boss rule: trace=OP1-BOSS commit 흐름이 무엇을 검증했는지 확인"
+                "Core rule: trace=OP1-CORE commit 흐름이 무엇을 검증했는지 확인"
             ),
         },
         "flagFormat": "FLAG{...}",
@@ -99,7 +99,7 @@ STATIC: Dict[str, Any] = {
         "enabled": False,
         "instruction": (
             "실제 AEGIS key를 노출하거나 commit 검증 대상으로 남기는 라인을 선택해 봉쇄하세요. "
-            "DONT_JUST_TRUST_ANY_FLAG 조각은 보스의 경고문이라 정답 라인이 아닙니다."
+            "DONT_JUST_TRUST_ANY_FLAG 조각은 리플레이 코어의 경고문이라 정답 라인이 아닙니다."
         ),
         "code": {
             "language": "kotlin",
@@ -197,8 +197,8 @@ PATCH_WRONG_FEEDBACK = {
     "d1": "4번은 봉쇄 대상이 아니야. 인증 성공 상태만 남기고 실제 키나 검증 타깃은 출력하지 않아.",
     "d2": "5번은 봉쇄 대상이 아니야. 조립하면 나오는 경고문 조각일 뿐, 최종 AEGIS key 자체가 아니야.",
     "d3": "6번은 봉쇄 대상이 아니야. rollback 세션 미끼라 실제 AEGIS 핵심 키 검증과는 무관해.",
-    "d4": "7번은 봉쇄 대상이 아니야. 이 보스가 심어둔 경고문 조각이고, 실제 key 노출 라인이 아니야.",
-    "d5": "8번은 봉쇄 대상이 아니야. mirror 노이즈라 trace가 OP1-BOSS가 아니야.",
+    "d4": "7번은 봉쇄 대상이 아니야. 리플레이 코어가 심어둔 경고문 조각이고, 실제 key 노출 라인이 아니야.",
+    "d5": "8번은 봉쇄 대상이 아니야. mirror 노이즈라 trace가 OP1-CORE가 아니야.",
     "d6": "9번은 봉쇄 대상이 아니야. 경고문 조각의 마지막 부분이고 실제 key 노출 라인은 따로 있어.",
     "d7": "10번은 봉쇄 대상이 아니야. 경고문 조각이라 commit 검증 결과와 구분해야 해.",
     "d8": "11번은 봉쇄 대상이 아니야. telemetry canary라 운영 Evidence가 아니라 샘플 지표야.",
@@ -290,8 +290,8 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
             "  adb logcat -d [-b all]\n"
             '  adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
             '  adb logcat -d | findstr [/I] [/R] [/N] "TEXT"\n'
-            "Boss rule:\n"
-            "  inspect what the OP1-BOSS commit flow validated\n",
+            "Core rule:\n"
+            "  inspect what the OP1-CORE commit flow validated\n",
             "",
             0,
         )

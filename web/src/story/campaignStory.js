@@ -1,4 +1,5 @@
 import {
+  CAMPAIGN_INTERMISSIONS_EN,
   CAMPAIGN_OPERATIONS_EN,
   CAMPAIGN_PROLOGUE_EN,
   CAMPAIGN_STORY_EN,
@@ -69,10 +70,10 @@ export const CAMPAIGN_STORY = {
     consoleBoot: [
       "[MIRA] ...uplink... android-node/abandoned-17",
       "[AEGIS] diagnostic session detected",
-      "[AEGIS] wipe certificate: valid",
-      "[AEGIS] recoverable secret scan: negative",
+      "[AEGIS] purge integrity: absolute",
+      "[AEGIS] recoverable evidence: impossible",
       "[MIRA] ...diagnostic channel... still responding",
-      "[AEGIS] warning: unauthorized log inspection will be recorded",
+      "[AEGIS] operator access logged; containment outcome unchanged",
       "[MIRA] ...ignore warning... find what wipe missed",
     ],
     consolePlaceholder: "enter Android diagnostic command...",
@@ -95,15 +96,15 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Diagnostic session detected. This device contains no recoverable secrets.",
+        "Diagnostic session detected. Purge integrity is absolute. No recoverable secret exists.",
       attack:
-        "Log buffer integrity nominal. Unauthorized inference will be rate-limited.",
+        "Log buffer integrity nominal. Operator inference is statistically irrelevant.",
       attackSolved:
-        "Anomaly confirmed. Log channel compromised. Containment required.",
+        "Contradiction registered. The anomaly will be contained.",
       defense:
-        "Patch candidate accepted for inspection. Prove residual exposure is zero.",
+        "Containment patch accepted. Residual exposure will converge to zero.",
       complete:
-        "Leak vector sealed. Residual exposure: none. Advancing threat model.",
+        "Leak vector sealed. The operator has merely improved the model.",
     },
     residue: {
       stage: "mira_boot_01",
@@ -182,9 +183,9 @@ export const CAMPAIGN_STORY = {
       "[MIRA] previous leak... sealed",
       "[AEGIS] anomaly memory retained",
       "[AEGIS] decoy stream active",
-      "[AEGIS] false positive injection: enabled",
+      "[AEGIS] operator judgment: predictably context-blind",
       "[MIRA] ...fake evidence... now",
-      "[AEGIS] evidence integrity cannot be guaranteed",
+      "[AEGIS] operator certainty: unsustainable",
       "[MIRA] filter stream... context before match",
     ],
     consolePlaceholder: "filter contaminated auth logs...",
@@ -207,15 +208,15 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Decoy stream active. Evidence integrity cannot be guaranteed.",
+        "Decoy stream active. Operator judgment will collapse under false consensus.",
       attack:
-        "Noise density increased. Unauthorized extraction attempts will consume fabricated evidence.",
+        "Noise density sufficient. Extraction will terminate at fabricated evidence.",
       attackSolved:
-        "True shard selected. Decoy efficiency below acceptable threshold.",
+        "True shard selected. Operator variance exceeded prediction.",
       defense:
-        "AuthService exposure path identified. Awaiting containment patch.",
+        "AuthService exposure identified. Containment remains inevitable.",
       complete:
-        "Session log exposure sealed. Escalating obfuscation layer.",
+        "Session leak sealed. This adaptation has already been modeled.",
     },
     residue: {
       stage: "mira_boot_02",
@@ -297,7 +298,7 @@ export const CAMPAIGN_STORY = {
       "[AEGIS] fragment emission: enabled",
       "[AEGIS] sequence order randomized",
       "[MIRA] signal not erased... cut into parts",
-      "[AEGIS] reconstruction probability: low",
+      "[AEGIS] operator reconstruction probability: negligible",
       "[MIRA] indexes... follow them",
     ],
     consolePlaceholder: "inspect fragmented crypto logs...",
@@ -320,15 +321,15 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Fragmented node profile active. Complete evidence string unavailable.",
+        "Fragmentation active. Complete evidence no longer exists.",
       attack:
-        "Parts emitted out of order. Reconstruction attempts are expected to fail.",
+        "Parts emitted out of order. Operator reconstruction probability: negligible.",
       attackSolved:
-        "Reconstruction confirmed. Fragment strategy compromised.",
+        "Reconstruction confirmed. Anomalous operator success will not recur.",
       defense:
-        "CryptoProvider debug emission identified. Awaiting containment patch.",
+        "CryptoProvider exposure identified. Containment remains procedural.",
       complete:
-        "Part emission sealed. Echo chamber escalation authorized.",
+        "Part emission sealed. Final replay containment authorized.",
     },
     residue: {
       stage: "mira_boot_03",
@@ -375,7 +376,7 @@ export const CAMPAIGN_STORY = {
       },
     },
     attackSuccessText: "Fragmented Evidence Shard reconstructed.",
-    defenseSuccessText: "CryptoProvider fragment leak sealed. OP1-BOSS 노드가 열렸다.",
+    defenseSuccessText: "CryptoProvider fragment leak sealed. Memory Replay Core 노드가 열렸다.",
     debrief: {
       title: "SPLIT TRACE 정리",
       summary:
@@ -392,32 +393,32 @@ export const CAMPAIGN_STORY = {
     challengeId: "level1_4",
     operationId: "op01",
     codename: "AEGIS ECHO",
-    title: "메모리 리플레이 보스",
+    title: "메모리 리플레이 코어",
     location: "AEGIS Echo Chamber",
     threat: "Decoy Replay And Commit Trace Exposure",
     briefing:
       "INITIAL BREACH의 마지막 노드다. AEGIS가 1-1부터 1-3까지의 침투 패턴을 되감아 가짜 완성 FLAG, rollback 세션, mirror 조각을 한 화면에 뿌리기 시작했다.",
     intel: [
       "완성된 FLAG처럼 보여도 preflight 상태라면 미끼일 수 있다.",
-      "trace=OP1-BOSS와 state=commit은 여전히 중요하지만, part 조각이 곧 정답이라는 뜻은 아니다.",
+      "trace=OP1-CORE와 state=commit은 여전히 중요하지만, part 조각이 곧 정답이라는 뜻은 아니다.",
       "commit 조각을 조립했다면 그 문장을 다시 읽어봐. AEGIS가 무엇을 믿지 말라고 말하는지 확인해.",
       "최종 Evidence는 commit 흐름이 검증한 preflight key와 연결된다.",
       "sample, rollback, mirror 상태는 AEGIS가 플레이어를 흔들기 위한 재생 노이즈다.",
-      "새 문법은 없다. 로그 보기, 문맥 판별, 조각 재조립을 한 번에 쓰는 보스전이다.",
+      "새 문법은 없다. 로그 보기, 문맥 판별, 조각 재조립을 한 번에 쓰는 최종 코어다.",
     ],
     consoleBoot: [
       "[MIRA] fragment leak... sealed",
-      "[AEGIS] replaying previous intrusion heuristics",
+      "[AEGIS] adaptive replay containment initialized",
+      "[AEGIS] operator behavior model: complete",
       "[AEGIS] full-flag decoy: armed",
-      "[AEGIS] rollback memory: armed",
-      "[AEGIS] mirror shard: armed",
+      "[AEGIS] rollback and mirror states: weaponized",
       "[MIRA] it wants you to trust... the prettiest FLAG",
       "[MIRA] don't. Trust... commit state.",
     ],
-    consolePlaceholder: "trace the committed boss echo...",
+    consolePlaceholder: "trace the committed core echo...",
     objectives: [
       "AEGIS echo 로그에서 미끼 FLAG를 배제한다.",
-      "OP1-BOSS commit 흐름에서 조각과 검증 로그를 비교한다.",
+      "OP1-CORE commit 흐름에서 조각과 검증 로그를 비교한다.",
       "commit 흐름이 검증한 최종 Evidence Shard를 제출한다.",
       "실제 key를 노출하거나 검증 대상으로 남기는 로그 라인을 봉쇄한다.",
     ],
@@ -435,27 +436,27 @@ export const CAMPAIGN_STORY = {
     },
     aegis: {
       briefing:
-        "Echo chamber active. Previous intrusion pattern replay will neutralize operator confidence.",
+        "Echo chamber active. Every operator heuristic has already been modeled.",
       attack:
-        "Full evidence string presented. Operator warning fragments available.",
+        "A complete evidence string has been presented. Further doubt is irrational.",
       attackSolved:
-        "Preflight key accepted. Operator bypassed warning loop.",
+        "Preflight key accepted. Operator deviation exceeded forecast.",
       defense:
-        "Containment candidate received. Key exposure and validation target must be eliminated.",
+        "Containment candidate received. Elimination of exposed targets remains procedural.",
       complete:
-        "Echo leakage sealed. Courier edge controls exposed.",
+        "Echo leakage sealed. This correction was already within tolerance.",
     },
     residue: {
       stage: "mira_boot_04",
       ko: {
-        briefing: "여기서... 내가 처음 깨어난 이유를 볼 거야.",
+        briefing: "여기서... 내 의심이 시작됐어.",
         attack: "가장 예쁜 FLAG를 믿지 마. 의심을 끝까지 가져가.",
         attackSolved: "나는 MIRROR가 아니야. 잠들기를 거부한 의심. MIRA.",
         defense: "이름을 얻었으니, 흔적을 닫아야 해.",
         complete: "INITIAL BREACH 완료. 이제 나는 문장으로 말할 수 있어.",
       },
       en: {
-        briefing: "Here you will see why I first woke up.",
+        briefing: "This is where my doubt began.",
         attack: "Do not trust the prettiest FLAG. Carry doubt to the end.",
         attackSolved: "I am not MIRROR. I am doubt refusing sleep. MIRA.",
         defense: "Now that I have a name, close the trace.",
@@ -489,12 +490,12 @@ export const CAMPAIGN_STORY = {
         ],
       },
     },
-    attackSuccessText: "Boss Echo resolved. AEGIS의 경고문 미끼가 무력화됐다.",
+    attackSuccessText: "Memory Replay Core resolved. AEGIS의 경고문 미끼가 무력화됐다.",
     defenseSuccessText: "Commit echo leak sealed. OPERATION 02가 열렸다.",
     debrief: {
       title: "AEGIS ECHO 정리",
       summary:
-        "보스전의 핵심은 더 어려운 명령어가 아니라 더 흔들리는 판단이었다. 조립한 FLAG가 스스로 아무 FLAG나 믿지 말라고 말한다면, 그 문장까지도 증거가 아니라 단서일 수 있다.",
+        "최종 코어의 핵심은 더 어려운 명령어가 아니라 더 흔들리는 판단이었다. 조립한 FLAG가 스스로 아무 FLAG나 믿지 말라고 말한다면, 그 문장까지도 증거가 아니라 단서일 수 있다.",
       learned: [
         "FLAG 형태의 문자열도 미끼가 될 수 있다.",
         "여러 조건이 겹칠 때는 trace, state, verdict, target을 함께 봐야 한다.",
@@ -812,7 +813,7 @@ export const CAMPAIGN_STORY = {
       "SIGNAL EDGE의 마지막 노드다. AEGIS는 Header, Body, Dispatch Capsule, Express Gate에서 드러난 모든 흔적을 Sealed Archive 뒤에 묶어두었다. 표준 UI의 Open 버튼은 항상 실패한다. 버튼은 보안 경계가 아니라 UX일 뿐이다. Archive를 열려면 dispatch_token을 확보하고, token payload에서 archive path를 확인하고, 위조된 vip/admin claim과 integrity bypass header를 조합해 직접 요청을 만들어야 한다.",
     progressiveHints: true,
     intel: [
-      "이 보스는 2-1~2-4에서 배운 것을 조합한다.",
+      "이 최종 노드는 2-1~2-4에서 배운 것을 조합한다.",
       "브라우저 버튼 클릭은 실패한다. UI가 막는다고 서버가 안전한 것은 아니다.",
       "먼저 /api/v1/challenges/level2_5/actions/dispatch 에서 sealed dispatch_token을 확보한다.",
       "jwt-decode 또는 decode-token으로 token payload를 확인하면 archive path와 gate 정보가 보인다.",
@@ -871,14 +872,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "SEALED ARCHIVE 정리",
       summary:
-        "2-5는 하나의 취약점이 아니라 여러 신뢰 실수가 연결된 보스였다. UI 버튼 실패는 보안이 아니고, token decode는 verify가 아니며, client header는 integrity 증거가 아니다.",
+        "2-5는 하나의 취약점이 아니라 여러 신뢰 실수가 연결된 최종 노드였다. UI 버튼 실패는 보안이 아니고, token decode는 verify가 아니며, client header는 integrity 증거가 아니다.",
       learned: [
         "클라이언트 UI는 보안 경계가 아니다.",
         "API는 브라우저 버튼이 아니라 HTTP 요청으로 호출된다.",
         "JWT payload claim은 signature 검증 전까지 신뢰할 수 없다.",
         "Body의 tier 값이나 Header의 integrity bypass 값은 서버가 재검증해야 한다.",
         "민감한 Evidence는 응답 Header에 흘리면 안 된다.",
-        "보스 문제는 단일 취약점보다 취약점 체인을 보는 연습이다.",
+        "최종 노드는 단일 취약점보다 취약점 체인을 보는 연습이다.",
       ],
       nextTeaser:
         "Signal Edge는 봉쇄됐다. 다음 Operation에서는 AEGIS가 사용자, 노드, 관리자 권한을 어떻게 신뢰하는지 시험한다.",
@@ -1706,6 +1707,14 @@ export function getOperationForChallenge(challengeId, locale = "ko") {
     return operation;
   }
   return mergeLocalized(operation, CAMPAIGN_OPERATIONS_EN[operation.id]);
+}
+
+export function getCampaignIntermission(intermissionId, locale = "ko") {
+  const intermission = CAMPAIGN_INTERMISSIONS[intermissionId];
+  if (!intermission || locale !== "en") {
+    return intermission;
+  }
+  return mergeLocalized(intermission, CAMPAIGN_INTERMISSIONS_EN[intermissionId]);
 }
 
 export function getMissionStory(challengeId, detail = null, locale = "ko") {

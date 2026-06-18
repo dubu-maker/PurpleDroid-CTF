@@ -14,3 +14,9 @@ __pycache__/
 *.py[cod]
 server/.purpledroid_sessions.json
 server/.purpledroid_sessions.json.tmp
+
+# Local development runtime output
+.server.log
+.web.log
+.server.pid*
+.web.pid*

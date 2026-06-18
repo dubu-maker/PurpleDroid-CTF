@@ -21,7 +21,7 @@ STATIC: Dict[str, Any] = {
     "id": "level2_5",
     "level": 2,
     "title": "2-5 Sealed Archive",
-    "summary": "UI-only gate, unsigned claim trust, client integrity header가 연결된 Signal Edge 보스.",
+    "summary": "UI-only gate, unsigned claim trust, client integrity header가 연결된 Signal Edge 최종 노드.",
     "description": (
         "미션: 버튼 클릭은 실패한다. sealed dispatch_token을 확보하고, archive path, "
         "vip/admin claim, integrity bypass header를 조합해 Sealed Archive를 열어라."
@@ -29,7 +29,7 @@ STATIC: Dict[str, Any] = {
     "status": {"attack": "locked", "defense": "locked"},
     "attack": {
         "hints": [
-            {"platform": "all", "text": "이 보스는 2-1~2-4 Attack을 먼저 해결해야 열린다."},
+            {"platform": "all", "text": "이 최종 노드는 2-1~2-4 Attack을 먼저 해결해야 열린다."},
             {"platform": "all", "text": "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다."},
             {"platform": "all", "text": "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해."},
             {"platform": "all", "text": "jwt-decode로 token payload의 warehouse_path와 gate 값을 확인해."},

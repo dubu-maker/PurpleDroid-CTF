@@ -36,8 +36,8 @@ const FALLBACK_HINTS = {
     { platform: "unix", text: 'adb logcat -d | grep "part["' },
   ],
   level1_4: [
-    { platform: "windows", text: 'adb logcat -d | findstr "OP1-BOSS"' },
-    { platform: "unix", text: 'adb logcat -d | grep "OP1-BOSS"' },
+    { platform: "windows", text: 'adb logcat -d | findstr "OP1-CORE"' },
+    { platform: "unix", text: 'adb logcat -d | grep "OP1-CORE"' },
     { platform: "all", text: "조각을 맞췄다면 그 문장이 정답인지, commit 흐름이 무엇을 검증했는지 다시 봐." },
   ],
   level2_3: [

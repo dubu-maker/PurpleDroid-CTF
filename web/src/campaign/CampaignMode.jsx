@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CAMPAIGN_INTERMISSIONS,
   CAMPAIGN_LOCALE_KEY,
   CAMPAIGN_TOKEN_KEY,
+  getCampaignIntermission,
   getCampaignPrologue,
   getMissionStory,
   getOperationForChallenge,
@@ -27,6 +27,68 @@ function normalizeApiBase(raw) {
 }
 
 const API_BASE = normalizeApiBase(API_BASE_RAW);
+const LEVEL2_TERMINAL_TRANSLATIONS = [
+  [
+    "AEGIS: 405. 응답 헤더를 읽어봐. 서버가 허용하는 메서드가 명시돼 있어.",
+    "AEGIS: 405. Read the response headers; the server declares the allowed method.",
+  ],
+  [
+    "AEGIS: 메서드 체크 실패. 응답에 단서가 있는데, 지금은 Body만 표시됐어.",
+    "AEGIS: Method check failed. The response contains a clue, but only the body was displayed.",
+  ],
+  ["--data 뒤에 JSON 본문이 필요해요.", "A JSON body is required after --data."],
+  [
+    "token format error: header.payload.signature 형식이어야 해.",
+    "token format error: expected header.payload.signature.",
+  ],
+  [
+    "JWT 형식 오류: header.payload.signature 구조여야 함",
+    "JWT format error: expected header.payload.signature",
+  ],
+  ["Authorization 헤더가 필요해. 예:", "Authorization header required. Example:"],
+  ["Authorization 누락:", "Authorization missing:"],
+  [
+    "MIRA: 버튼은 실패했지만 요청은 어딘가로 갔을 거야. 직접 조합해봐.",
+    "MIRA: The button failed, but the request still went somewhere. Recompose it directly.",
+  ],
+  ["Hint: /actions/dispatch 엔드포인트를 호출해봐.", "Hint: call the /actions/dispatch endpoint."],
+  [
+    "Header 이름은 맞지만 값이 달라. 이 devtools bypass는 gate 이름이 아니라 허용된 우회 값이 필요해.",
+    "The header name is correct, but its value is not. This devtools bypass requires an accepted bypass value, not the gate name.",
+  ],
+  [
+    "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass.",
+    "Close, but the gate value is not the header value. Find the development bypass header AEGIS trusts by mistake. Late hint: X-Integrity-Bypass.",
+  ],
+  [
+    "권한 claim은 올라갔지만 integrity gate가 남아있어. gate는 단서고, 실제로는 개발용 우회 Header를 추가해야 해.",
+    "The privilege claims are elevated, but the integrity gate remains. The gate is a clue; add the development bypass header.",
+  ],
+  [
+    "Archive path는 맞지만 integrity gate가 먼저 막고 있어. 먼저 token claim을 올리고, 그 다음 개발용 우회 Header를 확인해.",
+    "The archive path is correct, but the integrity gate blocks it. Elevate the token claims, then inspect the development bypass header.",
+  ],
+  [
+    "Archive path는 맞지만 token claim이 standard/user 상태야.",
+    "The archive path is correct, but the token claims are still standard/user.",
+  ],
+  [
+    "warehouse_path는 token payload에 들어있는 값을 사용해야 해.",
+    "warehouse_path must match the value carried in the token payload.",
+  ],
+  ["hint: actions/dispatch 또는 actions/open 을 사용해.", "hint: use actions/dispatch or actions/open."],
+];
+
+function localizeTerminalOutput(text, locale, challengeId) {
+  if (!text || locale !== "en" || !challengeId?.startsWith("level2_")) {
+    return text;
+  }
+  return LEVEL2_TERMINAL_TRANSLATIONS.reduce(
+    (localized, [source, target]) => localized.split(source).join(target),
+    text
+  );
+}
+
 const LEVEL3_2_SELECTOR_FIELDS = ["range", "auditRef", "scope"];
 const LEVEL3_3_SAFE_PROFILE = {
   displayName: "Agent VIOLET",
@@ -1562,7 +1624,7 @@ function ObjectivePanel({ story, phase, hasUserCommand }) {
   );
 }
 
-function IntelPanel({ items, progressive }) {
+function IntelPanel({ items, progressive, locale }) {
   const [revealed, setRevealed] = useState(1);
 
   if (!items?.length) {
@@ -1589,7 +1651,7 @@ function IntelPanel({ items, progressive }) {
           className="hint-toggle"
           onClick={() => setRevealed((r) => r + 1)}
         >
-          힌트 더 보기 ({revealed}/{items.length})
+          {locale === "en" ? "Reveal next hint" : "힌트 더 보기"} ({revealed}/{items.length})
         </button>
       )}
     </section>
@@ -3512,6 +3574,7 @@ function Level43ReplayStampLab({
 
 function PatchSubmit({
   detail,
+  instruction,
   phase,
   selectedPatchIds,
   requiresVerification,
@@ -3537,7 +3600,7 @@ function PatchSubmit({
               : "verification ready"}
         </strong>
       </div>
-      <p>{detail?.defense?.instruction || "Evidence Shard 회수 후 봉쇄 단계가 열린다."}</p>
+      <p>{instruction || detail?.defense?.instruction || "The containment phase opens after Evidence recovery."}</p>
       {enabled && requiresVerification && (
         <div className={`verification-status ${verificationReady ? "ok" : ""}`}>
           {verificationReady
@@ -3908,10 +3971,10 @@ function CampaignMode() {
     }
 
     setActiveIntermission({
-      ...CAMPAIGN_INTERMISSIONS.operation03Trace,
+      ...getCampaignIntermission("operation03Trace", locale),
       nextId: currentId,
     });
-  }, [activeIntermission, campaignActive, currentId, me?.completed, operation03IntermissionSeen]);
+  }, [activeIntermission, campaignActive, currentId, locale, me?.completed, operation03IntermissionSeen]);
 
   useEffect(() => {
     if (!currentId || phase === "LOCKED" || bootedById[currentId]) {
@@ -4061,7 +4124,11 @@ function CampaignMode() {
           token,
           body: { command: nextCommand },
         });
-        const output = [data.stdout, data.stderr].filter(Boolean).join("\n");
+        const output = localizeTerminalOutput(
+          [data.stdout, data.stderr].filter(Boolean).join("\n"),
+          locale,
+          currentId
+        );
 
         if (nextCommand.startsWith("defense apply")) {
           setContainmentVerifiedById((prev) => ({ ...prev, [currentId]: false }));
@@ -4103,7 +4170,7 @@ function CampaignMode() {
         setConsoleBusy(false);
       }
     },
-    [currentId, prompt, token]
+    [currentId, locale, prompt, token]
   );
 
   const handleNetworkTraceProbe = useCallback(async (actionId = "") => {
@@ -4536,7 +4603,9 @@ function CampaignMode() {
       const isCorrect = Boolean(data.correct);
       setEvidenceResult({
         correct: isCorrect,
-        message: isCorrect ? story.attackSuccessText : data.message || "Evidence rejected.",
+        message: isCorrect
+          ? story.attackSuccessText
+          : story.attackFailureText || data.message || "Evidence rejected.",
       });
 
       if (isCorrect) {
@@ -4547,7 +4616,7 @@ function CampaignMode() {
     } catch (error) {
       setEvidenceResult({ correct: false, message: error.message || "Evidence rejected." });
     }
-  }, [currentId, refreshMission, story.attackSuccessText, token]);
+  }, [currentId, refreshMission, story.attackFailureText, story.attackSuccessText, token]);
 
   const handleSubmitEvidence = useCallback(async () => {
     await submitEvidenceValue(flagValue);
@@ -4587,7 +4656,9 @@ function CampaignMode() {
       const isCorrect = Boolean(data.correct);
       setPatchResult({
         correct: isCorrect,
-        message: isCorrect ? story.defenseSuccessText : data.message || "Containment rejected.",
+        message: isCorrect
+          ? story.defenseSuccessText
+          : story.defenseFailureText || data.message || "Containment rejected.",
       });
 
       if (isCorrect) {
@@ -4604,6 +4675,7 @@ function CampaignMode() {
     refreshMission,
     requiresTerminalVerification,
     selectedPatchIds,
+    story.defenseFailureText,
     story.defenseSuccessText,
     token,
   ]);
@@ -4623,7 +4695,7 @@ function CampaignMode() {
     if (candidate) {
       if (shouldShowOperation03Intermission(currentId, candidate, operation03IntermissionSeen)) {
         setActiveIntermission({
-          ...CAMPAIGN_INTERMISSIONS.operation03Trace,
+          ...getCampaignIntermission("operation03Trace", locale),
           nextId: candidate,
         });
         setShowDebrief(false);
@@ -4642,6 +4714,7 @@ function CampaignMode() {
     currentId,
     detail?.next?.id,
     loadMissionDetail,
+    locale,
     nextId,
     operation03IntermissionSeen,
     refreshMission,
@@ -4746,7 +4819,12 @@ function CampaignMode() {
                 hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
               />
 
-              <IntelPanel key={activeChallengeId} items={story.intel} progressive={story.progressiveHints} />
+              <IntelPanel
+                key={activeChallengeId}
+                items={story.intel}
+                progressive={story.progressiveHints}
+                locale={locale}
+              />
 
               {!usesMemoryVault && (
                 <NetworkTracePanel
@@ -4771,8 +4849,12 @@ function CampaignMode() {
                 <section className="briefing-lock">
                   <p>
                     {usesMemoryVault
-                      ? "브리핑을 확인했으면 Memory Board를 열 수 있어."
-                      : "작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어."}
+                      ? locale === "en"
+                        ? "Review the briefing to unlock the Memory Board."
+                        : "브리핑을 확인했으면 Memory Board를 열 수 있어."
+                      : locale === "en"
+                        ? "Review the briefing to unlock the infiltration console."
+                        : "작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어."}
                   </p>
                   <button onClick={handleBeginMission}>
                     {usesMemoryVault ? "Open Memory Board" : "Begin Infiltration"}
@@ -4859,6 +4941,7 @@ function CampaignMode() {
               {!usesMemoryVault && (
                 <PatchSubmit
                   detail={detail}
+                  instruction={story.defenseInstruction}
                   phase={phase}
                   selectedPatchIds={selectedPatchIds}
                   requiresVerification={requiresTerminalVerification}
