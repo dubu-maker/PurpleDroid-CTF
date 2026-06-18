@@ -32,11 +32,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
+                "text": 'curl.exe -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
             },
             {
                 "platform": "unix",
-                "text": 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
+                "text": 'curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
             },
             {"platform": "all", "text": "dispatch_token은 점(.)으로 나뉜 segment 구조다. 첫 segment가 정답이라는 뜻은 아니야."},
             {"platform": "all", "text": "Header는 포장지에 가깝고, 실제 claim은 payload segment에 들어갈 때가 많아."},
@@ -143,6 +143,15 @@ def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID, include_evidence: b
 
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL2_3_FLAG
+
+
+def flag_feedback(flag: str) -> str:
+    value = flag.strip()
+    if value == HEADER_DECOY_FLAG:
+        return "그건 token header의 kid decoy야. Header는 포장지에 가깝고, Evidence Shard는 payload segment 안에 있어."
+    if value.startswith("FLAG{"):
+        return "FLAG 형태는 맞지만 이번 Evidence Shard가 아니야. decode-token으로 payload claim의 evidenceShard를 다시 확인해봐."
+    return "dispatch_token은 header.payload.signature 구조야. 먼저 payload segment를 디코딩해봐."
 
 
 def judge_patch(patched_ids: list[str]) -> bool:

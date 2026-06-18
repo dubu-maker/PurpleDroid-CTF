@@ -24,11 +24,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": "curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track",
+                "text": "curl.exe -i -X POST /api/v1/challenges/level2_1/actions/track",
             },
             {
                 "platform": "unix",
-                "text": "curl -i -X POST http://localhost:8000/api/v1/challenges/level2_1/actions/track",
+                "text": "curl -i -X POST /api/v1/challenges/level2_1/actions/track",
             },
             {
                 "platform": "all",
@@ -158,10 +158,10 @@ def _render_response_with_headers() -> str:
 def _render_verbose_response() -> str:
     body = _render_body()
     return (
-        "* Trying 127.0.0.1:8000...\n"
-        "* Connected to localhost (127.0.0.1) port 8000 (#0)\n"
+        "* Trying current mission API...\n"
+        "* Connected to localhost mission API (#0)\n"
         "> POST /api/v1/challenges/level2_1/actions/track HTTP/1.1\n"
-        "> Host: localhost:8000\n"
+        "> Host: localhost\n"
         "> User-Agent: curl/7.81.0\n"
         "> Accept: */*\n"
         ">\n"

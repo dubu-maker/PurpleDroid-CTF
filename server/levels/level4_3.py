@@ -47,11 +47,11 @@ STATIC: Dict[str, Any] = {
             {"platform": "web", "text": "Network에서 응답의 guard/credited/stampCount 변화를 관찰하며 무엇이 막히는지 확인해."},
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"rcpt-seoul-7\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\",\\"via\\":\\"seoul\\"}"',
+                "text": 'curl -s -X POST /api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"rcpt-seoul-7\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\",\\"via\\":\\"seoul\\"}"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
+                "text": 'curl -s /api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
             },
             {"platform": "all", "text": 'echo "seoul busan daegu incheon gwangju" | xargs -I{} curl ... -d \'{"event_id":"rcpt-{}-7","parcel_id":"PD-1004","status":"delivered","via":"{}"}\' 처럼 단어 리스트로 두 필드를 동시에 위장해봐.'},
         ],

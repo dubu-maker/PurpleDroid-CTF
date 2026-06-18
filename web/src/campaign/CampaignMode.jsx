@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAMPAIGN_INTERMISSIONS,
-  CAMPAIGN_PROLOGUE,
+  CAMPAIGN_LOCALE_KEY,
   CAMPAIGN_TOKEN_KEY,
+  getCampaignPrologue,
   getMissionStory,
   getOperationForChallenge,
 } from "../story/campaignStory";
@@ -12,12 +13,12 @@ const OPERATION_03_INTERMISSION_KEY = "purpledroid_intermission_operation03_trac
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:8000";
+  "http://localhost:8001";
 
 function normalizeApiBase(raw) {
   const trimmed = (raw || "").replace(/\/$/, "");
   if (!trimmed) {
-    return "http://localhost:8000/api/v1";
+    return "http://localhost:8001/api/v1";
   }
   if (trimmed.endsWith("/api/v1")) {
     return trimmed;
@@ -1339,6 +1340,30 @@ function traceCurlButtonLabel(entry) {
   return "Copy as curl";
 }
 
+function NarrativeLocaleToggle({ locale, onChange }) {
+  return (
+    <div className="narrative-locale-toggle" aria-label="Narrative language">
+      <span>NARRATIVE</span>
+      <button
+        type="button"
+        className={locale === "ko" ? "active" : ""}
+        onClick={() => onChange("ko")}
+        aria-pressed={locale === "ko"}
+      >
+        KO
+      </button>
+      <button
+        type="button"
+        className={locale === "en" ? "active" : ""}
+        onClick={() => onChange("en")}
+        aria-pressed={locale === "en"}
+      >
+        EN BETA
+      </button>
+    </div>
+  );
+}
+
 function CampaignHome({
   loading,
   me,
@@ -1346,16 +1371,20 @@ function CampaignHome({
   onContinue,
   onNewCampaign,
   statusText,
+  prologue,
+  locale,
+  onLocaleChange,
 }) {
   return (
     <div className="campaign-page campaign-home">
       <header className="campaign-hero">
         <div className="campaign-hero-copy">
-          <p className="campaign-kicker">{CAMPAIGN_PROLOGUE.year} // AEGIS GRIDLINE</p>
-          <h1>{CAMPAIGN_PROLOGUE.title}</h1>
-          <p className="campaign-subtitle">{CAMPAIGN_PROLOGUE.subtitle}</p>
+          <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
+          <p className="campaign-kicker">{prologue.year} // AEGIS GRIDLINE</p>
+          <h1>{prologue.title}</h1>
+          <p className="campaign-subtitle">{prologue.subtitle}</p>
           <div className="campaign-prologue">
-            {CAMPAIGN_PROLOGUE.paragraphs.map((paragraph) => (
+            {prologue.paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
@@ -1374,16 +1403,7 @@ function CampaignHome({
         </div>
 
         <div className="campaign-visual" aria-hidden="true">
-          <div className="aegis-eye">
-            <div className="aegis-eye-core" />
-            <div className="aegis-eye-scan" />
-          </div>
-          <div className="visual-grid">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
+          <img src="/assets/mirror-city-grid.png" alt="" />
         </div>
       </header>
 
@@ -1405,7 +1425,7 @@ function CampaignHome({
   );
 }
 
-function OperationHeader({ operation, story, detail, phase, onHome }) {
+function OperationHeader({ operation, story, detail, phase, onHome, locale, onLocaleChange }) {
   return (
     <header className="operation-header">
       <div>
@@ -1416,6 +1436,7 @@ function OperationHeader({ operation, story, detail, phase, onHome }) {
         <p>{story.title}</p>
       </div>
       <div className="operation-header-actions">
+        <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
         <span className={`phase-badge phase-${phase.toLowerCase()}`}>{phaseLabel(phase)}</span>
         <span className="mission-id">{detail?.id || story.challengeId}</span>
         <button className="ghost-button" onClick={onHome}>
@@ -1474,17 +1495,29 @@ function AgentStatusPanel({ me, phase, operation, challenges }) {
   );
 }
 
-function DialoguePanel({ story, phase, attackNotice }) {
-  const key =
-    phase === "MISSION_COMPLETE"
-      ? "complete"
-      : attackNotice
-        ? "attackSolved"
-        : phase === "DEFENSE"
-          ? "defense"
-          : phase === "ATTACK"
-            ? "attack"
-            : "briefing";
+function phaseStoryKey(phase, attackNotice) {
+  if (phase === "MISSION_COMPLETE") {
+    return "complete";
+  }
+  if (attackNotice) {
+    return "attackSolved";
+  }
+  if (phase === "DEFENSE") {
+    return "defense";
+  }
+  if (phase === "ATTACK") {
+    return "attack";
+  }
+  return "briefing";
+}
+
+function localizedBlock(block, locale) {
+  return block?.[locale] || block?.ko || block || null;
+}
+
+function DialoguePanel({ story, phase, attackNotice, locale }) {
+  const key = phaseStoryKey(phase, attackNotice);
+  const residue = localizedBlock(story.residue, locale)?.[key];
 
   return (
     <section className="dialogue-panel">
@@ -1496,6 +1529,12 @@ function DialoguePanel({ story, phase, attackNotice }) {
         <span>AEGIS</span>
         <p>{story.aegis[key]}</p>
       </div>
+      {residue && (
+        <div className={`mira-residue ${story.residue?.stage || ""}`}>
+          <span>MIRA RESIDUE</span>
+          <p>{residue}</p>
+        </div>
+      )}
     </section>
   );
 }
@@ -3538,13 +3577,32 @@ function PatchSubmit({
   );
 }
 
-function DebriefModal({ story, onNext, onClose, hasNext }) {
+function DebriefModal({ story, onNext, onClose, hasNext, locale }) {
+  const memoryNote = localizedBlock(story.memoryNote, locale);
+
   return (
     <div className="debrief-backdrop" role="dialog" aria-modal="true">
       <section className="debrief-modal">
         <p className="campaign-kicker">MISSION DEBRIEF</p>
         <h2>{story.debrief.title}</h2>
         <p>{story.debrief.summary}</p>
+        {memoryNote && (
+          <section className="memory-note-card">
+            <MemoryNoteVisual image={story.memoryNote?.image} />
+            <div>
+              <p className="campaign-kicker">MEMORY NOTE</p>
+              <h3>{memoryNote.title}</h3>
+              <p>{memoryNote.body}</p>
+              {memoryNote.fragments?.length > 0 && (
+                <ul className="memory-note-fragments">
+                  {memoryNote.fragments.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
         <ul>
           {story.debrief.learned.map((item) => (
             <li key={item}>{item}</li>
@@ -3560,6 +3618,26 @@ function DebriefModal({ story, onNext, onClose, hasNext }) {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function MemoryNoteVisual({ image }) {
+  if (!image) {
+    return null;
+  }
+
+  return (
+    <div
+      className={`memory-note-image memory-note-image-${image.variant || "default"}`}
+      role="img"
+      aria-label={image.alt || image.label || "Memory note visual"}
+    >
+      <span className="memory-note-scan scan-a" />
+      <span className="memory-note-scan scan-b" />
+      <span className="memory-note-scan scan-c" />
+      <span className="memory-note-core" />
+      <strong>{image.label}</strong>
     </div>
   );
 }
@@ -3664,6 +3742,9 @@ function OperationIntermission({ intermission, busy, onContinue }) {
 
 function CampaignMode() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
+  const [locale, setLocale] = useState(() =>
+    localStorage.getItem(CAMPAIGN_LOCALE_KEY) === "en" ? "en" : "ko"
+  );
   const [campaignActive, setCampaignActive] = useState(
     () => localStorage.getItem(CAMPAIGN_TOKEN_KEY) === "1"
   );
@@ -3697,6 +3778,12 @@ function CampaignMode() {
     () => localStorage.getItem(OPERATION_03_INTERMISSION_KEY) === "1"
   );
   const [activeIntermission, setActiveIntermission] = useState(null);
+
+  const handleLocaleChange = useCallback((nextLocale) => {
+    const normalized = nextLocale === "en" ? "en" : "ko";
+    localStorage.setItem(CAMPAIGN_LOCALE_KEY, normalized);
+    setLocale(normalized);
+  }, []);
 
   const createSession = useCallback(async () => {
     const data = await apiRequest("/session", {
@@ -3762,6 +3849,10 @@ function CampaignMode() {
   }, [bootstrap]);
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  useEffect(() => {
     setConsoleLogs([]);
     setCommand("");
     setFlagValue("");
@@ -3780,8 +3871,15 @@ function CampaignMode() {
     setNextId(null);
   }, [currentId]);
 
-  const story = useMemo(() => getMissionStory(currentId, detail), [currentId, detail]);
-  const operation = useMemo(() => getOperationForChallenge(currentId), [currentId]);
+  const story = useMemo(
+    () => getMissionStory(currentId, detail, locale),
+    [currentId, detail, locale]
+  );
+  const operation = useMemo(
+    () => getOperationForChallenge(currentId, locale),
+    [currentId, locale]
+  );
+  const prologue = useMemo(() => getCampaignPrologue(locale), [locale]);
   const currentChallenge = useMemo(
     () => challenges.find((challenge) => challenge.id === currentId) || null,
     [challenges, currentId]
@@ -4585,6 +4683,9 @@ function CampaignMode() {
         onContinue={handleContinue}
         onNewCampaign={handleNewCampaign}
         statusText={statusText}
+        prologue={prologue}
+        locale={locale}
+        onLocaleChange={handleLocaleChange}
       />
     );
   }
@@ -4607,6 +4708,8 @@ function CampaignMode() {
         detail={detail}
         phase={phase}
         onHome={() => setCampaignActive(false)}
+        locale={locale}
+        onLocaleChange={handleLocaleChange}
       />
 
       <div className="campaign-grid">
@@ -4630,7 +4733,12 @@ function CampaignMode() {
                 </div>
               </section>
 
-              <DialoguePanel story={story} phase={phase} attackNotice={attackNotice} />
+              <DialoguePanel
+                story={story}
+                phase={phase}
+                attackNotice={attackNotice}
+                locale={locale}
+              />
 
               <ObjectivePanel
                 story={story}
@@ -4798,6 +4906,7 @@ function CampaignMode() {
           onNext={handleNextMission}
           onClose={() => setShowDebrief(false)}
           hasNext={hasNext}
+          locale={locale}
         />
       )}
     </div>

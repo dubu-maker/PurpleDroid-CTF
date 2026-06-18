@@ -516,6 +516,56 @@ def terminal_exec(challenge_id: str, req: TerminalExecReq, authorization: Option
     )
 
 
+def _default_flag_feedback(flag: str) -> str:
+    value = (flag or "").strip()
+    if not value:
+        return "입력값이 비어 있어. 공격 응답이나 로그에서 Evidence Shard를 먼저 회수해봐."
+    if not (value.startswith("FLAG{") and value.endswith("}")):
+        return "형식부터 확인해봐. 정답 Evidence는 보통 FLAG{...} 형태로 제출해야 해."
+    if len(value) <= len("FLAG{}") + 4:
+        return "FLAG 형태는 맞지만 너무 짧아 보여. 일부 조각이나 preview marker만 제출한 건 아닌지 확인해봐."
+    return "FLAG 형태는 맞지만 이번 Evidence Shard가 아니야. decoy/canary/preview marker가 아니라 공격 성공 응답의 최종 값을 찾아봐."
+
+
+def _consistent_patch_feedback(mod: Any, patched: List[str]) -> Optional[str]:
+    required_raw = getattr(mod, "REQUIRED_PATCH_IDS", None)
+    if required_raw is None:
+        return None
+
+    aliases = getattr(mod, "PATCH_ID_ALIASES", {}) or {}
+    required = set(required_raw)
+    bonus = set(getattr(mod, "BONUS_PATCH_IDS", set()) or set())
+    wrong_feedback = getattr(mod, "PATCH_WRONG_FEEDBACK", {}) or {}
+
+    normalized = [aliases.get(pid, pid) for pid in patched]
+    selected = set(normalized)
+    messages: List[str] = []
+    seen: set[str] = set()
+
+    for original_pid, pid in zip(patched, normalized):
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in required or pid in bonus:
+            continue
+        messages.append(
+            wrong_feedback.get(original_pid)
+            or wrong_feedback.get(pid)
+            or "선택한 항목 중 핵심 통제가 아닌 후보가 섞여 있어."
+        )
+
+    missing_count = len(required - selected)
+    if missing_count:
+        messages.append(
+            f"아직 닫히지 않은 핵심 통제가 {missing_count}개 남아 있어. "
+            "완료 전에는 선택한 정답 후보의 개별 정오는 숨겨둘게."
+        )
+
+    if messages:
+        return "\n".join(messages)
+    return "패치 조합이 아직 완성되지 않았어. decoy를 빼고 핵심 신뢰 경계를 다시 비교해봐."
+
+
 @app.post("/api/v1/challenges/{challenge_id}/submit-flag")
 def submit_flag(challenge_id: str, req: SubmitFlagReq, authorization: Optional[str] = Header(None)):
     _, session = _get_session(authorization)
@@ -541,7 +591,7 @@ def submit_flag(challenge_id: str, req: SubmitFlagReq, authorization: Optional[s
             }
         )
 
-    message = "오답입니다."
+    message = _default_flag_feedback(req.flag)
     if hasattr(mod, "flag_feedback"):
         message = mod.flag_feedback(req.flag) or message
     return ok({"correct": False, "message": message})
@@ -576,10 +626,10 @@ def submit_patch(challenge_id: str, req: SubmitPatchReq, authorization: Optional
             }
         )
 
-    message = "패치가 충분하지 않습니다."
-    if hasattr(mod, "patch_feedback_with_session"):
+    message = _consistent_patch_feedback(mod, req.patched) or "패치가 충분하지 않습니다."
+    if message == "패치가 충분하지 않습니다." and hasattr(mod, "patch_feedback_with_session"):
         message = mod.patch_feedback_with_session(req.patched, session) or message
-    elif hasattr(mod, "patch_feedback"):
+    elif message == "패치가 충분하지 않습니다." and hasattr(mod, "patch_feedback"):
         message = mod.patch_feedback(req.patched) or message
     return ok({"correct": False, "message": message})
 
@@ -617,6 +667,7 @@ def reset_level(challenge_id: str, authorization: Optional[str] = Header(None)):
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
     session["progress"][challenge_id] = {"attackSolved": False, "defenseSolved": False}
+    session.pop(challenge_id, None)
     return ok({"message": "reset ok", "status": _status_for(session, challenge_id)})
 
 

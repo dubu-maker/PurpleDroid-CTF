@@ -50,11 +50,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl.exe -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
+                "text": 'curl.exe -v /api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "unix",
-                "text": "curl -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H 'Authorization: Bearer <token>'",
+                "text": "curl -v /api/v1/challenges/level3_2/actions/menu -H 'Authorization: Bearer <token>'",
             },
             {
                 "platform": "all",

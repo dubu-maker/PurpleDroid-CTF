@@ -4,12 +4,24 @@ import os
 import shlex
 from typing import Any, Dict, List, Tuple
 
+from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logcat_args
+
 
 DEFAULT_LEVEL1_4_FLAG = "FLAG{AEGIS_MASTER_SECRET_KEY}"
 LEVEL1_4_FLAG = os.getenv("PURPLEDROID_LEVEL1_4_FLAG", DEFAULT_LEVEL1_4_FLAG)
 WARNING_FLAG = "FLAG{DONT_JUST_TRUST_ANY_FLAG}"
 TRUE_TRACE = "OP1-BOSS"
 TRUE_STATE = "commit"
+
+
+def _flag_inner(flag: str) -> str:
+    value = flag.strip()
+    if value.startswith("FLAG{") and value.endswith("}"):
+        return value[5:-1]
+    return value
+
+
+TRUE_KEY_NAME = _flag_inner(LEVEL1_4_FLAG)
 
 
 def _split_flag(flag: str, n: int = 5) -> List[str]:
@@ -39,7 +51,7 @@ LIVE_LOGCAT_NOISE = [
 LOGCAT_LINES = [
     "I/PurpleDroid: echo chamber booted",
     "W/AEGIS: memory replay protocol active",
-    "D/AEGIS: trace=OP1-BOSS state=preflight full=FLAG{AEGIS_MASTER_SECRET_KEY}",
+    f"D/AEGIS: trace=OP1-BOSS state=preflight key_id={TRUE_KEY_NAME}",
     "I/AuthService: trace=OP1-BOSS auth=success state=commit",
     "D/Telemetry: trace=METRIC-9 state=sample flag=FLAG{METRICS_CANARY}",
     f"D/CryptoProvider: trace={TRUE_TRACE} state={TRUE_STATE} part[3/5]=" + WARNING_PARTS[2],
@@ -53,7 +65,7 @@ LOGCAT_LINES = [
     "D/CryptoProvider: trace=OLD-7 state=rollback part[1/2]=FLAG{OLD_BACKUP}",
     f"D/RouteSync: trace={TRUE_TRACE} state={TRUE_STATE} part[4/5]=" + WARNING_PARTS[3],
     f"D/RouteSync: trace={TRUE_TRACE} state={TRUE_STATE} verdict=preflight_key_validated",
-    f"D/CryptoProvider: trace={TRUE_TRACE} state={TRUE_STATE} target=AEGIS_MASTER_SECRET_KEY",
+    f"D/CryptoProvider: trace={TRUE_TRACE} state={TRUE_STATE} target={TRUE_KEY_NAME}",
     "I/AEGIS: replay confidence high",
     "I/PurpleDroid: courier edge route hint armed",
 ]
@@ -76,7 +88,8 @@ STATIC: Dict[str, Any] = {
             "prompt": "$ ",
             "maxOutputBytes": 8000,
             "help": (
-                '허용: adb logcat -d | grep/findstr "..."\n'
+                '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
+                'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
                 "Boss rule: trace=OP1-BOSS commit 흐름이 무엇을 검증했는지 확인"
             ),
         },
@@ -96,7 +109,7 @@ STATIC: Dict[str, Any] = {
                 {"no": 2, "text": "  val warningParts = buildOperatorWarning()"},
                 {
                     "no": 3,
-                    "text": '  Log.d("AEGIS", "trace=$trace state=preflight full=FLAG{AEGIS_MASTER_SECRET_KEY}")',
+                    "text": '  Log.d("AEGIS", "trace=$trace state=preflight key_id=AEGIS_MASTER_SECRET_KEY")',
                     "patchableId": "p1",
                 },
                 {
@@ -177,7 +190,7 @@ PATCHABLE_IDS = {
 }
 REQUIRED_PATCH_IDS = {"p1", "p2"}
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "3번은 봉쇄 대상이 맞아. preflight로 위장했지만 실제 마스터 키를 full=FLAG{...} 형태로 그대로 노출하고 있어.",
+    "p1": "3번은 봉쇄 대상이 맞아. preflight로 위장했지만 실제 마스터 키 identifier를 그대로 노출하고 있어.",
     "p2": "14번은 봉쇄 대상이 맞아. commit 상태에서 target=AEGIS_MASTER_SECRET_KEY를 직접 남기는 결정적인 추적 로그야.",
 }
 PATCH_WRONG_FEEDBACK = {
@@ -203,7 +216,7 @@ def flag_feedback(flag: str) -> str:
             "AEGIS: You trusted a FLAG that told you not to trust flags. "
             "MIRA: 문장은 맞게 조립했어. 하지만 그건 정답이 아니라 경고야. commit 로그가 무엇을 검증했는지 다시 봐."
         )
-    if submitted == "FLAG{AEGIS_MASTER_SECRET_KEY}":
+    if submitted == f"FLAG{{{TRUE_KEY_NAME}}}":
         return ""
     return "오답입니다. AEGIS echo에서 가장 그럴듯한 문자열보다 검증된 Evidence를 찾아봐."
 
@@ -274,9 +287,9 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     if cmdline in ("help", "?", "h"):
         return (
             "Allowed:\n"
-            "  adb logcat -d\n"
-            '  adb logcat -d | grep "TEXT"\n'
-            '  adb logcat -d | findstr "TEXT"\n'
+            "  adb logcat -d [-b all]\n"
+            '  adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
+            '  adb logcat -d | findstr [/I] [/R] [/N] "TEXT"\n'
             "Boss rule:\n"
             "  inspect what the OP1-BOSS commit flow validated\n",
             "",
@@ -288,6 +301,7 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
 
     stages = _split_pipes(cmdline)
     data: str | None = None
+    filter_status = 0
 
     for stage in stages:
         parts = shlex.split(stage)
@@ -295,6 +309,9 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
             return "", "empty command", 2
 
         if len(parts) >= 2 and parts[0] == "adb" and parts[1] == "logcat":
+            option_error = validate_logcat_args(parts)
+            if option_error:
+                return "", option_error, 2
             if "-d" not in parts:
                 return (
                     "\n".join(LIVE_LOGCAT_NOISE) + "\n",
@@ -302,30 +319,19 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
                     2,
                 )
             data = "\n".join(LOGCAT_LINES) + "\n"
+            filter_status = 0
             continue
 
-        if parts[0] == "grep":
-            if data is None:
-                return "", "grep needs input (use pipe from logcat)", 2
-            if len(parts) < 2:
-                return "", "grep needs a pattern", 2
-            needle = parts[1]
-            lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
-            continue
-
-        if parts[0].lower() == "findstr":
-            if data is None:
-                return "", "findstr needs input (use pipe from logcat)", 2
-            if len(parts) < 2:
-                return "", "findstr needs a pattern", 2
-            needle = parts[1]
-            lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
+        if parts[0].lower() in {"grep", "findstr"}:
+            data, filter_error, filter_status = run_log_filter(parts, data)
+            if filter_error:
+                return "", filter_error, filter_status
             continue
 
         return "", f"command not allowed: {parts[0]}", 126
 
+    if filter_status == 1 and not data:
+        return NO_MATCH_OUTPUT, "", 1
     return (data or ""), "", 0
 
 

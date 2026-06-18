@@ -22,11 +22,11 @@ STATIC: Dict[str, Any] = {
         "hints": [
             {
                 "platform": "windows",
-                "text": 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_2/actions/order -H "Content-Type: application/json" -d "{\\"tier\\":\\"standard\\"}"',
+                "text": 'curl.exe -i -X POST /api/v1/challenges/level2_2/actions/order -H "Content-Type: application/json" -d "{\\"tier\\":\\"standard\\"}"',
             },
             {
                 "platform": "unix",
-                "text": 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_2/actions/order -H "Content-Type: application/json" -d \'{"tier":"standard"}\'',
+                "text": 'curl -i -X POST /api/v1/challenges/level2_2/actions/order -H "Content-Type: application/json" -d \'{"tier":"standard"}\'',
             },
             {"platform": "all", "text": "standard 응답의 trust policy를 보고, Body의 claim을 더 높은 등급으로 바꿔서 다시 실행해 봐. 정확한 등급명은 AEGIS가 숨긴다."},
         ],

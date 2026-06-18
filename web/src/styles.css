@@ -682,6 +682,40 @@ button:disabled {
   align-items: center;
 }
 
+.narrative-locale-toggle {
+  width: fit-content;
+  display: grid;
+  grid-template-columns: auto 42px 76px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(109, 201, 255, 0.25);
+  background: rgba(5, 7, 12, 0.82);
+  padding: 4px;
+}
+
+.narrative-locale-toggle > span {
+  padding: 0 6px;
+  color: #8fa0c3;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+}
+
+.narrative-locale-toggle button {
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8fa0c3;
+  font-size: 11px;
+}
+
+.narrative-locale-toggle button:hover,
+.narrative-locale-toggle button.active {
+  border-color: rgba(106, 255, 191, 0.45);
+  background: rgba(106, 255, 191, 0.1);
+  color: #baffdf;
+}
+
 .campaign-status-line {
   color: #ff8fab;
 }
@@ -689,8 +723,29 @@ button:disabled {
 .campaign-visual {
   min-height: 460px;
   position: relative;
-  display: grid;
-  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 0, 85, 0.18);
+  background: #05070c;
+}
+
+.campaign-visual img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.92) contrast(1.04);
+}
+
+.campaign-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(8, 8, 13, 0.38), transparent 28%),
+    linear-gradient(180deg, transparent 64%, rgba(5, 7, 12, 0.34));
 }
 
 .aegis-eye {
@@ -967,6 +1022,45 @@ button:disabled {
 
 .dialogue-line.aegis span {
   color: #ff4d7d;
+}
+
+.mira-residue {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(255, 214, 102, 0.22);
+  background:
+    linear-gradient(90deg, rgba(255, 214, 102, 0.08), rgba(106, 255, 191, 0.04)),
+    rgba(12, 13, 16, 0.8);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.mira-residue span {
+  color: #ffd166;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.mira-residue p {
+  margin: 0;
+  color: #d8fbe9;
+  font-family: "Consolas", "Menlo", monospace;
+  line-height: 1.5;
+}
+
+.mira-residue.mira_boot_01 p {
+  color: #9bf3c9;
+  opacity: 0.78;
+}
+
+.mira-residue.mira_boot_02 p {
+  color: #b7f5d7;
+}
+
+.mira-residue.mira_boot_03 p,
+.mira-residue.mira_boot_04 p {
+  color: #d8fbe9;
 }
 
 .section-heading {
@@ -2320,7 +2414,7 @@ button:disabled {
 }
 
 .debrief-modal {
-  width: min(720px, 100%);
+  width: min(880px, 100%);
   border: 1px solid rgba(106, 255, 191, 0.46);
   background: #080a12;
   padding: 22px;
@@ -2342,6 +2436,133 @@ button:disabled {
 .debrief-modal ul {
   margin: 0;
   padding-left: 18px;
+}
+
+.memory-note-card {
+  border: 1px solid rgba(255, 214, 102, 0.32);
+  background: rgba(18, 17, 13, 0.72);
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px;
+}
+
+.memory-note-card h3 {
+  margin: 4px 0 8px;
+  color: #ffe1f0;
+  font-size: 22px;
+}
+
+.memory-note-card p {
+  margin: 0;
+}
+
+.memory-note-fragments {
+  margin-top: 12px !important;
+}
+
+.memory-note-image {
+  min-height: 180px;
+  border: 1px solid rgba(106, 255, 191, 0.32);
+  background:
+    radial-gradient(circle at 50% 44%, rgba(106, 255, 191, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(18, 30, 38, 0.96), rgba(8, 10, 18, 0.96));
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.memory-note-image::before,
+.memory-note-image::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transform: skew(-8deg);
+}
+
+.memory-note-image::after {
+  inset: 34px;
+  border-color: rgba(255, 0, 85, 0.16);
+  transform: skew(8deg);
+}
+
+.memory-note-image strong {
+  position: relative;
+  z-index: 2;
+  color: #edf2ff;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 24px;
+  text-shadow: 0 0 18px rgba(106, 255, 191, 0.62);
+}
+
+.memory-note-scan {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(106, 255, 191, 0.72), transparent);
+  opacity: 0.72;
+}
+
+.memory-note-scan.scan-a {
+  top: 34px;
+}
+
+.memory-note-scan.scan-b {
+  top: 82px;
+}
+
+.memory-note-scan.scan-c {
+  bottom: 38px;
+}
+
+.memory-note-core {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(106, 255, 191, 0.74);
+  box-shadow: 0 0 24px rgba(106, 255, 191, 0.22);
+  transform: rotate(45deg);
+}
+
+.memory-note-image-ghost-log {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 20px),
+    radial-gradient(circle at 50% 48%, rgba(106, 255, 191, 0.2), transparent 28%),
+    #071014;
+}
+
+.memory-note-image-decoy-static {
+  border-color: rgba(255, 214, 102, 0.42);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 214, 102, 0.08) 0 2px, transparent 2px 22px),
+    radial-gradient(circle at 68% 44%, rgba(106, 255, 191, 0.18), transparent 24%),
+    #111014;
+}
+
+.memory-note-image-split-trace {
+  border-color: rgba(109, 201, 255, 0.4);
+  background:
+    linear-gradient(90deg, rgba(109, 201, 255, 0.11), transparent 28%, rgba(255, 0, 85, 0.08)),
+    #070a12;
+}
+
+.memory-note-image-split-trace .memory-note-core {
+  width: 72px;
+  height: 18px;
+  transform: none;
+  border-color: rgba(109, 201, 255, 0.72);
+}
+
+.memory-note-image-aegis-echo {
+  border-color: rgba(255, 0, 85, 0.42);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(106, 255, 191, 0.2), transparent 18%),
+    radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(255, 0, 85, 0.16) 35% 36%, transparent 37%),
+    linear-gradient(135deg, #090912, #14101c);
 }
 
 .debrief-next {
@@ -2638,6 +2859,10 @@ button:disabled {
   .intermission-brief {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .memory-note-card {
+    grid-template-columns: 1fr;
   }
 
   .campaign-visual {

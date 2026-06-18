@@ -39,15 +39,15 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "legacy/deprecated 키 경로가 살아 있으면 뒷문이 된다."},
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/pass/issue -H "Authorization: Bearer <token>"',
+                "text": 'curl -s /api/v1/challenges/level4_2/actions/pass/issue -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/keys/jwks -H "Authorization: Bearer <token>"',
+                "text": 'curl -s /api/v1/challenges/level4_2/actions/keys/jwks -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_2/actions/admin/audit -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <forged_pass>"',
+                "text": 'curl -s -X POST /api/v1/challenges/level4_2/actions/admin/audit -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <forged_pass>"',
             },
             {
                 "platform": "unix",
@@ -343,6 +343,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 

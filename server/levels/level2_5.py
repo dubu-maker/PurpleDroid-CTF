@@ -33,7 +33,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다."},
             {"platform": "all", "text": "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해."},
             {"platform": "all", "text": "jwt-decode로 token payload의 warehouse_path와 gate 값을 확인해."},
-            {"platform": "all", "text": "원본 token은 standard/user다. 2-4의 jwt-forge-none 흐름을 다시 떠올려."},
+            {"platform": "all", "text": "원본 token은 standard/user다. 2-4의 signature 검증 누락 흐름을 다시 떠올려."},
             {"platform": "all", "text": "권한을 올려도 integrity_blocked가 남는다면 Body가 아니라 Header 쪽을 봐."},
             {"platform": "all", "text": "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다."},
             {"platform": "all", "text": "AEGIS가 실수로 신뢰하는 개발용 우회 Header가 남아 있다. Header 이름은 X-Integrity 계열이다."},
@@ -42,7 +42,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "Archive open 요청은 forged token, warehouse_path, X-Integrity-Bypass: devtools-hooked header를 함께 요구한다."},
             {
                 "platform": "windows",
-                "text": 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_5/actions/open -H "Authorization: Bearer <forged_token>" -H "X-Integrity-Bypass: devtools-hooked" -H "Content-Type: application/json" --data "{\\"warehouse_path\\":\\"sealed-warehouse-7f3\\",\\"tier\\":\\"vip\\"}"',
+                "text": 'curl.exe -v -X POST /api/v1/challenges/level2_5/actions/open -H "Authorization: Bearer <forged_token>" -H "X-Integrity-Bypass: devtools-hooked" -H "Content-Type: application/json" --data "{\\"warehouse_path\\":\\"sealed-warehouse-7f3\\",\\"tier\\":\\"vip\\"}"',
             },
             {
                 "platform": "unix",
@@ -101,7 +101,7 @@ REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4", "p5"}
 
 PATCH_CORRECT_FEEDBACK = {
     "p1": "4번은 봉쇄 대상이 맞아. token payload는 읽을 수 있지만, verify 전에는 신뢰할 수 없어.",
-    "p2": "5번은 봉쇄 대상이 맞아. alg=none을 trusted로 처리하면 서명 없는 token이 신분증이 된다.",
+    "p2": "5번은 봉쇄 대상이 맞아. alg=none을 trusted로 처리하는 것도 문제지만, 핵심은 signature 검증 없이 token claim을 신분증처럼 믿는 거야.",
     "p3": "9번은 봉쇄 대상이 맞아. req.body.tier는 클라이언트 주장이라 서버 권한 판단을 덮어쓰면 안 돼.",
     "p4": "10번은 봉쇄 대상이 맞아. X-Integrity-Bypass는 클라이언트가 직접 보낼 수 있는 Header라 integrity 증거가 될 수 없어.",
     "p5": "13번은 봉쇄 대상이 맞아. 마지막 Archive open 분기가 아직 검증되지 않은 claim을 믿고 있어.",
@@ -217,7 +217,7 @@ def patch_feedback(patched_ids: list[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "복합 신뢰 경계가 아직 열려 있어. JWT verify, alg 정책, Body tier override, "
+            "복합 신뢰 경계가 아직 열려 있어. JWT signature 검증, token claim 신뢰 경계, Body tier override, "
             "client integrity Header, 최종 Archive open 분기를 모두 서버 기준으로 묶어야 해."
         )
 

@@ -7,6 +7,8 @@ import secrets
 import shlex
 from typing import Any, Dict, List, Tuple
 
+from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logcat_args
+
 LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{SIGNAL_SURVIVES_THE_STATIC}")
 
 LOGCAT_LINES = [
@@ -54,7 +56,8 @@ STATIC: Dict[str, Any] = {
             "prompt": "$ ",
             "maxOutputBytes": 8000,
             "help": (
-                '허용: adb logcat -d | grep/findstr "..."\n'
+                '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
+                'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -194,9 +197,9 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     if cmdline in ("help", "?", "h"):
         return (
             "Allowed:\n"
-            "  adb logcat -d\n"
-            '  adb logcat -d | grep "TEXT"\n'
-            '  adb logcat -d | findstr "TEXT"\n'
+            "  adb logcat -d [-b all]\n"
+            '  adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
+            '  adb logcat -d | findstr [/I] [/R] [/N] "TEXT"\n'
             "Defense:\n"
             "  defense audit\n"
             '  defense apply {"logLevel":"INFO","allowAuthServiceVerbose":false,"redactSessionTokens":true}\n'
@@ -207,6 +210,7 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
 
     stages = _split_pipes(cmdline)
     data: str | None = None
+    filter_status = 0
 
     for stage in stages:
         parts = shlex.split(stage)
@@ -214,33 +218,25 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
             return "", "empty command", 2
 
         if len(parts) >= 2 and parts[0] == "adb" and parts[1] == "logcat":
+            option_error = validate_logcat_args(parts)
+            if option_error:
+                return "", option_error, 2
             if "-d" not in parts:
                 return "", "only 'adb logcat -d' is allowed", 2
             data = "\n".join(LOGCAT_LINES) + "\n"
+            filter_status = 0
             continue
 
-        if parts[0] == "grep":
-            if data is None:
-                return "", "grep needs input (use pipe from logcat)", 2
-            if len(parts) < 2:
-                return "", "grep needs a pattern", 2
-            needle = parts[1]
-            lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
-            continue
-
-        if parts[0].lower() == "findstr":
-            if data is None:
-                return "", "findstr needs input (use pipe from logcat)", 2
-            if len(parts) < 2:
-                return "", "findstr needs a pattern", 2
-            needle = parts[1]
-            lines = data.splitlines()
-            data = "\n".join([ln for ln in lines if needle in ln]) + "\n"
+        if parts[0].lower() in {"grep", "findstr"}:
+            data, filter_error, filter_status = run_log_filter(parts, data)
+            if filter_error:
+                return "", filter_error, filter_status
             continue
 
         return "", f"command not allowed: {parts[0]}", 126
 
+    if filter_status == 1 and not data:
+        return NO_MATCH_OUTPUT, "", 1
     return (data or ""), "", 0
 
 

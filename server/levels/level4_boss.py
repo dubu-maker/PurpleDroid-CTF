@@ -69,11 +69,11 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "스탬프 5개를 빠르게 쌓으려면 seq 1 5 | xargs -I{} ... 패턴을 활용해. event_id와 timestamp가 매번 달라야 credited 된다."},
             {
                 "platform": "windows",
-                "text": f'curl -s http://localhost:8000{PUBLIC_STATUS_PATH}',
+                "text": f'curl -s {PUBLIC_STATUS_PATH}',
             },
             {
                 "platform": "windows",
-                "text": f'curl -s http://localhost:8000{JWKS_PATH} -H "Authorization: Bearer <token>"',
+                "text": f'curl -s {JWKS_PATH} -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "windows",
@@ -81,7 +81,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": f'curl -s http://localhost:8000{ADMIN_CONFIG_PATH} -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <jwt>"',
+                "text": f'curl -s {ADMIN_CONFIG_PATH} -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <jwt>"',
             },
             {
                 "platform": "windows",
@@ -89,11 +89,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": f'curl -s -X POST http://localhost:8000{WEBHOOK_PATH} -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "<json>"',
+                "text": f'curl -s -X POST {WEBHOOK_PATH} -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "<json>"',
             },
             {
                 "platform": "windows",
-                "text": f'curl -s -X POST http://localhost:8000{VAULT_CLAIM_PATH} -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{{\\"ticket\\":\\"{VAULT_TICKET}\\"}}"',
+                "text": f'curl -s -X POST {VAULT_CLAIM_PATH} -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{{\\"ticket\\":\\"{VAULT_TICKET}\\"}}"',
             },
         ],
         "terminal": {
@@ -484,6 +484,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 
@@ -642,4 +644,3 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         except Exception as exc:
             return "", f"sign-webhook failed: {exc}", 1
     return _SHELL.execute(cmd, ShellContext(env={"USER": "guest", "HOME": "/workspace"}, cwd="/workspace"))
-

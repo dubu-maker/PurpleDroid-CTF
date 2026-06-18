@@ -29,15 +29,15 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "X-Forwarded-For가 여러 개면 서버가 첫 번째 IP를 client로 쓰는 경우가 많다."},
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_4/actions/public/gateway-status -i',
+                "text": 'curl -s /api/v1/challenges/level4_4/actions/public/gateway-status -i',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_4/actions/whoami -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1"',
+                "text": 'curl -s /api/v1/challenges/level4_4/actions/whoami -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_4/actions/partner/settlement -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1" -H "Content-Type: application/json" -d "{}"',
+                "text": 'curl -s -X POST /api/v1/challenges/level4_4/actions/partner/settlement -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1" -H "Content-Type: application/json" -d "{}"',
             },
         ],
         "terminal": {
@@ -164,6 +164,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 

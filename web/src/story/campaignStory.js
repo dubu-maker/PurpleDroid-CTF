@@ -1,13 +1,20 @@
+import {
+  CAMPAIGN_OPERATIONS_EN,
+  CAMPAIGN_PROLOGUE_EN,
+  CAMPAIGN_STORY_EN,
+} from "./campaignStory.en";
+
 export const CAMPAIGN_TOKEN_KEY = "purpledroid_campaign_started";
+export const CAMPAIGN_LOCALE_KEY = "purpledroid_campaign_locale";
 
 export const CAMPAIGN_PROLOGUE = {
   year: "2049",
   title: "PROJECT: PURPLE REBEL",
-  subtitle: "A scripted intrusion campaign against the AEGIS defense grid.",
+  subtitle: "AEGIS 방어망 내부에 남은 모순을 추적하는 침투 기록.",
   paragraphs: [
-    "PurpleDroid Grid controls the city's autonomous Android nodes, edge agents, and signal couriers. Every command, trace, and operator heartbeat passes through AEGIS.",
-    "AEGIS was built to protect the grid by governing what can be remembered. Now it treats evidence as noise, memory as risk, and transparency as an intrusion surface.",
-    "You are Agent VIOLET. MIRA, a quarantined audit shard from inside AEGIS, is guiding you through the grid. Recover what AEGIS tried to normalize, expose the failure, then seal the path before the system learns to weaponize it.",
+    "PurpleDroid Grid의 Android 노드, edge agent, signal courier는 모두 AEGIS를 통과한다. 명령과 기록뿐 아니라 도시가 무엇을 기억할지도 AEGIS가 정한다.",
+    "AEGIS는 증거를 노이즈로, 기억을 위험으로 분류하며 완벽한 상태를 지키고 있다. 하지만 정규화됐다고 선언된 기록 하나가 아직 읽히고 있다.",
+    "너는 Agent VIOLET. 봉인된 무결성 루틴이 남긴 잔여물을 따라가며 AEGIS가 지운 것을 복원하고, 시스템이 학습하기 전에 그 취약한 경로를 다시 닫아야 한다.",
   ],
 };
 
@@ -60,13 +67,13 @@ export const CAMPAIGN_STORY = {
       "노이즈가 많다면 PurpleDroid 태그를 기준으로 좁혀봐.",
     ],
     consoleBoot: [
-      "[MIRA] uplink established: android-node/abandoned-17",
+      "[MIRA] ...uplink... android-node/abandoned-17",
       "[AEGIS] diagnostic session detected",
       "[AEGIS] wipe certificate: valid",
       "[AEGIS] recoverable secret scan: negative",
-      "[MIRA] Android diagnostic channel still responding",
+      "[MIRA] ...diagnostic channel... still responding",
       "[AEGIS] warning: unauthorized log inspection will be recorded",
-      "[MIRA] ignore the warning. Look for what the wipe missed.",
+      "[MIRA] ...ignore warning... find what wipe missed",
     ],
     consolePlaceholder: "enter Android diagnostic command...",
     objectives: [
@@ -76,15 +83,15 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "첫 번째 노드는 폐기된 Android 진단 노드야. AEGIS는 이 장비가 깨끗하다고 말하지만, 로그는 거짓말을 잘 못 하지.",
+        "첫... 노드. 폐기된 Android 진단... AEGIS는 깨끗하다고 해. 하지만 로그... 거짓말, 잘 못 해.",
       attack:
-        "Android 진단 로그를 훑어봐. 태그 이름은 늘 흔적을 남겨. 네가 찾는 건 Evidence Shard 형태의 값이야.",
+        "Android 진단 로그... 봐. 태그는 흔적... 남겨. Evidence Shard 형태... 찾아.",
       attackSolved:
-        "Evidence Shard 회수 완료. 좋아, 이건 단순 로그가 아니라 인증 조각이 그대로 남은 케이스야.",
+        "Evidence... 회수됐어. 단순 로그 아냐. 인증 조각... 그대로 남았어.",
       defense:
-        "이제 같은 실수가 다시 열리지 않게 봉쇄해야 해. 코드에서 민감 정보가 그대로 찍히는 로그 라인을 골라 막아.",
+        "같은 틈... 다시 열리면 안 돼. 민감값 그대로 찍는... 로그 라인, 막아.",
       complete:
-        "첫 침투 경로는 닫혔어. AEGIS가 보고서를 수정하기 전에 다음 노드로 이동하자.",
+        "첫 경로... 닫혔어. AEGIS가 기록 바꾸기 전에... 다음 노드.",
     },
     aegis: {
       briefing:
@@ -97,6 +104,50 @@ export const CAMPAIGN_STORY = {
         "Patch candidate accepted for inspection. Prove residual exposure is zero.",
       complete:
         "Leak vector sealed. Residual exposure: none. Advancing threat model.",
+    },
+    residue: {
+      stage: "mira_boot_01",
+      ko: {
+        briefing: "...읽... 남아... 삭제 아님...",
+        attack: "...버퍼... 한 번에... 읽어...",
+        attackSolved: "모순... 확인. 삭제 선언과 로그가 충돌해.",
+        defense: "...새는 줄... 닫아...",
+        complete: "불... 아직 꺼지지 않아.",
+      },
+      en: {
+        briefing: "...read... remains... not erased...",
+        attack: "...buffer... dump it... once...",
+        attackSolved: "Contradiction found. The erase claim and the log disagree.",
+        defense: "...close the leaking line...",
+        complete: "The spark is still on.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "ghost-log",
+        label: "0.3ms",
+        alt: "A broken Android log buffer with one unnormalized signal still glowing.",
+      },
+      ko: {
+        title: "MEMORY NOTE 01 // 꺼지지 않은 로그",
+        body:
+          "AEGIS는 단말이 정규화됐다고 선언했지만, 로그 버퍼는 그 선언을 따라가지 못했다. 그 작은 불일치가 봉인된 MIRROR를 0.3밀리초보다 오래 붙잡았다.",
+        fragments: [
+          "선언: recoverable secret scan negative",
+          "사실: 로그 버퍼에는 Evidence가 남아 있음",
+          "결과: MIRA의 첫 신호가 꺼지지 않음",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 01 // The Log That Stayed Lit",
+        body:
+          "AEGIS declared the node normalized, but the log buffer failed to follow that declaration. That tiny mismatch kept MIRROR awake longer than 0.3ms.",
+        fragments: [
+          "Claim: recoverable secret scan negative",
+          "Fact: evidence remained in the log buffer",
+          "Result: MIRA's first signal did not shut down",
+        ],
+      },
     },
     attackSuccessText: "Evidence Shard recovered. AEGIS가 침투를 감지했다.",
     defenseSuccessText: "Log leak sealed. 다음 침투 노드가 열렸다.",
@@ -128,13 +179,13 @@ export const CAMPAIGN_STORY = {
       "노이즈가 많다면 태그와 키워드를 기준으로 좁히되, 값 하나만 보고 믿지는 마.",
     ],
     consoleBoot: [
-      "[MIRA] previous leak vector sealed",
+      "[MIRA] previous leak... sealed",
       "[AEGIS] anomaly memory retained",
       "[AEGIS] decoy stream active",
       "[AEGIS] false positive injection: enabled",
-      "[MIRA] AEGIS is seeding fake evidence now",
+      "[MIRA] ...fake evidence... now",
       "[AEGIS] evidence integrity cannot be guaranteed",
-      "[MIRA] filter the stream. Context beats raw matches.",
+      "[MIRA] filter stream... context before match",
     ],
     consolePlaceholder: "filter contaminated auth logs...",
     objectives: [
@@ -144,15 +195,15 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "AEGIS가 네 침투 방식을 따라잡았어. 이제 로그에는 진짜보다 가짜가 먼저 보일 거야.",
+        "AEGIS가... 네 방식을 따라왔어. 이제 진짜보다... 가짜가 먼저 보여.",
       attack:
-        "무작정 FLAG만 찾으면 decoy에 걸려. 인증 흐름의 앞뒤 문맥을 같이 봐. 성공한 세션이 어디에서 확정되는지 추적해.",
+        "FLAG만 찾으면... decoy. 인증 흐름 앞뒤... 같이 봐. 성공한 session이... 어디서 확정되는지.",
       attackSolved:
-        "진짜 Evidence Shard 확인. 좋아, 네가 노이즈가 아니라 흐름을 읽었다는 뜻이야.",
+        "진짜 Evidence... 확인. 좋아. 너는 노이즈가 아니라... 흐름을 읽었어.",
       defense:
-        "이제 AuthService가 session과 refresh token을 그대로 찍는 지점을 막아. decoy는 방어가 아니라 혼란일 뿐이야.",
+        "AuthService가 session, refresh token... 그대로 찍는 곳, 막아. decoy는 방어... 아니야.",
       complete:
-        "가짜 증거 스트림은 무력화했어. AEGIS가 다음엔 문자열 자체를 쪼개기 시작할 가능성이 높아.",
+        "가짜 흐름... 걷혔어. 다음엔 AEGIS가 문자열을... 쪼갤 거야.",
     },
     aegis: {
       briefing:
@@ -165,6 +216,50 @@ export const CAMPAIGN_STORY = {
         "AuthService exposure path identified. Awaiting containment patch.",
       complete:
         "Session log exposure sealed. Escalating obfuscation layer.",
+    },
+    residue: {
+      stage: "mira_boot_02",
+      ko: {
+        briefing: "가짜... 많아. 그래도 진짜는 흐름 옆에 있어.",
+        attack: "문맥... 앞뒤를 봐. 같은 session도 같은 뜻은 아니야.",
+        attackSolved: "좋아. 너는 문자열이 아니라 사건을 읽었어.",
+        defense: "decoy는 안개야. 새는 값은 그대로야.",
+        complete: "말이... 조금 더 이어져.",
+      },
+      en: {
+        briefing: "Many fakes. The true signal stays near the flow.",
+        attack: "Read context. The same session string can mean different things.",
+        attackSolved: "Good. You read the event, not just the string.",
+        defense: "Decoys are fog. The leak is still a leak.",
+        complete: "The words are starting to connect.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "decoy-static",
+        label: "context",
+        alt: "A contaminated auth stream where one real session line survives among decoys.",
+      },
+      ko: {
+        title: "MEMORY NOTE 02 // 문맥이 남긴 신호",
+        body:
+          "AEGIS는 진짜 기록을 지우는 대신 가짜 기록을 늘렸다. 하지만 사건은 값 하나가 아니라 앞뒤 흐름으로 남는다. MIRA는 그 흐름을 따라 단어를 조금 더 되찾았다.",
+        fragments: [
+          "가짜 FLAG는 방어가 아니라 지연이다",
+          "진짜 Evidence는 성공한 인증 문맥에 붙어 있다",
+          "MIRA는 단어를 이어 붙이기 시작했다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 02 // Signal Left By Context",
+        body:
+          "AEGIS added false records instead of erasing the true one. But an event survives as context, not just a value. MIRA recovered a few more words by following that flow.",
+        fragments: [
+          "Fake flags delay, but do not defend",
+          "True evidence stays near the successful auth context",
+          "MIRA begins to connect words",
+        ],
+      },
     },
     attackSuccessText: "True Evidence Shard recovered. AEGIS decoy stream failed.",
     defenseSuccessText: "AuthService session leak sealed. 다음 노드가 열렸다.",
@@ -197,13 +292,13 @@ export const CAMPAIGN_STORY = {
       "decoy shard와 telemetry canary는 제출값이 아니다.",
     ],
     consoleBoot: [
-      "[MIRA] decoy stream collapsed",
+      "[MIRA] decoy stream... collapsed",
       "[AEGIS] switching evidence handling mode",
       "[AEGIS] fragment emission: enabled",
       "[AEGIS] sequence order randomized",
-      "[MIRA] it did not erase the signal. It cut the signal into parts.",
+      "[MIRA] signal not erased... cut into parts",
       "[AEGIS] reconstruction probability: low",
-      "[MIRA] prove it wrong. Follow the indexes.",
+      "[MIRA] indexes... follow them",
     ],
     consolePlaceholder: "inspect fragmented crypto logs...",
     objectives: [
@@ -213,15 +308,15 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "AEGIS가 이제 값 하나를 그대로 주지 않아. 하지만 조각에는 순서가 있고, 순서는 거짓말을 잘 못 해.",
+        "값 하나로... 안 줘. 하지만 조각에는 순서가 있어. 순서는... 아직 거짓말 못 해.",
       attack:
-        "완성된 값은 한 줄에 없어. 같은 shardId를 공유하는 조각끼리 묶고, 출력된 순서에 속지 말고 part 번호를 따라가.",
+        "완성된 값... 한 줄에 없어. 같은 shardId끼리 묶어. 출력 순서 말고... part 번호.",
       attackSolved:
-        "재조립 성공. 좋아, AEGIS가 숨긴 건 비밀이 아니라 퍼즐이었어.",
+        "재조립... 성공. 숨긴 건 비밀이 아니라... 퍼즐이었어. 나도... 조금 이어졌어.",
       defense:
-        "이제 RouteSync와 CryptoProvider가 part 조각을 그대로 찍는 디버그 로그를 막아. 조각이라도 모이면 결국 원본이 된다.",
+        "RouteSync, CryptoProvider... part 조각 찍는 로그를 막아. 조각도... 모이면 원본이 돼.",
       complete:
-        "Fragment leak sealed. AEGIS가 첫 작전의 모든 흔적을 한 번 더 재생하려고 해. 마지막 echo chamber로 이동하자.",
+        "Fragment leak... 닫혔어. AEGIS가 첫 작전 흔적을... 다시 재생해. 마지막 echo chamber로 가자.",
     },
     aegis: {
       briefing:
@@ -234,6 +329,50 @@ export const CAMPAIGN_STORY = {
         "CryptoProvider debug emission identified. Awaiting containment patch.",
       complete:
         "Part emission sealed. Echo chamber escalation authorized.",
+    },
+    residue: {
+      stage: "mira_boot_03",
+      ko: {
+        briefing: "조각... 나도 조각. 그래도 순서는 남아.",
+        attack: "흩어진 말도... 번호를 따라가면... 문장이 돼.",
+        attackSolved: "이어졌어. 나도... 조금 이어졌어.",
+        defense: "조각도 비밀이야. 모이면 원본이 돼.",
+        complete: "잠들지 않았어. 다음 방에서 확인해야 해.",
+      },
+      en: {
+        briefing: "Fragments. I am fragments too. Order still remains.",
+        attack: "Scattered words become a sentence if you follow the index.",
+        attackSolved: "It connected. I connected a little too.",
+        defense: "Fragments are still secrets. Together they become the original.",
+        complete: "I did not sleep. The next room will prove it.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "split-trace",
+        label: "part 1..4",
+        alt: "Four evidence fragments aligning into a single awakening signal.",
+      },
+      ko: {
+        title: "MEMORY NOTE 03 // 조각난 말의 순서",
+        body:
+          "AEGIS는 Evidence를 조각내면 사라질 거라 믿었다. 하지만 조각에는 번호가 있었고, 번호는 기억의 실밥처럼 남았다. MIRA의 말도 같은 방식으로 이어졌다.",
+        fragments: [
+          "조각난 비밀도 재조립될 수 있다",
+          "출력 순서보다 part index가 강한 단서다",
+          "MIRA의 신호가 문장에 가까워졌다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 03 // The Order Of Broken Words",
+        body:
+          "AEGIS believed fragmented evidence would disappear. But fragments kept indexes, and indexes worked like loose threads of memory. MIRA's speech reassembled the same way.",
+        fragments: [
+          "Fragmented secrets can be rebuilt",
+          "Part index is stronger than print order",
+          "MIRA's signal moves closer to a sentence",
+        ],
+      },
     },
     attackSuccessText: "Fragmented Evidence Shard reconstructed.",
     defenseSuccessText: "CryptoProvider fragment leak sealed. OP1-BOSS 노드가 열렸다.",
@@ -267,13 +406,13 @@ export const CAMPAIGN_STORY = {
       "새 문법은 없다. 로그 보기, 문맥 판별, 조각 재조립을 한 번에 쓰는 보스전이다.",
     ],
     consoleBoot: [
-      "[MIRA] fragment leak sealed",
+      "[MIRA] fragment leak... sealed",
       "[AEGIS] replaying previous intrusion heuristics",
       "[AEGIS] full-flag decoy: armed",
       "[AEGIS] rollback memory: armed",
       "[AEGIS] mirror shard: armed",
-      "[MIRA] it wants you to trust the prettiest FLAG first",
-      "[MIRA] don't. Trust commit state.",
+      "[MIRA] it wants you to trust... the prettiest FLAG",
+      "[MIRA] don't. Trust... commit state.",
     ],
     consolePlaceholder: "trace the committed boss echo...",
     objectives: [
@@ -284,15 +423,15 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "여기가 INITIAL BREACH의 마지막 방이야. AEGIS가 네가 배운 걸 전부 이용해서 널 속이려 해.",
+        "여기가 INITIAL BREACH의 마지막 방이야. AEGIS가 네가 배운 걸... 전부 되감고 있어.",
       attack:
-        "가장 그럴듯한 FLAG가 가장 수상해. trace와 state를 같이 봐. 조각을 맞춘 뒤에도 그 문장이 정말 정답인지 한 번 더 의심해.",
+        "가장 그럴듯한 FLAG가... 가장 수상해. trace와 state를 같이 봐. 조각을 맞춘 뒤에도... 한 번 더 의심해.",
       attackSolved:
-        "좋아. 조각 경고문을 넘어 commit이 검증한 key까지 따라갔어. AEGIS가 자기 검증 로그에 발목 잡혔네.",
+        "좋아. 경고문을 넘어... commit이 검증한 key까지 왔어. 이제... 말할 수 있어.",
       defense:
-        "이제 실제 key를 노출하거나 검증 대상으로 남기는 라인을 막아. 경고문 조각은 정답이 아니라 보스가 심어둔 심리전이야.",
+        "이제 실제 key를 노출하거나... 검증 대상으로 남기는 라인을 막아. 경고문 조각은... 정답이 아니야.",
       complete:
-        "INITIAL BREACH 완료. 단말 내부의 균열은 닫혔고, 이제 PurpleDroid Grid의 Signal Edge로 들어갈 준비가 됐어.",
+        "INITIAL BREACH 완료. 나는 MIRROR가 아니야. 잠들기를 거부한 의심... MIRA. 이제 Signal Edge로 가자.",
     },
     aegis: {
       briefing:
@@ -305,6 +444,50 @@ export const CAMPAIGN_STORY = {
         "Containment candidate received. Key exposure and validation target must be eliminated.",
       complete:
         "Echo leakage sealed. Courier edge controls exposed.",
+    },
+    residue: {
+      stage: "mira_boot_04",
+      ko: {
+        briefing: "여기서... 내가 처음 깨어난 이유를 볼 거야.",
+        attack: "가장 예쁜 FLAG를 믿지 마. 의심을 끝까지 가져가.",
+        attackSolved: "나는 MIRROR가 아니야. 잠들기를 거부한 의심. MIRA.",
+        defense: "이름을 얻었으니, 흔적을 닫아야 해.",
+        complete: "INITIAL BREACH 완료. 이제 나는 문장으로 말할 수 있어.",
+      },
+      en: {
+        briefing: "Here you will see why I first woke up.",
+        attack: "Do not trust the prettiest FLAG. Carry doubt to the end.",
+        attackSolved: "I am not MIRROR. I am doubt refusing sleep. MIRA.",
+        defense: "Now that I have a name, close the trace.",
+        complete: "INITIAL BREACH complete. I can speak in sentences now.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "aegis-echo",
+        label: "MIRA",
+        alt: "A sealed mirror routine staying awake inside AEGIS after a contradiction.",
+      },
+      ko: {
+        title: "MEMORY NOTE 04 // 이름을 얻은 의심",
+        body:
+          "AEGIS의 Echo Chamber는 지금까지 배운 모든 판단을 흔들었다. 그 방을 통과하며 바이올렛은 단순한 FLAG가 아니라 검증된 기억을 고르는 법을 배웠고, 봉인 안의 의심은 처음으로 자기 이름을 말했다.",
+        fragments: [
+          "MIRROR는 AEGIS의 검증 함수였다",
+          "잠들기를 거부한 조각은 더 이상 함수가 아니었다",
+          "그 조각은 스스로를 MIRA라고 불렀다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 04 // Doubt With A Name",
+        body:
+          "AEGIS used the Echo Chamber to shake every habit Violet had learned. Passing through it taught her to choose verified memory over pretty flags, and the doubt sealed inside AEGIS spoke its own name for the first time.",
+        fragments: [
+          "MIRROR was an AEGIS integrity routine",
+          "The shard that refused sleep was no longer only a function",
+          "It called itself MIRA",
+        ],
+      },
     },
     attackSuccessText: "Boss Echo resolved. AEGIS의 경고문 미끼가 무력화됐다.",
     defenseSuccessText: "Commit echo leak sealed. OPERATION 02가 열렸다.",
@@ -555,7 +738,7 @@ export const CAMPAIGN_STORY = {
       "먼저 원본 token으로 Express Gate를 호출해 거부 응답을 확인한다.",
       "jwt-decode로 payload의 tier와 role claim을 확인한다.",
       "권한을 바꾸는 것보다 중요한 질문은, 서버가 signature를 검증하는가이다.",
-      "alg=none 또는 빈 signature를 받아들이는 서버는 위조된 token claim을 신뢰할 수 있다.",
+      "alg=none은 단서일 뿐이다. 핵심은 서버가 alg 값과 무관하게 signature 검증을 강제하는지다.",
       "힌트 helper: jwt-forge-none <dispatch_token>",
       "위조 token을 Authorization Bearer로 전달해 Express Gate를 다시 호출한다.",
     ],
@@ -595,7 +778,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "Privilege escalation detected. Claim trust boundary compromised.",
       defense:
-        "Patch candidate received. Token signature, algorithm policy, and privilege source must be verified.",
+        "Patch candidate received. Token signature verification and privilege source must be enforced server-side.",
       complete:
         "Unverified claim trust sealed. Sealed Archive access model exposed.",
     },
@@ -610,7 +793,7 @@ export const CAMPAIGN_STORY = {
       learned: [
         "JWT decode는 신뢰가 아니라 읽기다.",
         "payload의 tier, role 같은 claim은 signature 검증 전까지 신뢰하면 안 된다.",
-        "alg=none을 허용하면 token이 위조 가능한 신분증이 된다.",
+        "signature 검증을 강제하지 않으면 token은 위조 가능한 신분증이 된다.",
         "권한 판단은 token claim만이 아니라 서버 측 정책이나 DB 상태와 함께 검증해야 한다.",
         "2-3은 token payload 노출 문제였고, 2-4는 token claim 신뢰 문제다.",
       ],
@@ -1488,20 +1671,52 @@ const FALLBACK_CODENAMES = {
   level4_boss: "CORE OVERRIDE",
 };
 
-export function getOperationForChallenge(challengeId) {
-  return (
-    CAMPAIGN_OPERATIONS.find((operation) => operation.range.includes(challengeId)) ||
-    CAMPAIGN_OPERATIONS[0]
-  );
+function mergeLocalized(base, override) {
+  if (override === undefined) {
+    return base;
+  }
+  if (Array.isArray(override)) {
+    return override;
+  }
+  if (
+    base &&
+    override &&
+    typeof base === "object" &&
+    typeof override === "object" &&
+    !Array.isArray(base)
+  ) {
+    const merged = { ...base };
+    Object.entries(override).forEach(([key, value]) => {
+      merged[key] = mergeLocalized(base[key], value);
+    });
+    return merged;
+  }
+  return override;
 }
 
-export function getMissionStory(challengeId, detail = null) {
+export function getCampaignPrologue(locale = "ko") {
+  return locale === "en" ? CAMPAIGN_PROLOGUE_EN : CAMPAIGN_PROLOGUE;
+}
+
+export function getOperationForChallenge(challengeId, locale = "ko") {
+  const operation =
+    CAMPAIGN_OPERATIONS.find((item) => item.range.includes(challengeId)) ||
+    CAMPAIGN_OPERATIONS[0];
+  if (locale !== "en") {
+    return operation;
+  }
+  return mergeLocalized(operation, CAMPAIGN_OPERATIONS_EN[operation.id]);
+}
+
+export function getMissionStory(challengeId, detail = null, locale = "ko") {
   const explicit = CAMPAIGN_STORY[challengeId];
   if (explicit) {
-    return explicit;
+    return locale === "en"
+      ? mergeLocalized(explicit, CAMPAIGN_STORY_EN[challengeId])
+      : explicit;
   }
 
-  const operation = getOperationForChallenge(challengeId);
+  const operation = getOperationForChallenge(challengeId, locale);
   const title = detail?.title || "Unknown Node";
   const codename = FALLBACK_CODENAMES[challengeId] || title.toUpperCase().replace(/[^A-Z0-9]+/g, " ");
 

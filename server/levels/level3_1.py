@@ -110,11 +110,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl.exe -v -X GET "http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>" -H "Authorization: Bearer <token>"',
+                "text": 'curl.exe -v -X GET "/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>" -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "unix",
-                "text": "curl -v -X GET 'http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'",
+                "text": "curl -v -X GET '/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'",
             },
             {
                 "platform": "all",
@@ -126,8 +126,8 @@ STATIC: Dict[str, Any] = {
             "prompt": "$ ",
             "maxOutputBytes": 25000,
             "help": (
-                "허용: curl -v -X GET http://localhost:8000/api/v1/challenges/level3_1/actions/parcels/mine -H 'Authorization: Bearer <token>', "
-                "curl -v -X GET 'http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'"
+                "허용: curl -v -X GET /api/v1/challenges/level3_1/actions/parcels/mine -H 'Authorization: Bearer <token>', "
+                "curl -v -X GET '/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'"
             ),
         },
         "flagFormat": "FLAG{...}",

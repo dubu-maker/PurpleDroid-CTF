@@ -57,15 +57,15 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
+                "text": 'curl -H "Authorization: Bearer <token>" "/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -X PUT http://localhost:8000/api/v1/challenges/level3_boss/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Seoul\\",\\"role\\":\\"admin\\"}"',
+                "text": 'curl -X PUT /api/v1/challenges/level3_boss/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Seoul\\",\\"role\\":\\"admin\\"}"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -X POST http://localhost:8000/api/v1/challenges/level3_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"vault_ticket\\":\\"<ticket>\\",\\"claim_code\\":\\"<code>\\"}"',
+                "text": 'curl -X POST /api/v1/challenges/level3_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"vault_ticket\\":\\"<ticket>\\",\\"claim_code\\":\\"<code>\\"}"',
             },
         ],
         "terminal": {

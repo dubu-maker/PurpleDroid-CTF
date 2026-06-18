@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import shlex
 from typing import Any, Dict, Tuple
@@ -9,7 +10,7 @@ from typing import Any, Dict, Tuple
 from .level2_3 import issue_dispatch_token
 
 
-LEVEL2_4_FLAG = "FLAG{JWT_SIGNATURE_MATTERS}"
+LEVEL2_4_FLAG = os.getenv("PURPLEDROID_LEVEL2_4_FLAG", "FLAG{JWT_SIGNATURE_MATTERS}")
 DEFAULT_SIGNAL_ID = "SIG-1004"
 
 
@@ -29,14 +30,14 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "원본 token을 Authorization Bearer로 Express Gate에 보내 거부 응답을 먼저 확인해."},
             {"platform": "all", "text": "jwt-decode로 payload의 tier와 role claim을 확인해."},
             {"platform": "all", "text": "서버가 signature를 검증하지 않으면 payload 변경을 막지 못한다."},
-            {"platform": "all", "text": "alg=none과 빈 signature를 받아들이는지 의심해."},
+            {"platform": "all", "text": "alg=none은 단서일 뿐이야. 핵심은 alg 값과 무관하게 signature 검증이 강제되는지 확인하는 거야."},
             {
                 "platform": "windows",
-                "text": 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+                "text": 'curl.exe -i -X POST /api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
             },
             {
                 "platform": "unix",
-                "text": 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+                "text": 'curl -i -X POST /api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
             },
             {"platform": "app", "text": "터미널에서 jwt-forge-none <token> 으로 학습용 위조 토큰을 만들 수 있어."},
         ],
@@ -60,7 +61,7 @@ STATIC: Dict[str, Any] = {
         "instruction": (
             "Express Gate는 token payload의 tier와 role claim을 우선 통행권으로 사용하고 있습니다. "
             "문제는 claim을 읽는 것이 아니라, signature 검증 없이 읽은 claim을 신뢰하는 것입니다. "
-            "decode-only 처리, alg=none 신뢰, 검증되지 않은 claim 기반 권한 부여를 봉쇄하세요."
+            "decode-only 처리, signature 검증 누락, 검증되지 않은 claim 기반 권한 부여를 봉쇄하세요."
         ),
         "code": {
             "language": "kotlin",
@@ -86,7 +87,7 @@ REQUIRED_PATCH_IDS = {"p1", "p2", "p3"}
 
 PATCH_CORRECT_FEEDBACK = {
     "p1": "3번은 봉쇄 대상이 맞아. payload를 읽는 것만으로는 신뢰할 수 없어. decode와 verify는 달라.",
-    "p2": "4번은 봉쇄 대상이 맞아. alg=none을 trusted로 처리하면 서명이 없는 token도 통과할 수 있어.",
+    "p2": "4번은 봉쇄 대상이 맞아. alg=none을 trusted로 처리하는 것도 문제지만, 핵심은 어떤 alg든 서버가 signature 검증을 강제해야 한다는 점이야.",
     "p3": "8번은 봉쇄 대상이 맞아. 검증되지 않은 tier/role claim이 Express 권한 판단에 쓰이고 있어.",
 }
 PATCH_WRONG_FEEDBACK = {
@@ -220,11 +221,11 @@ def patch_feedback(patched_ids: list[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "아직 검증되지 않은 token claim 신뢰 경로가 남아있어. payload를 읽는 단계, alg 정책, "
+            "아직 검증되지 않은 token claim 신뢰 경로가 남아있어. payload를 읽는 단계, signature 검증, "
             "권한 부여 분기가 모두 서버 기준으로 검증되는지 확인해."
         )
 
-    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. decode와 verify의 차이, alg 정책, 권한 부여 분기를 같이 봐야 해."
+    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. decode와 verify의 차이, signature 검증, 권한 부여 분기를 같이 봐야 해."
 
 
 def terminal_exec(command: str) -> Tuple[str, str, int]:

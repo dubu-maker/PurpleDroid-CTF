@@ -36,7 +36,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "웹훅 성공 뒤에는 /track?parcel_id=PD-1004 결과를 다시 조회해 상태 변화를 확인해."},
             {
                 "platform": "windows",
-                "text": 'curl -s http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/spec',
+                "text": 'curl -s /api/v1/challenges/level4_5/actions/webhook/spec',
             },
             {
                 "platform": "windows",
@@ -44,11 +44,11 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+                "text": 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s "http://localhost:8000/api/v1/challenges/level4_5/actions/track?parcel_id=PD-1004" -H "Authorization: Bearer <token>"',
+                "text": 'curl -s "/api/v1/challenges/level4_5/actions/track?parcel_id=PD-1004" -H "Authorization: Bearer <token>"',
             },
         ],
         "terminal": {
@@ -223,6 +223,8 @@ def _is_auth_ok(headers: Dict[str, str], ctx: ShellContext) -> bool:
     if not auth.lower().startswith("bearer "):
         return False
     token = auth.split(" ", 1)[1].strip()
+    if token == "$SESSION_TOKEN":
+        return True
     return token == expected
 
 

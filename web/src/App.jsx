@@ -7,12 +7,12 @@ const TOKEN_KEY = "purpledroid_session_token";
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:8000";
+  "http://localhost:8001";
 
 function normalizeApiBase(raw) {
   const trimmed = (raw || "").replace(/\/$/, "");
   if (!trimmed) {
-    return "http://localhost:8000/api/v1";
+    return "http://localhost:8001/api/v1";
   }
   if (trimmed.endsWith("/api/v1")) {
     return trimmed;
@@ -43,11 +43,11 @@ const FALLBACK_HINTS = {
   level2_3: [
     {
       platform: "windows",
-      text: 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
+      text: 'curl.exe -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
     },
     {
       platform: "unix",
-      text: 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
+      text: 'curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
     },
     { platform: "all", text: "dispatch_token의 점(.) segment를 확인해. Header에 보이는 FLAG는 포장지일 수 있어." },
     { platform: "all", text: "터미널 helper: decode-token <dispatch_token>" },
@@ -57,14 +57,14 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "원본 token을 그대로 Express Gate에 보내 거부 응답을 먼저 확인해." },
     { platform: "all", text: "jwt-decode로 tier/role claim과 header alg를 확인해." },
     { platform: "all", text: "서버가 signature를 검증하지 않으면 tier/role 변조가 통과할 수 있어." },
-    { platform: "all", text: "alg=none과 빈 signature를 의심해." },
+    { platform: "all", text: "alg=none은 단서일 뿐이야. 핵심은 signature 검증이 강제되는지 확인하는 거야." },
     {
       platform: "windows",
-      text: 'curl.exe -i -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+      text: 'curl.exe -i -X POST /api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
     },
     {
       platform: "unix",
-      text: 'curl -i -X POST http://localhost:8000/api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
+      text: 'curl -i -X POST /api/v1/challenges/level2_4/actions/express -H "Authorization: Bearer <forged_token>"',
     },
     { platform: "all", text: "터미널 helper: jwt-forge-none <dispatch_token>" },
   ],
@@ -82,7 +82,7 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "Archive open 요청은 forged token, warehouse_path, X-Integrity-Bypass: devtools-hooked header를 함께 요구한다." },
     {
       platform: "windows",
-      text: 'curl.exe -v -X POST http://localhost:8000/api/v1/challenges/level2_5/actions/open -H "Authorization: Bearer <forged_token>" -H "X-Integrity-Bypass: devtools-hooked" -H "Content-Type: application/json" -d "{\\"warehouse_path\\":\\"sealed-warehouse-7f3\\",\\"tier\\":\\"vip\\"}"',
+      text: 'curl.exe -v -X POST /api/v1/challenges/level2_5/actions/open -H "Authorization: Bearer <forged_token>" -H "X-Integrity-Bypass: devtools-hooked" -H "Content-Type: application/json" -d "{\\"warehouse_path\\":\\"sealed-warehouse-7f3\\",\\"tier\\":\\"vip\\"}"',
     },
     {
       platform: "unix",
@@ -95,11 +95,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "내 번호 주변의 작은 범위를 탐색해봐." },
     {
       platform: "windows",
-      text: 'curl.exe -v -X GET "http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>" -H "Authorization: Bearer <token>"',
+      text: 'curl.exe -v -X GET "/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>" -H "Authorization: Bearer <token>"',
     },
     {
       platform: "unix",
-      text: "curl -v -X GET 'http://localhost:8000/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'",
+      text: "curl -v -X GET '/api/v1/challenges/level3_1/actions/parcel?parcel_id=<parcel_id>' -H 'Authorization: Bearer <token>'",
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
@@ -109,11 +109,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "숨겨진 기능이 여러 개면 결과를 비교해 진짜 경로를 찾아야 한다." },
     {
       platform: "windows",
-      text: 'curl.exe -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
+      text: 'curl.exe -v /api/v1/challenges/level3_2/actions/menu -H "Authorization: Bearer <token>"',
     },
     {
       platform: "unix",
-      text: "curl -v http://localhost:8000/api/v1/challenges/level3_2/actions/menu -H 'Authorization: Bearer <token>'",
+      text: "curl -v /api/v1/challenges/level3_2/actions/menu -H 'Authorization: Bearer <token>'",
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
@@ -125,11 +125,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "role, admin, isAdmin, is_admin, clearance 같은 이름이 자주 쓰인다." },
     {
       platform: "windows",
-      text: 'curl -v -X PUT http://localhost:8000/api/v1/challenges/level3_3/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Busan\\",\\"role\\":\\"admin\\"}"',
+      text: 'curl -v -X PUT /api/v1/challenges/level3_3/actions/profile -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"address\\":\\"Busan\\",\\"role\\":\\"admin\\"}"',
     },
     {
       platform: "unix",
-      text: "curl -v -X PUT http://localhost:8000/api/v1/challenges/level3_3/actions/profile -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"address\":\"Busan\",\"role\":\"admin\"}'",
+      text: "curl -v -X PUT /api/v1/challenges/level3_3/actions/profile -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"address\":\"Busan\",\"role\":\"admin\"}'",
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
@@ -141,11 +141,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "encoding이 base64url-json이라면 decode-b64url <auditBlob>으로 열 수 있다." },
     {
       platform: "windows",
-      text: 'curl -v "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
+      text: 'curl -v "/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
     },
     {
       platform: "unix",
-      text: "curl -v 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
+      text: "curl -v '/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
     },
     { platform: "all", text: "decode-b64url <auditBlob>" },
   ],
@@ -155,19 +155,19 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "핵심은 PIN 길이가 아니라 반복 시도 통제의 부재다." },
     {
       platform: "windows",
-      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}"',
+      text: 'curl -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}"',
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}" | findstr evidenceShard',
+      text: 'curl -s -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}" | findstr evidenceShard',
     },
     {
       platform: "unix",
-      text: "curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}'",
+      text: "curl -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}'",
     },
     {
       platform: "unix",
-      text: "curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}' | grep evidenceShard",
+      text: "curl -s -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}' | grep evidenceShard",
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
     { platform: "all", text: "후보 범위가 작다면 seq/xargs/for 루프로 직접 순회해봐." },
@@ -181,11 +181,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "체인은 object → profile → hidden audit → locker → vault 순서로 이어진다." },
     {
       platform: "windows",
-      text: 'curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
+      text: 'curl -H "Authorization: Bearer <token>" "/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
     },
     {
       platform: "windows",
-      text: 'curl -X POST http://localhost:8000/api/v1/challenges/level3_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"vault_ticket\\":\\"<ticket>\\",\\"claim_code\\":\\"<code>\\"}"',
+      text: 'curl -X POST /api/v1/challenges/level3_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"vault_ticket\\":\\"<ticket>\\",\\"claim_code\\":\\"<code>\\"}"',
     },
     { platform: "all", text: "DevTools의 Request Headers에서 Authorization 값을 확인해 재사용해." },
   ],
@@ -195,19 +195,19 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "js 본문에 키가 바로 안 보이면 sourceMappingURL 주석을 따라 .map 파일을 열어봐." },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/bundle-hint',
+      text: 'curl -s /api/v1/challenges/level4_1/actions/public/bundle-hint',
     },
     {
       platform: "windows",
-      text: "curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js",
+      text: "curl -s /api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js",
     },
     {
       platform: "windows",
-      text: "curl -s http://localhost:8000/api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js.map",
+      text: "curl -s /api/v1/challenges/level4_1/actions/public/assets/pd.partner.config.5f3c2a.js.map",
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_1/actions/partner/handshake -H "Authorization: Bearer <token>" -H "X-Partner-Key: <key>"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_1/actions/partner/handshake -H "Authorization: Bearer <token>" -H "X-Partner-Key: <key>"',
     },
     { platform: "all", text: "유출된 키로 partner/handshake를 호출해 FLAG를 획득해." },
   ],
@@ -217,15 +217,15 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "kid는 서버가 어떤 키로 검증할지 고르는 단서다." },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/pass/issue -H "Authorization: Bearer <token>"',
+      text: 'curl -s /api/v1/challenges/level4_2/actions/pass/issue -H "Authorization: Bearer <token>"',
     },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_2/actions/keys/jwks -H "Authorization: Bearer <token>"',
+      text: 'curl -s /api/v1/challenges/level4_2/actions/keys/jwks -H "Authorization: Bearer <token>"',
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_2/actions/admin/audit -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <forged_pass>"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_2/actions/admin/audit -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <forged_pass>"',
     },
     { platform: "all", text: "jwt-decode로 kid/role/scope를 확인하고 forged pass를 넣어 admin/audit를 시도해." },
   ],
@@ -234,11 +234,11 @@ const FALLBACK_HINTS = {
     { platform: "web", text: "같은 /actions/event/delivered 요청을 재전송해서 count가 계속 증가하는지 봐." },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"EVT-2026-DEL-001\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\"}"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_3/actions/event/delivered -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"event_id\\":\\"EVT-2026-DEL-001\\",\\"parcel_id\\":\\"PD-1004\\",\\"status\\":\\"delivered\\"}"',
     },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
+      text: 'curl -s /api/v1/challenges/level4_3/actions/stamps -H "Authorization: Bearer <token>"',
     },
     { platform: "all", text: "같은 event_id로 stamp가 누적되면 replay 방어(idempotency)가 빠진 상태다." },
   ],
@@ -247,15 +247,15 @@ const FALLBACK_HINTS = {
     { platform: "web", text: "whoami에서 remoteAddr/seenClientIp/xff를 비교하고 XFF 넣었을 때 변화를 확인해." },
     {
       platform: "windows",
-      text: 'curl -i -s http://localhost:8000/api/v1/challenges/level4_4/actions/public/gateway-status',
+      text: 'curl -i -s /api/v1/challenges/level4_4/actions/public/gateway-status',
     },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_4/actions/whoami -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1"',
+      text: 'curl -s /api/v1/challenges/level4_4/actions/whoami -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1"',
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_4/actions/partner/settlement -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1" -H "Content-Type: application/json" -d "{}"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_4/actions/partner/settlement -H "Authorization: Bearer <token>" -H "X-Forwarded-For: <gateway_ip>, 10.0.0.1" -H "Content-Type: application/json" -d "{}"',
     },
     { platform: "all", text: "XFF가 여러 개면 첫 번째 IP를 client로 쓰는 서버가 많다." },
   ],
@@ -265,7 +265,7 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "시크릿은 4-1 공개 자산에서 유출됐을 수 있다. PARTNER_WEBHOOK_SECRET 키워드를 찾아봐." },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/spec',
+      text: 'curl -s /api/v1/challenges/level4_5/actions/webhook/spec',
     },
     {
       platform: "windows",
@@ -273,11 +273,11 @@ const FALLBACK_HINTS = {
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
     },
     {
       platform: "windows",
-      text: 'curl -s "http://localhost:8000/api/v1/challenges/level4_5/actions/track?parcel_id=PD-1004" -H "Authorization: Bearer <token>"',
+      text: 'curl -s "/api/v1/challenges/level4_5/actions/track?parcel_id=PD-1004" -H "Authorization: Bearer <token>"',
     },
   ],
   level4_boss: [
@@ -288,11 +288,11 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "webhook은 accepted가 아니라 credited가 올라가야 스탬프가 누적된다." },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/public/status',
+      text: 'curl -s /api/v1/challenges/level4_boss/actions/public/status',
     },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/keys/jwks -H "Authorization: Bearer <token>"',
+      text: 'curl -s /api/v1/challenges/level4_boss/actions/keys/jwks -H "Authorization: Bearer <token>"',
     },
     {
       platform: "windows",
@@ -300,7 +300,7 @@ const FALLBACK_HINTS = {
     },
     {
       platform: "windows",
-      text: 'curl -s http://localhost:8000/api/v1/challenges/level4_boss/actions/admin/config -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <jwt>"',
+      text: 'curl -s /api/v1/challenges/level4_boss/actions/admin/config -H "Authorization: Bearer <token>" -H "X-Partner-Pass: <jwt>"',
     },
     {
       platform: "windows",
@@ -308,7 +308,7 @@ const FALLBACK_HINTS = {
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST http://localhost:8000/api/v1/challenges/level4_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"ticket\\":\\"VT-8F3D-2C9A-2026\\"}"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_boss/actions/vault/claim -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"ticket\\":\\"VT-8F3D-2C9A-2026\\"}"',
     },
   ],
 };

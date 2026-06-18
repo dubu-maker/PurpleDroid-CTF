@@ -45,7 +45,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl -v "http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
+                "text": 'curl -v "/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004" -H "Authorization: Bearer <token>"',
             },
             {
                 "platform": "windows",
@@ -53,7 +53,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "unix",
-                "text": "curl -v 'http://localhost:8000/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
+                "text": "curl -v '/api/v1/challenges/level3_4/actions/ticket?id=SUP-1004' -H 'Authorization: Bearer <token>'",
             },
             {
                 "platform": "unix",

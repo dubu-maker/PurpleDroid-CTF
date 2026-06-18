@@ -39,19 +39,19 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "candidateWindow와 checksum을 같이 보면 후보를 크게 줄일 수 있다."},
             {
                 "platform": "windows",
-                "text": 'curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}"',
+                "text": 'curl -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}"',
             },
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}" | findstr evidenceShard',
+                "text": 'curl -s -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d "{\\"locker_id\\":\\"RL-MIRA-07\\",\\"pin\\":\\"<PIN>\\"}" | findstr evidenceShard',
             },
             {
                 "platform": "unix",
-                "text": "curl -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}'",
+                "text": "curl -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}'",
             },
             {
                 "platform": "unix",
-                "text": "curl -s -X POST http://localhost:8000/api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}' | grep evidenceShard",
+                "text": "curl -s -X POST /api/v1/challenges/level3_5/actions/locker/unlock -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"locker_id\":\"RL-MIRA-07\",\"pin\":\"<PIN>\"}' | grep evidenceShard",
             },
             {
                 "platform": "unix",
