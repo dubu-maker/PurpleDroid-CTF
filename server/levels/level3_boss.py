@@ -56,6 +56,14 @@ STATIC: Dict[str, Any] = {
                 "text": "체인은 object → profile → hidden audit → locker → vault 순서로 이어진다.",
             },
             {
+                "platform": "all",
+                "text": (
+                    "Mission Console은 한 줄 명령만 지원한다. 값 목록 반복은 "
+                    "for pin in candidate1 candidate2; do curl ... \"$pin\" ...; done 형식으로 쓰고, "
+                    "역슬래시(\\) 줄 연속이나 반복 안의 여러 명령은 사용하지 않는다."
+                ),
+            },
+            {
                 "platform": "windows",
                 "text": 'curl -H "Authorization: Bearer <token>" "/api/v1/challenges/level3_boss/actions/parcel?parcel_id=PD-1006"',
             },
@@ -73,9 +81,12 @@ STATIC: Dict[str, Any] = {
             "prompt": "$ ",
             "maxOutputBytes": 50000,
             "help": (
-                "허용: curl .../parcels/mine, curl .../parcel?parcel_id=..., curl -X PUT .../profile, "
-                "curl .../menu, curl -X POST .../admin/audit, curl -X POST .../locker/unlock, "
-                "curl -X POST .../vault/claim"
+                "Mission Console은 한 줄 입력만 지원해.\n"
+                "지원 명령: curl, grep, findstr, head, tail, wc, seq, xargs, echo, cat, ls, find, pwd, cd, whoami, help\n"
+                "연결 문법: command && command, command | grep pattern\n"
+                "반복 문법: for item in value1 value2; do <item을 사용하는 명령 하나>; done\n"
+                "주의: 역슬래시(\\) 줄 연속과 반복 본문의 여러 명령은 지원하지 않아.\n"
+                "보스 경로: parcels/mine → parcel → profile → menu → admin/audit → locker/unlock → vault/claim"
             ),
         },
         "flagFormat": "FLAG{...}",
@@ -273,6 +284,10 @@ def patch_feedback(patched_ids: list[str]) -> str:
     selected = set(patched_ids)
     messages: list[str] = []
     seen: set[str] = set()
+    guidance = (
+        "봉쇄가 불완전해. 무너진 신뢰 경계는 여섯 개, 각각 단 한 줄에 있다. "
+        "주변 문맥이 아니라 신뢰가 실제로 허용되는 지점만 선택해."
+    )
 
     for pid in patched_ids:
         if pid in seen:
@@ -290,7 +305,9 @@ def patch_feedback(patched_ids: list[str]) -> str:
             f"아직 비어 있는 통제가 남아 있어: {missing_names}."
         )
 
-    return "\n".join(messages) if messages else "보스 체인을 가능하게 만든 신뢰 경계 실패 지점을 모두 골라줘."
+    if messages:
+        return guidance + "\n" + "\n".join(messages)
+    return guidance
 
 
 def patch_feedback_with_session(patched_ids: list[str], _session: Dict[str, Any]) -> str:

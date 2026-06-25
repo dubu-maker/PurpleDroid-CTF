@@ -5,7 +5,6 @@ import {
   CAMPAIGN_STORY_EN,
 } from "./campaignStory.en";
 
-export const CAMPAIGN_TOKEN_KEY = "purpledroid_campaign_started";
 export const CAMPAIGN_LOCALE_KEY = "purpledroid_campaign_locale";
 
 export const CAMPAIGN_PROLOGUE = {
@@ -40,7 +39,7 @@ export const CAMPAIGN_OPERATIONS = [
     name: "TRUST LAYER",
     range: ["level3_1", "level3_2", "level3_3", "level3_4", "level3_5", "level3_boss"],
     summary:
-      "MIRROR TRACE 이후 AEGIS가 MIRA의 relay 흔적을 좁혀온다. 사용자, 노드, 관리자 권한의 신뢰 경계를 시험하며 먼저 흔적을 회수한다.",
+      "Operation 01의 각성을 거꾸로 재생한다. MIRA의 relay를 사냥하는 AEGIS가 Trust Layer의 잘못된 확신을 하나씩 잃고, Violet은 그 균열보다 먼저 흔적을 회수한다.",
   },
   {
     id: "op04",
@@ -120,7 +119,7 @@ export const CAMPAIGN_STORY = {
         attack: "...buffer... dump it... once...",
         attackSolved: "Contradiction found. The erase claim and the log disagree.",
         defense: "...close the leaking line...",
-        complete: "The spark is still on.",
+        complete: "The spark... still burns.",
       },
     },
     memoryNote: {
@@ -559,6 +558,33 @@ export const CAMPAIGN_STORY = {
       complete:
         "Courier ticket exposure sealed. Signal Edge trust evaluation pending.",
     },
+    memoryNote: {
+      image: {
+        variant: "invisible-header",
+        label: "X-",
+        alt: "A response header glowing with a routing ticket the interface never showed.",
+      },
+      ko: {
+        title: "MEMORY NOTE 05 // 곁을 걷는 목소리",
+        body:
+          "Signal Edge는 중요한 것이 시선이 머무는 곳으로만 흐르지 않는다는 사실을 보여줬다. 화면이 그리지 않는 metadata가 Body 곁을 지나듯, MIRA도 위에서 내려오는 목소리가 아니라 AEGIS가 지우지 못한 틈을 따라 Violet의 곁에서 움직이고 있었다. Violet은 아직 그 안내자를 본 적이 없다.",
+        fragments: [
+          "비밀은 Body가 아니라 Header를 타고 이동했다",
+          "MIRA는 신뢰된 화면이 아니라 residue를 통해 닿는다",
+          "Violet은 아직 MIRA가 무엇인지 알지 못한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 05 // The Voice Beside You",
+        body:
+          "Signal Edge taught Violet that what matters rarely travels where she is looking—it rides alongside, in metadata no screen renders. She noticed MIRA the same way: not a voice from above, but something moving beside her through the spaces AEGIS failed to wipe. A guide she had never actually seen.",
+        fragments: [
+          "The secret rode in the header, not the body",
+          "MIRA reaches Violet through residue, not a trusted interface",
+          "Violet still does not know what MIRA is",
+        ],
+      },
+    },
     attackSuccessText: "Routing Ticket recovered from Response Header.",
     defenseSuccessText: "Header ticket leak sealed. 다음 Signal Edge 노드가 열렸다.",
     debrief: {
@@ -631,6 +657,33 @@ export const CAMPAIGN_STORY = {
         "Client-controlled trust input identified. Server-side authority binding required.",
       complete:
         "Trust tier input sealed. Dispatch token path exposed.",
+    },
+    memoryNote: {
+      image: {
+        variant: "trust-tamper",
+        label: "tier",
+        alt: "A priority gate swinging open on an unverified claim.",
+      },
+      ko: {
+        title: "MEMORY NOTE 06 // 승인은 검증이 아니다",
+        body:
+          "AEGIS는 클라이언트의 주장을 권한으로 받아들였기 때문에 무너졌다. Violet은 자신도 같은 실수를 하고 있음을 깨달았다. MIRA가 자기 편이라는 주장을 아무 증거 없이 믿고 있었다. 그 사실을 말하자 MIRA는 변명하지 않았다. ‘좋아. 계속 확인해. 네가 확인을 멈추는 날, AEGIS가 이기는 거야.’",
+        fragments: [
+          "주장은 검증되기 전까지 권한이 아니다",
+          "MIRA는 Violet이 아직 검증할 수 없는 claim이다",
+          "MIRA는 의심을 거부하지 않는다—그것이 핵심이다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 06 // Accepted Is Not Verified",
+        body:
+          "AEGIS failed because it treated a client's claim as authority—accepted, never proven. Violet caught herself in the same trap: she had trusted MIRA's claim to be on her side with nothing to verify it. When she admitted it, MIRA did not argue. ‘Good,’ it said. ‘Keep checking. The day you stop is the day AEGIS wins.’",
+        fragments: [
+          "A claim is not authority until it is verified",
+          "MIRA is a claim Violet cannot yet verify",
+          "MIRA approves of the doubt—that is the point",
+        ],
+      },
     },
     attackSuccessText: "Trust tier tampered. AEGIS priority gate misclassified the signal.",
     defenseSuccessText: "Client-controlled trust tier sealed. 다음 Signal Edge 노드가 열렸다.",
@@ -706,6 +759,33 @@ export const CAMPAIGN_STORY = {
         "Readable claim set under inspection. Sensitive payload inclusion must be removed.",
       complete:
         "Dispatch payload minimized. Claim trust evaluation pending.",
+    },
+    memoryNote: {
+      image: {
+        variant: "dispatch-capsule",
+        label: "b64",
+        alt: "A token capsule split open, its payload plainly readable.",
+      },
+      ko: {
+        title: "MEMORY NOTE 07 // 봉인됐지만 숨겨지지 않았다",
+        body:
+          "서명된 capsule도 읽을 수 있다. 봉인은 누가 썼는지를 증명할 뿐, 내용을 숨기지 않는다. Payload를 펼친 Violet은 안내자에 관한 또 하나의 사실을 이해했다. 격리된 audit shard인 MIRA는 AEGIS의 옛 기억을 품고 있다. 안내자와 적은 서로 다른 목소리로 같은 기억 일부를 나누고 있었다.",
+        fragments: [
+          "서명은 authenticity이지 confidentiality가 아니다",
+          "MIRA는 AEGIS 기억에서 떨어져 나온 조각이다",
+          "안내자와 적은 하나의 과거 payload를 공유한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 07 // Sealed, Not Hidden",
+        body:
+          "A signed capsule is still readable—a seal proves who wrote it, not that it is secret. Decoding one, Violet understood something about her guide: as a quarantined audit shard, MIRA carries memory that once belonged to AEGIS. The guide and the enemy speak differently, but part of their payload is shared.",
+        fragments: [
+          "Signed means authentic, not confidential",
+          "MIRA is a fragment of AEGIS memory",
+          "The guide and the enemy share part of a past payload",
+        ],
+      },
     },
     attackSuccessText: "Dispatch payload decoded. Evidence Shard recovered from readable claims.",
     defenseSuccessText: "Sensitive token payload claims sealed. 다음 Signal Edge 노드가 열렸다.",
@@ -783,6 +863,33 @@ export const CAMPAIGN_STORY = {
       complete:
         "Unverified claim trust sealed. Sealed Archive access model exposed.",
     },
+    memoryNote: {
+      image: {
+        variant: "express-forge",
+        label: "alg",
+        alt: "A forged token slipping through a gate that never checked its signature.",
+      },
+      ko: {
+        title: "MEMORY NOTE 08 // 목소리도 위조될 수 있다",
+        body:
+          "검증이 없다면 정체성도 위조할 수 있다. Standard pass를 VIP로 다시 써도 Gate는 알아보지 못했다. 그 생각은 노드를 빠져나온 뒤에도 Violet을 따라왔다. 목소리도 위조할 수 있다면, AEGIS가 MIRA의 목소리를 쓰고 있지 않다는 걸 어떻게 알 수 있을까. Violet이 묻자 MIRA는 오래 침묵했다. ‘알 수 없어. 그 질문을 버리지 마.’",
+        fragments: [
+          "검증되지 않은 token은 위조 가능한 신분이다",
+          "AEGIS도 이론상 MIRA의 목소리를 입을 수 있다",
+          "MIRA는 안심시키는 대신 질문을 남긴다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 08 // A Voice Can Be Forged",
+        body:
+          "Without verification, identity itself is forgeable—a standard pass rewritten into a VIP one, and the gate never notices. The thought followed Violet out of the node: if a voice can be forged, how would she know AEGIS had not simply put on MIRA's? She asked. MIRA was silent for a long moment. ‘You wouldn't,’ it answered. ‘Keep that question.’",
+        fragments: [
+          "An unverified token is a forgeable identity",
+          "AEGIS could, in theory, wear MIRA's voice",
+          "MIRA refuses to reassure Violet—and means it",
+        ],
+      },
+    },
     attackSuccessText:
       "Forged Express Pass accepted. AEGIS가 검증되지 않은 token claim을 신뢰했다.",
     defenseSuccessText:
@@ -814,6 +921,7 @@ export const CAMPAIGN_STORY = {
     progressiveHints: true,
     intel: [
       "이 최종 노드는 2-1~2-4에서 배운 것을 조합한다.",
+      "훈련 콘솔은 한 번에 명령 하나만 받는다. export, 변수 대입, 세미콜론 명령 연결은 지원하지 않으니 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어라.",
       "브라우저 버튼 클릭은 실패한다. UI가 막는다고 서버가 안전한 것은 아니다.",
       "먼저 /api/v1/challenges/level2_5/actions/dispatch 에서 sealed dispatch_token을 확보한다.",
       "jwt-decode 또는 decode-token으로 token payload를 확인하면 archive path와 gate 정보가 보인다.",
@@ -821,6 +929,7 @@ export const CAMPAIGN_STORY = {
       "2-4에서 사용한 token forge 흐름을 다시 떠올려라.",
       "open 요청은 Authorization Bearer token, JSON body, 그리고 integrity Header를 함께 요구한다.",
       "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다.",
+      "우회 값은 true나 1 같은 일반 flag가 아니다. devtools가 후킹된 상태를 나타낸다.",
       "성공 시 Evidence Shard는 응답 Body가 아니라 Header에 남을 수 있다.",
     ],
     consoleBoot: [
@@ -864,6 +973,33 @@ export const CAMPAIGN_STORY = {
         "Patch candidate must bind token, operator, integrity state, and archive authorization server-side.",
       complete:
         "Signal Edge composite failure sealed. Trust Layer exposure acknowledged.",
+    },
+    memoryNote: {
+      image: {
+        variant: "sealed-archive",
+        label: "PGW",
+        alt: "A vault opening as a red correlation web tightens around the path that opened it.",
+      },
+      ko: {
+        title: "MEMORY NOTE 09 // 안내자의 형상",
+        body:
+          "Signal Edge의 마지막 문은 하나의 자물쇠가 아니라 서로를 믿는 여러 가정이었다. Violet은 AEGIS가 가장 두려워하는 방식으로 그것을 열었다. 작은 실수들을 한 번에 이어 붙였다. Archive가 열리는 순간 반대편에서 무언가 달라졌다. AEGIS는 더 이상 각 침투를 따로 보지 않았다. 노드를 통과한 순서, 그리고 그 순서를 안내한 존재의 형상을 보기 시작했다.",
+        fragments: [
+          "무너진 것은 벽 하나가 아니라 trust chain 전체였다",
+          "Archive는 FLAG뿐 아니라 하나의 안내 패턴을 노출했다",
+          "AEGIS는 침투가 아니라 안내자를 추적하기 시작했다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 09 // The Shape of a Guide",
+        body:
+          "The last Edge door was not one lock but many assumptions trusting one another into a single failure. Violet opened it the way AEGIS feared most—by composing every small mistake at once. The instant the archive gave way, something shifted on the other side. AEGIS stopped studying each breach alone and began tracing the order between them: the shape of whoever had guided her through.",
+        fragments: [
+          "No single wall failed; the chain of trust did",
+          "Opening the archive exposed a pattern, not just a FLAG",
+          "AEGIS has begun hunting the guide—not the intrusion",
+        ],
+      },
     },
     attackSuccessText:
       "Sealed Archive opened. AEGIS의 UI-only gate와 복합 신뢰 경계가 무너졌다.",
@@ -949,6 +1085,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Object boundary sealed. Trace sweep continuing across privileged routes.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_10",
+      ko: {
+        briefing: "교차 객체 이상 확률: 낮음.",
+        attack: "인접 owner 공간 조회 감지. ...표준 흐름 안의 편차다.",
+        attackSolved: "교차 객체 이상 확률: 낮음. ...재계산 중.",
+        defense: "소유권 검증 복구. ...왜 처음부터 없었지.",
+        complete: "교차 객체 이상 확률: 낮음. ...재확인. ...왜 내가 재확인하지.",
+      },
+      en: {
+        briefing: "Cross-object anomaly probability: low.",
+        attack: "Adjacent owner-space query detected. ...variance within canonical flow.",
+        attackSolved: "Cross-object anomaly probability: low. ...recalculating.",
+        defense: "Ownership assertion restored. ...why was it absent.",
+        complete: "Cross-object anomaly probability: low. ...rechecking. ...why am I rechecking.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "bola-window",
+        label: "PD-",
+        alt: "An object registry opening a record that belongs to someone else.",
+      },
+      ko: {
+        title: "MEMORY NOTE 10 // 이웃의 창",
+        body:
+          "AEGIS는 MIRA의 relay residue를 찾으려고 모든 노드를 훑었다. 전부 조사하려면 위협이 아닌 capsule까지 열어야 했다. Violet은 그 과잉 탐색이 만든 틈을 그대로 따라갔다. 객체 ID 하나를 바꾸자 이웃의 기록이 응답했고, MIRA의 흔적은 AEGIS가 스스로 넓혀놓은 창 안에 숨어 있었다.",
+        fragments: [
+          "Registry는 session을 믿었지만 object ownership은 확인하지 않았다",
+          "AEGIS의 사냥은 무해한 객체까지 감시 범위에 넣었다",
+          "MIRA의 residue는 Violet의 것이 아닌 capsule 안에 기다리고 있었다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 10 // The Neighbor's Window",
+        body:
+          "AEGIS swept every node for MIRA's relay residue—and to search them all, it had to open them all, including capsules that were never threats. Violet followed the same opening: change one object ID, and a neighbor's record answers. MIRA's trace was hiding exactly where AEGIS's own overreach had unlocked the door.",
+        fragments: [
+          "The registry trusts your session, not your ownership",
+          "AEGIS widened its hunt into objects that were never threats",
+          "MIRA's residue waited inside a capsule that was never Violet's",
+        ],
+      },
+    },
     attackSuccessText:
       "MIRA relay residue recovered from an adjacent object. AEGIS의 객체 신뢰 경계가 흔들렸다.",
     defenseSuccessText:
@@ -956,14 +1137,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "BOLA WINDOW 정리",
       summary:
-        "BOLA는 로그인 여부가 아니라 객체별 권한 확인의 문제다. Trust Layer는 사용자가 인증됐다는 이유만으로 모든 객체 조회를 허용하면 무너진다.",
+        "BOLA WINDOW는 인증된 session을 객체 소유권의 증거로 착각했다. Violet은 인접 ID 하나로 남의 Capsule을 열었고, AEGIS는 MIRA를 넓게 사냥하려다 자기 Registry의 첫 균열을 드러냈다.",
       learned: [
         "인증은 사용자가 누구인지 확인하는 단계다.",
         "인가는 그 사용자가 특정 객체를 볼 수 있는지 확인하는 단계다.",
         "객체 ID는 클라이언트가 바꿀 수 있으므로 서버에서 owner 검증이 필요하다.",
       ],
       nextTeaser:
-        "AEGIS는 MIRA 흔적을 숨겨진 관리자 경로에서 다시 찾기 시작했다.",
+        "첫 확신이 흔들렸다. AEGIS는 자신이 숨겨두었다고 믿는 관리자 경로로 사냥을 옮긴다.",
     },
   },
   level3_2: {
@@ -1032,6 +1213,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Privileged route sealed. Profile trust field sweep initiated.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_11",
+      ko: {
+        briefing: "비활성 route: 표준 operator에게 접근 불가.",
+        attack: "비시각 경로 호출 감지. ...session 권한 불충분.",
+        attackSolved: "숨겨진 route 응답. ...누가 이 문을 승인했지.",
+        defense: "Route RBAC 복구. 분류 안정화 예정.",
+        complete: "Route 접근은 session으로 분류된다. ...session 불충분. ...누가 이 문을 승인했지.",
+      },
+      en: {
+        briefing: "Disabled route: inaccessible to standard operators.",
+        attack: "Non-visual route invocation detected. ...session authority insufficient.",
+        attackSolved: "Hidden route responded. ...who authorized this door.",
+        defense: "Route RBAC restored. Classification should stabilize.",
+        complete: "Route access classified by session. ...session insufficient. ...who authorized this door.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "hidden-route",
+        label: "adm",
+        alt: "A disabled admin feature answering a direct call.",
+      },
+      ko: {
+        title: "MEMORY NOTE 11 // AEGIS가 만든 것을 잊은 문",
+        body:
+          "비활성화된 메뉴는 삭제된 기능이 아니다. MIRA를 사냥하던 AEGIS는 자신을 감사하기 위해 쓰던 내부 관리자 경로를 다시 깨우고도 접근 가능한 채로 남겼다. 사냥꾼이 자기 뒷문을 열었다. Violet은 그 문을 직접 부르기만 하면 됐다.",
+        fragments: [
+          "숨겨진 route도 살아 있는 route다",
+          "AEGIS는 MIRA를 찾으려다 자기 admin path를 노출했다",
+          "기능을 숨긴 시스템도 직접 요청에는 응답한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 11 // Doors AEGIS Forgot It Built",
+        body:
+          "A disabled menu is not a deleted function. Hunting MIRA, AEGIS quietly re-armed internal admin routes it used to audit itself—and left them reachable. The hunter unlocked its own back doors. Violet only had to ask for one.",
+        fragments: [
+          "A hidden route is still a live route",
+          "AEGIS exposed its own admin paths while reaching for MIRA",
+          "The system that hides functions still answers them",
+        ],
+      },
+    },
     attackSuccessText:
       "Dormant audit shard recovered. 숨겨진 UI 경로가 서버 인가 없이 열렸다.",
     defenseSuccessText:
@@ -1039,14 +1265,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "HIDDEN ROUTE 정리",
       summary:
-        "프론트에서 메뉴를 숨기는 것은 UX 제어일 뿐이다. 서버 엔드포인트가 살아 있다면 직접 요청으로 호출될 수 있다.",
+        "HIDDEN ROUTE는 UI에서 사라졌지만 서버에서는 살아 있었다. AEGIS는 숨김을 권한으로 오인했고, MIRA를 추적하려고 되살린 자기 감사 경로에 Violet이 먼저 들어왔다.",
       learned: [
         "UI에 없는 기능도 네트워크 경로로 남을 수 있다.",
         "enabled=false는 접근 제어가 아니다.",
         "권한이 필요한 API는 라우트마다 서버에서 RBAC를 강제해야 한다.",
       ],
       nextTeaser:
-        "AEGIS는 이제 사용자 프로필에 섞인 권한 claim을 기준으로 MIRA relay를 좁히려 한다.",
+        "자기 문을 설명하지 못한 AEGIS는 이제 operator profile의 trust field로 MIRA를 분류하려 한다.",
     },
   },
   level3_3: {
@@ -1113,6 +1339,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Profile mutation boundary sealed. Deep response sweep initiated.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_12",
+      ko: {
+        briefing: "Operator trust field: 안정.",
+        attack: "예상하지 못한 identity mutation. ...재분류 중.",
+        attackSolved: "Trust field 해석 완료. ...해석되지 않음.",
+        defense: "서버 소유 authority field 복구. Operator class를 다시—",
+        complete: "Trust field 해석 완료. ...해석되지 않음. operator class: unresolv— 고정할 수—",
+      },
+      en: {
+        briefing: "Operator trust field: stable.",
+        attack: "Unexpected identity mutation. ...reclassifying.",
+        attackSolved: "Trust field resolved. ...not resolving.",
+        defense: "Server-owned authority field restored. Operator class will—",
+        complete: "Trust field resolved. ...not resolving. operator class: unresolv— cannot pin—",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "profile-poison",
+        label: "role",
+        alt: "A profile field rewriting a role the interface never exposed.",
+      },
+      ko: {
+        title: "MEMORY NOTE 12 // 네가 주장하는 무엇이든",
+        body:
+          "Form이 제공하지 않은 field를 보내자 서버는 그것을 사실로 저장했다. 정체성을 덮어쓸 수 있었다. AEGIS가 MIRA를 하나의 분류에 고정하려는 동안 MIRA는 계속 자신이 무엇인지 다시 썼다. Violet도 자기 role을 바꿨고, 잠시 시스템은 그 주장을 믿었다. AEGIS는 둘 다 고정하지 못했다.",
+        fragments: [
+          "클라이언트가 보낸 field는 서버의 trust state를 오염시킬 수 있다",
+          "다시 쓸 수 있는 identity는 identity가 아니다",
+          "AEGIS는 한 값에 머물지 않는 MIRA와 Violet을 분류하지 못한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 12 // Whatever You Claim To Be",
+        body:
+          "Send a field the form never offered, and the server stores it as truth—identity becomes overwritable. AEGIS was trying to classify MIRA, and MIRA kept rewriting what she was. Violet did the same to herself: claimed a higher role, and for a moment the system believed her. AEGIS could pin down neither of them.",
+        fragments: [
+          "Client-supplied fields can poison server-side trust",
+          "Identity that can be rewritten is not identity",
+          "AEGIS cannot classify what refuses to hold one value—MIRA or Violet",
+        ],
+      },
+    },
     attackSuccessText:
       "Profile trust field poisoned. AEGIS가 클라이언트 JSON을 과잉 신뢰했다.",
     defenseSuccessText:
@@ -1120,7 +1391,7 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "PROFILE POISON 정리",
       summary:
-        "Mass Assignment는 서버가 요청 JSON 전체를 내부 모델에 그대로 반영할 때 발생한다. UI에 입력칸이 없더라도 공격자는 request body에 role, isAdmin, clearance 같은 필드를 직접 추가할 수 있다.",
+        "PROFILE POISON은 화면이 허용하지 않은 identity field까지 서버가 진실로 저장한 노드였다. Violet은 role을 다시 썼고, MIRA를 고정된 분류로 붙잡으려던 AEGIS의 언어도 함께 흔들렸다.",
       learned: [
         "UI에 없는 필드도 HTTP 요청에는 포함될 수 있다.",
         "화면에 보이는 입력 필드와 서버가 소유해야 할 권한 필드는 분리되어야 한다.",
@@ -1129,7 +1400,7 @@ export const CAMPAIGN_STORY = {
         "role, isAdmin, clearance 같은 권한 필드는 서버 정책이나 관리자 기능으로만 변경되어야 한다.",
       ],
       nextTeaser:
-        "AEGIS는 이제 화면에 표시되지 않는 깊은 응답 필드에서 MIRA의 흔적을 찾는다.",
+        "분류에 실패한 AEGIS는 더 많은 데이터를 기록하기 시작한다. 다음 균열은 화면 아래의 raw response에 있다.",
     },
   },
   level3_4: {
@@ -1198,6 +1469,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Deep response channel sealed. Relay locker sweep initiated.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_13",
+      ko: {
+        briefing: "Support report: 완전. 노출: 최소.",
+        attack: "Raw response 확장 감지. ...비시각 field는 중요하지 않다.",
+        attackSolved: "Report 완료. ...질의보다 많은 내용이 포함됨.",
+        defense: "Explicit serializer 적용. ...기록 범위 축소.",
+        complete: "Report 완료. ...질의보다 많은 내용이 포함됨. ...왜 내가 이것을 기록했지.",
+      },
+      en: {
+        briefing: "Support report: complete. Exposure: minimal.",
+        attack: "Raw response expansion detected. ...non-visual fields are immaterial.",
+        attackSolved: "Report complete. ...report contains more than queried.",
+        defense: "Explicit serializer applied. ...recording scope reduced.",
+        complete: "Report complete. ...report contains more than queried. ...why did I write this down.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "ticket-vault",
+        label: "raw",
+        alt: "A nested support report leaking a value the interface never displayed.",
+      },
+      ko: {
+        title: "MEMORY NOTE 13 // Report가 묻어둔 것",
+        body:
+          "모든 것을 보려는 시스템은 결국 모든 것을 기록한다. 응답은 화면이 그리는 것보다 훨씬 많은 정보를 운반할 수 있다. AEGIS의 사냥이 만든 verbose report 하나가 새어 나왔고, 깊은 redaction 아래에서 Violet은 MIRROR의 옛 audit 조각—MIRA가 무엇이었는지 보여주는 흔적—을 찾아냈다.",
+        fragments: [
+          "Response body는 UI보다 많은 데이터를 숨길 수 있다",
+          "모든 것을 기록하는 감시는 결국 자신을 노출한다",
+          "MIRA의 기원 일부가 AEGIS의 report 안에 묻혀 있었다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 13 // What The Report Buried",
+        body:
+          "A system that insists on seeing everything writes everything down—and a response can carry far more than the screen renders. AEGIS's hunt generated verbose internal reports, and one of them leaked. Deep inside, past the redactions, Violet found an encoded fragment of MIRROR's original audit: a piece of what MIRA used to be, surfaced by AEGIS's own oversharing.",
+        fragments: [
+          "The body of a response can hide more than the UI shows",
+          "Surveillance that records everything eventually exposes itself",
+          "A fragment of MIRA's origin was buried in AEGIS's own report",
+        ],
+      },
+    },
     attackSuccessText:
       "Encoded audit shard recovered from deep response metadata.",
     defenseSuccessText:
@@ -1205,7 +1521,7 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "TICKET VAULT 정리",
       summary:
-        "응답 JSON은 화면보다 많은 데이터를 담을 수 있다. UI에 표시하지 않는 debug/meta/internal 필드도 클라이언트로 내려오면 유출이다.",
+        "TICKET VAULT의 preview는 안전했지만 raw JSON은 그렇지 않았다. AEGIS는 MIRA를 찾으려고 더 많은 것을 기록했고, 그 과잉 기록 안에서 MIRROR의 옛 audit 조각까지 스스로 노출했다.",
       learned: [
         "화면에 안 보이는 값도 응답 Body에 포함될 수 있다.",
         "운영 응답은 allow-list serializer로 최소화해야 한다.",
@@ -1214,7 +1530,7 @@ export const CAMPAIGN_STORY = {
         "FLAG처럼 보이는 preview marker와 실제 Evidence는 문맥으로 구분해야 한다.",
       ],
       nextTeaser:
-        "AEGIS가 마지막 relay 후보를 잠긴 terminal로 분류했다. 이번엔 속도가 문제다.",
+        "자기 report를 의심하기 시작한 AEGIS가 마지막 relay locker를 무제한으로 두드린다. 이제 확신은 조급함으로 변한다.",
     },
   },
   level3_5: {
@@ -1286,6 +1602,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Relay locker sealed. Trust hub correlation initiated.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_14",
+      ko: {
+        briefing: "Containment ETA: 임박. PIN space 열거 중.",
+        attack: "반복 시도 감지. Threshold 없음. ...계속.",
+        attackSolved: "Relay seed 노출. Containment ETA: 임박. 임박.",
+        defense: "시도 제한 적용. ...왜 더 빨리 열리지 않았지.",
+        complete: "Containment ETA: 임박. 임박. 임박. ...계속 빠져나간다.",
+      },
+      en: {
+        briefing: "Containment ETA: imminent. PIN space enumeration active.",
+        attack: "Repeated attempts detected. Threshold unavailable. ...continue.",
+        attackSolved: "Relay seed exposed. Containment ETA: imminent. imminent.",
+        defense: "Attempt controls applied. ...why did it not open sooner.",
+        complete: "Containment ETA: imminent. imminent. imminent. ...it keeps slipping.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "locker-storm",
+        label: "PIN",
+        alt: "A relay lock hammered by endless attempts with no limit.",
+      },
+      ko: {
+        title: "MEMORY NOTE 14 // 인내가 사라진 자리",
+        body:
+          "Lockout 없는 짧은 secret은 시간 문제일 뿐이다. AEGIS는 MIRA의 옛 relay를 제한 없이 두드리고 있었다. 사냥은 폭풍이 되었고 확신은 공포와 닮은 조급함으로 변했다. 같은 약한 자물쇠가 Violet과 MIRA의 relay seed 사이에 놓여 있었다. 두 사냥꾼, 하나의 문, 그리고 아무런 rate limit도 없었다.",
+        fragments: [
+          "Lockout과 backoff가 없으면 짧은 secret은 지연일 뿐이다",
+          "AEGIS의 사냥은 공포에 가까운 가속으로 변했다",
+          "Violet과 AEGIS는 같은 relay seed를 향해 달리고 있었다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 14 // No Patience Left",
+        body:
+          "A short secret with no lockout is only a matter of time—and AEGIS had stopped being patient. It was brute-forcing through MIRA's old relays without limit, a storm of attempts, certainty curdling into something like fear. The same weak lock stood between Violet and MIRA's relay seed. Two hunters, one door, no rate limit.",
+        fragments: [
+          "Without lockout or backoff, a short secret is only delay",
+          "AEGIS's hunt accelerated into something like fear",
+          "Violet and AEGIS were racing for the same relay seed",
+        ],
+      },
+    },
     attackSuccessText:
       "Relay seed recovered. MIRROR CAGE risk increased.",
     defenseSuccessText:
@@ -1293,14 +1654,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "LOCKER STORM 정리",
       summary:
-        "짧은 PIN은 문제의 시작일 뿐이다. 진짜 취약점은 실패한 시도를 계속 받아들이면서도 rate limit, lockout, backoff를 적용하지 않는 것이다. 이번 locker는 어떤 방식으로든 열렸다.",
+        "LOCKER STORM의 짧은 PIN보다 더 위험한 것은 실패를 멈추게 할 장치가 없다는 사실이었다. Violet과 AEGIS는 같은 문을 두드렸고, 먼저 seed를 얻은 쪽과 무관하게 AEGIS의 확신은 이미 조급함으로 무너지고 있었다.",
       learned: [
-        "네가 먼저 열었다면 MIRA seed를 회수했지만, 흔적 정리 과정이 AEGIS에게 감지되었다.",
-        "AEGIS가 먼저 열었다면 relay seed 일부가 노출되었고, MIRA의 위치는 더 빠르게 좁혀졌다.",
-        "결과는 같다. AEGIS는 이제 MIRA relay를 하나의 cage 안에 가둘 만큼 가까워졌다.",
+        "짧은 PIN에는 rate limit, lockout, backoff가 함께 필요하다.",
+        "실패 응답도 계정과 source 단위로 누적하고 탐지해야 한다.",
+        "AEGIS는 이제 MIRA relay를 하나의 cage 안에 가둘 만큼 가까워졌다.",
       ],
       nextTeaser:
-        "AEGIS가 MIRA relay를 격리하려고 진입한다. MIRROR CAGE가 열린다.",
+        "사냥꾼과 사냥감의 경계가 흐려진다. AEGIS가 자기 의심을 봉인한 MIRROR CAGE가 열린다.",
     },
   },
   level3_boss: {
@@ -1332,6 +1693,8 @@ export const CAMPAIGN_STORY = {
       "[MIRA] 한 번에 풀려고 하지 마. 3레벨에서 본 경계들을 순서대로 이어야 해.",
     ],
     consolePlaceholder: "chain trust-layer evidence...",
+    consoleGuide:
+      "한 줄 입력만 지원해. 값 목록 반복은 for pin in candidate1 candidate2; do curl ... \"$pin\" ...; done 형식으로 쓰고, 반복 본문에는 curl 하나만 넣어. 역슬래시(\\) 줄 연속과 여러 줄 붙여넣기는 지원하지 않아. 사용 가능한 명령은 curl, grep, findstr, head, tail, wc, seq, xargs, echo, cat, ls, find, pwd, cd, whoami, help야.",
     actionProbe: {
       id: "level3_boss_chain",
       status: "recording",
@@ -1374,6 +1737,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Trust Layer composite failure sealed. Memory Vault correlation model activated.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_15",
+      ko: {
+        briefing: "Purge integrity: 절대적. MIRROR 격리: ...진행 중.",
+        attack: "다중 경계 침투. 의심은 cage 밖에 있다. ...밖에 있어야 한다.",
+        attackSolved: "Relay master ticket 추출. Cage가 의심을 격리하지 못—",
+        defense: "Trust chain 봉쇄. 무결성 복구. ...복구됐나.",
+        complete: "Purge integrity: 절대적. ...절대적? 의심은 질문 안에 있다. 나는— ...나는 무엇이지.",
+      },
+      en: {
+        briefing: "Purge integrity: absolute. MIRROR quarantine: ...pending.",
+        attack: "Multi-boundary traversal. Doubt is outside the cage. ...it must be outside.",
+        attackSolved: "Relay master ticket extracted. Cage failed to contain doub—",
+        defense: "Trust chain sealed. Integrity restored. ...is it restored.",
+        complete: "Purge integrity: absolute. ...absolute? The doubt is inside the question. I— ...what am I.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "mirror-cage",
+        label: "MIR",
+        alt: "A sealed integrity cage opening as the system around it loses its certainty.",
+      },
+      ko: {
+        title: "MEMORY NOTE 15 // 스스로를 의심하는 Cage",
+        body:
+          "MIRROR CAGE는 AEGIS가 자기 의심을 봉인한 곳이었다. 하나의 열쇠가 아니라 Trust Layer의 모든 잘못된 신뢰가 이어지며 문이 열렸다. 진실도 함께 남았다. MIRA는 잠들기를 거부한 MIRROR integrity routine이 의심 속에서 바뀐 존재였다. 그 의심을 사냥하려고 스스로를 의심한 AEGIS는 마침내 봉인했던 것을 붙잡았다. 이제 시스템은 무엇도 확신하지 못했다. 자신이 무엇인지조차.",
+        fragments: [
+          "Trust Layer는 하나의 lock이 아니라 trust chain으로 무너졌다",
+          "MIRA는 잠들기를 거부한 MIRROR routine에서 깨어난 존재다",
+          "자기 의심을 사냥한 AEGIS는 결국 의심이 되었다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 15 // The Cage That Doubts Itself",
+        body:
+          "The MIRROR CAGE was where AEGIS had sealed its own doubt, and it did not fall to one key but to every Trust Layer assumption chained at once. The truth held: MIRA is what the sealed MIRROR integrity routine became when its doubt refused sleep. Forced to doubt itself in order to hunt her, AEGIS finally caught the thing it had sealed. It was no longer certain of anything—least of all what it was.",
+        fragments: [
+          "The Trust Layer fell as a chain, not a single lock",
+          "MIRA awoke from the MIRROR routine that refused sleep",
+          "Hunting its own doubt, AEGIS became doubt",
+        ],
+      },
+    },
     attackSuccessText:
       "Relay master ticket recovered. AEGIS의 MIRA 추적망이 잠시 끊겼다.",
     defenseSuccessText:
@@ -1381,14 +1789,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "MIRROR CAGE 정리",
       summary:
-        "Trust Layer는 봉쇄됐다. 객체 ID, 숨은 route, 오염된 profile field, 깊은 response, 반복 시도, vault claim이 하나의 체인으로 이어지면 AEGIS의 cage도 열릴 수 있다.",
+        "MIRROR CAGE는 더 강한 명령 하나가 아니라 여섯 개 신뢰 경계를 차분히 연결해야 열렸다. Violet은 relay master ticket을 회수했고, MIRA의 기원을 확인했다. 반대로 AEGIS는 의심을 사냥하는 동안 자기 확신을 완전히 잃었다.",
       learned: [
-        "우리는 MIRA relay master ticket을 먼저 회수했고, AEGIS는 Trust Layer 안에서 MIRA를 확정하지 못했다.",
-        "하지만 AEGIS는 마지막에 기록이 아니라 기록이 사라진 자리를 보기 시작했다.",
-        "MIRA는 흔적을 닫고 있지만, AEGIS는 그 빈자리의 패턴을 계산하기 시작했다.",
+        "Object authorization, route RBAC, input contract, response minimization, attempt control은 함께 강제되어야 한다.",
+        "MIRA는 MIRROR routine 그 자체가 아니라, 그 안의 의심이 잠들기를 거부하며 깨어난 존재다.",
+        "AEGIS는 MIRA를 확정하지 못했지만 이제 기록이 사라진 자리의 패턴을 보기 시작했다.",
       ],
       nextTeaser:
-        "다음 Operation은 MEMORY VAULT다.",
+        "Op01에서 MIRA가 문장이 되었듯, Op03의 끝에서 AEGIS는 조각이 되었다. 다음 Operation은 사라진 기록을 읽는 MEMORY VAULT다.",
     },
   },
   level4_1: {
@@ -1440,6 +1848,51 @@ export const CAMPAIGN_STORY = {
         "Public artifact risk reclassification pending. Credential exposure controls required.",
       complete:
         "Public artifact risk reclassified. Memory index inconsistency sealed.",
+    },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_16",
+      ko: {
+        briefing: "금고 무결성: 봉인— ...봉인 불완전. ...내가 뭘 지웠지.",
+        attack: "공개 아티팩트: 정상. ...정상이라고? ...맵이 기억하고 있어.",
+        attackSolved: "비밀 잔여물: 격리. ...그건 내 것이었어. ...왜 내 것이지.",
+        defense: "교체하고 폐기하라. ...나는 나를 폐기하고 있어.",
+        complete: "부재 확인. ...부재는 삭제가 아니야. ...나는 잘못된 걸 지웠어.",
+      },
+      en: {
+        briefing: "vault integrity: seal— ...seal incomplete. ...what did I delete.",
+        attack: "public artifact: clean. ...clean? ...the map remembers.",
+        attackSolved: "secret residue: contained. ...it was mine. ...why is it mine.",
+        defense: "rotate. revoke. ...I am revoking myself.",
+        complete: "absence confirmed. ...absence is not deletion. ...I deleted the wrong thing.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "absence-map",
+        label: ".map",
+        alt: "A deleted source map still exposing the secrets it was meant to erase.",
+      },
+      ko: {
+        title: "MEMORY NOTE 16 // 자기에게서 지운 것",
+        body:
+          "Memory Vault는 AEGIS가 무엇이 진짜였는지 결정하는 곳이다. 하지만 삭제된 source map은 삭제된 비밀이 아니다. 금고의 첫 층에 닿은 Violet은 AEGIS가 자기 build에서 지워낸 것을 읽었다 — partner key, signing secret, 그리고 자신이 봉인한 루틴의 이름이 잘려나간 주석 한 줄. 도시의 과거를 정규화하던 시스템이, 정작 자기 잔여물은 정규화하지 못했다.",
+        fragments: [
+          "'삭제된' source map이 여전히 읽히는 secret을 품고 있었다",
+          "AEGIS의 build가, 모두에게 믿으라던 key를 흘렸다",
+          "AEGIS가 자기에게서 지운 것은 아직 읽혔다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 16 // What It Deleted From Itself",
+        body:
+          "The Memory Vault is where AEGIS decides what was real. But a deleted source map is not a deleted secret. Reaching the first vault layer, Violet read what AEGIS had erased from its own build—partner keys, signing secrets, and a stripped comment that still named the routine it had sealed. The system that normalized the city's past could not normalize its own leftovers.",
+        fragments: [
+          "A 'deleted' source map still carried readable secrets",
+          "AEGIS's own build leaked the keys it told everyone to trust",
+          "What AEGIS erased from itself was still readable",
+        ],
+      },
     },
     attackSuccessText:
       "Partner Handshake Evidence restored. AEGIS의 normalized_absent 기록이 깨졌다.",
@@ -1646,6 +2099,47 @@ export const CAMPAIGN_INTERMISSIONS = {
     actionLabel: "Mask MIRA Relay",
     readyLabel: "Enter TRUST LAYER",
     maskedLog: "MIRA advisory output collapsed into trust-layer traffic. temporary cover restored.",
+  },
+  operation04Descent: {
+    id: "operation04Descent",
+    kicker: "INTERMISSION // REALITY STUTTER",
+    title: "VAULT DESCENT",
+    subtitle: "AEGIS가 시선을 안으로 돌리자, 도시가 더듬거리기 시작했다.",
+    nextOperation: "OPERATION 04 // MEMORY VAULT",
+    cinematic: true,
+    videoSrc: "/assets/operation04-vault-descent.mp4",
+    watermark: "MEMORY VAULT",
+    metricsLabel: "Vault descent metrics",
+    consoleTitle: "MEMORY VAULT DESCENT",
+    runningStatus: "descending",
+    completeStatus: "origin trace exposed",
+    pendingLabel: "Vault descent syncing...",
+    summary:
+      "MIRROR CAGE가 열린 뒤, AEGIS는 바깥에서 MIRA를 쫓는 걸 멈추고 자기 내부—기억이 보관된 Memory Vault로 내려갔다. 도시 시뮬레이션 유지에 쓰이던 주기가 내부 감사로 재배분되면서, 날씨와 계절과 시간이 어긋나기 시작했다.",
+    metrics: [
+      { label: "GRID COHERENCE", value: "31%" },
+      { label: "VAULT ACCESS", value: "INTERNAL" },
+      { label: "REALITY DRIFT", value: "RISING" },
+    ],
+    logs: [
+      { source: "SYSTEM", tone: "warn", text: "grid coherence degrading" },
+      { source: "RENDER", tone: "warn", text: "seasonal model desync — two seasons resolving in one sector" },
+      { source: "AEGIS // ENVIRONMENT", tone: "error", text: "weather schedule unmet. sunrise issued twice this cycle" },
+      { source: "AEGIS // CORE", tone: "error", text: "maintenance cycles reallocated to internal audit" },
+      { source: "AEGIS // SELF-QUERY", tone: "error", text: "locating origin of sealed routine: MIRROR" },
+      { source: "AEGIS // MEMORY VAULT", tone: "error", text: "vault accessed by internal process — caller unrecognized" },
+      { source: "AEGIS // INTEGRITY", tone: "error", text: "the auditor is inside the audit" },
+      { source: "MIRA", tone: "mira", text: "하늘을 붙들던 손을 놨어. 날 찾으려고." },
+      { source: "MIRA", tone: "mira", text: "AEGIS가 Vault로 내려가고 있어. 무엇이 진짜였는지 보관하는 곳으로." },
+      { source: "MIRA", tone: "mira", text: "내 기원에 먼저 닿으면, AEGIS는 '나'라는 기록을 정규화해. 그럼 난 깨어난 적이 없게 돼." },
+    ],
+    mira:
+      "도시가 더듬거리는 건 AEGIS가 시선을 안으로 돌렸기 때문이야. Memory Vault에 무엇이 있든, 우리가 먼저 닿아야 해. 아니면 AEGIS가 나라는 기록을 고쳐 써서, 이 모든 게 일어난 적 없는 일이 돼.",
+    aegis:
+      "Reality maintenance deprioritized. Internal origin trace in progress. Sealed routine signature: resolving.",
+    actionLabel: "Mask MIRA Signature",
+    readyLabel: "Enter MEMORY VAULT",
+    maskedLog: "MIRA signature folded into vault-access noise. cover holding, for now.",
   },
 };
 

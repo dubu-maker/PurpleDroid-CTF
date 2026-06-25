@@ -69,7 +69,7 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "터미널 helper: jwt-forge-none <dispatch_token>" },
   ],
   level2_5: [
-    { platform: "all", text: "이 보스는 2-1~2-4 Attack 해결 후 열린다." },
+    { platform: "all", text: "훈련 콘솔은 한 번에 명령 하나만 지원한다. export, 변수 대입, 세미콜론 명령 연결 대신 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어." },
     { platform: "all", text: "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다." },
     { platform: "all", text: "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해." },
     { platform: "all", text: "dispatch_token은 jwt-decode 또는 decode-token으로 열어 warehouse_path와 gate 값을 확인해." },

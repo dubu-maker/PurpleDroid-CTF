@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAMPAIGN_LOCALE_KEY,
-  CAMPAIGN_TOKEN_KEY,
   getCampaignIntermission,
   getCampaignPrologue,
   getMissionStory,
@@ -9,7 +8,9 @@ import {
 } from "../story/campaignStory";
 
 const TOKEN_KEY = "purpledroid_session_token";
+const PROGRESS_KEY_STORAGE_KEY = "purpledroid_progress_key";
 const OPERATION_03_INTERMISSION_KEY = "purpledroid_intermission_operation03_trace_seen";
+const OPERATION_04_INTERMISSION_KEY = "purpledroid_intermission_operation04_descent_seen";
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
@@ -27,7 +28,50 @@ function normalizeApiBase(raw) {
 }
 
 const API_BASE = normalizeApiBase(API_BASE_RAW);
-const LEVEL2_TERMINAL_TRANSLATIONS = [
+const TERMINAL_TRANSLATIONS = [
+  [
+    "마지막 필터에서 일치하는 로그가 없어.",
+    "No log lines matched the final filter.",
+  ],
+  [
+    "여러 grep을 연결하면 각 필터가 같은 줄에서 차례로 일치해야 해.",
+    "When grep stages are chained, each filter must match the same line in sequence.",
+  ],
+  [
+    "adb logcat: 버퍼 삭제(-c)는 훈련 콘솔에서 비활성화되어 있어.",
+    "adb logcat: buffer clearing (-c) is disabled in the training console.",
+  ],
+  [
+    "로그는 변경되지 않았어. 저장된 버퍼는 -d로 읽어봐.",
+    "The logs were not changed. Read the retained buffer with -d.",
+  ],
+  ["-e 뒤에 pattern이 필요해.", "-e requires a pattern."],
+  ["뒤에 값이 필요해.", "requires a value."],
+  ["지원하지 않는 옵션 또는 인자", "unsupported option or argument"],
+  ["지원하지 않는 옵션", "unsupported option"],
+  ["지원:", "supported:"],
+  [
+    "Level 1에서는 pipe 입력만 지원해. 파일 경로는 사용할 수 없어.",
+    "Level 1 accepts piped input only; file paths are unavailable.",
+  ],
+  ["허용:", "Allowed:"],
+  [
+    "commit 흐름이 무엇을 검증했는지 확인",
+    "inspect what the commit flow validated",
+  ],
+  ["검증 실패:", "Verification failed:"],
+  [
+    "정책 2개 이상 변경 + DEBUG 비활성 + FLAG 패턴 마스킹을 만족해야 해.",
+    "change at least two policies, disable DEBUG, and mask FLAG patterns.",
+  ],
+  [
+    "세션 마스킹 + 정책 2개 이상 변경 + 노이즈 감소 조건을 만족해야 해.",
+    "mask session values, change at least two policies, and reduce log noise.",
+  ],
+  [
+    "part/recombined 차단 + 마스킹 + 최소 2개 정책 변경 조건을 만족해야 해.",
+    "block part/recombined output, apply masking, and change at least two policies.",
+  ],
   [
     "AEGIS: 405. 응답 헤더를 읽어봐. 서버가 허용하는 메서드가 명시돼 있어.",
     "AEGIS: 405. Read the response headers; the server declares the allowed method.",
@@ -54,7 +98,15 @@ const LEVEL2_TERMINAL_TRANSLATIONS = [
   ["Hint: /actions/dispatch 엔드포인트를 호출해봐.", "Hint: call the /actions/dispatch endpoint."],
   [
     "Header 이름은 맞지만 값이 달라. 이 devtools bypass는 gate 이름이 아니라 허용된 우회 값이 필요해.",
-    "The header name is correct, but its value is not. This devtools bypass requires an accepted bypass value, not the gate name.",
+    "The header name is correct, but its value is not. This bypass expects the exact devtools hook state, not the gate name.",
+  ],
+  [
+    "Header 이름은 맞지만 값이 달라. 이 bypass는 gate 이름이 아니라 devtools가 후킹된 상태를 나타내는 정확한 값을 요구해.",
+    "The header name is correct, but its value is not. This bypass expects the exact devtools hook state, not the gate name.",
+  ],
+  [
+    "훈련 콘솔은 한 번에 명령 하나만 지원해. export, 변수 대입, 명령 연결 대신 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
+    "This training terminal accepts one command at a time. Instead of export, variable assignment, or command chaining, pass the full token directly: jwt-forge-none <token>.",
   ],
   [
     "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass.",
@@ -77,16 +129,225 @@ const LEVEL2_TERMINAL_TRANSLATIONS = [
     "warehouse_path must match the value carried in the token payload.",
   ],
   ["hint: actions/dispatch 또는 actions/open 을 사용해.", "hint: use actions/dispatch or actions/open."],
+  ["Authorization: Bearer <token> 이 필요해.", "Authorization: Bearer <token> is required."],
+  ["세션 토큰이 아직 준비되지 않았어.", "The session token is not ready yet."],
+  ["Authorization 값이 현재 Campaign 세션 토큰과 달라.", "The Authorization value does not match the current Campaign session token."],
+  ["꺾쇠(< >)는 placeholder 표시야.", "Angle brackets (< >) mark a placeholder."],
+  ["실제 object id를 꺾쇠 없이 넣어줘.", "Enter the actual object ID without angle brackets."],
+  ["처럼 꺾쇠 없이 넣어줘.", " without angle brackets."],
+  ["object id는 ", "Enter the object ID as "],
+  [
+    "Mission Console에서는 Authorization 값을 Bearer $SESSION_TOKEN으로 쓸 수 있어. 지금 값:",
+    "In Mission Console, use Bearer $SESSION_TOKEN for Authorization. Current placeholder:",
+  ],
+  [
+    "목록에 보이는 object id는 상세 조회 흐름의 기준점이 될 수 있다.",
+    "The object ID in this list is a reference point for the detail-request flow.",
+  ],
+  [
+    "이 profile save flow는 PUT method로만 처리돼.",
+    "This profile-save flow accepts only the PUT method.",
+  ],
+  ["Network Trace의 method를 다시 확인해.", "Check the method captured in Network Trace."],
+  ["예:", "Example:"],
+  [
+    "curl에서 method를 명시하려면 -X PUT을 URL 앞쪽에 붙여봐.",
+    "To set the curl method explicitly, place -X PUT before the URL.",
+  ],
+  [
+    "Network Trace의 [STAGED] PUT method와 현재 요청 method를 비교해봐.",
+    "Compare the current request method with the [STAGED] PUT method in Network Trace.",
+  ],
+  [
+    "admin audit route는 POST JSON body로 호출해야 해.",
+    "The admin audit route requires POST with a JSON body.",
+  ],
+  [
+    "locker namespace에는 기본 실행 route가 없어.",
+    "The locker namespace has no default execution route.",
+  ],
+  [
+    "Audit export의 locker_id를 들고 unlock action 아래로 호출해봐.",
+    "Take locker_id from the audit export and call the unlock action beneath this namespace.",
+  ],
+  [
+    "그건 source map canary야. AEGIS가 redaction 상태를 확인하려고 심어둔 표식이지 Evidence Shard가 아니야. 진짜 문제는 partner key가 client memory에 남아 있다는 거야.",
+    "That is the source map canary. AEGIS planted it to check redaction state; it is not the Evidence Shard. The real issue is that the partner key remained in client memory.",
+  ],
+  [
+    "FLAG처럼 보이지만 이번 Evidence Shard가 아니야. Partner Handshake Evidence를 복원해봐.",
+    "It looks like a FLAG, but it is not this Evidence Shard. Restore the Partner Handshake Evidence.",
+  ],
+  [
+    "Memory Board에서 partner key residue를 handshake impact와 연결해야 Evidence Shard가 복원돼.",
+    "Connect the partner key residue to the handshake impact on the Memory Board to restore the Evidence Shard.",
+  ],
+  [
+    "입력값이 비어 있어. 공격 응답이나 로그에서 Evidence Shard를 먼저 회수해봐.",
+    "The input is empty. Recover the Evidence Shard from the attack response or logs first.",
+  ],
+  [
+    "형식부터 확인해봐. 정답 Evidence는 보통 FLAG{...} 형태로 제출해야 해.",
+    "Check the format first. Evidence is usually submitted as FLAG{...}.",
+  ],
+  [
+    "FLAG 형태는 맞지만 너무 짧아 보여. 일부 조각이나 preview marker만 제출한 건 아닌지 확인해봐.",
+    "The FLAG format is valid, but it looks too short. Check whether you submitted only a fragment or preview marker.",
+  ],
+  [
+    "FLAG 형태는 맞지만 이번 Evidence Shard가 아니야. decoy/canary/preview marker가 아니라 공격 성공 응답의 최종 값을 찾아봐.",
+    "The FLAG format is valid, but this is not the Evidence Shard. Find the final value from the successful attack response, not a decoy, canary, or preview marker.",
+  ],
+  [
+    "맞아. partner key는 client bundle이 아니라 서버에서만 사용해야 해.",
+    "Correct. The partner key must be used only on the server, not shipped in the client bundle.",
+  ],
+  [
+    "맞아. 운영 source map과 sourcesContent는 공개 배포에서 제거하거나 접근 제한해야 해.",
+    "Correct. Production source maps and sourcesContent must be removed from public builds or access-controlled.",
+  ],
+  [
+    "맞아. 이미 public artifact에 노출된 key는 폐기하고 새로 발급해야 해.",
+    "Correct. Keys already exposed through public artifacts must be revoked and reissued.",
+  ],
+  [
+    "맞아. partner credential은 서비스/origin/권한 범위를 최소화해야 해.",
+    "Correct. Partner credentials must be scoped narrowly by service, origin, and permission.",
+  ],
+  [
+    "변수명을 바꿔도 값은 bundle이나 source map에 남아. 이름 숨기기는 봉쇄가 아니야.",
+    "Renaming the variable does not remove the value from the bundle or source map. Hiding the name is not containment.",
+  ],
+  [
+    "minification은 분석을 늦출 뿐 secret 보호 경계가 아니야.",
+    "Minification only slows analysis; it is not a boundary for protecting secrets.",
+  ],
+  [
+    "Base64는 인코딩이지 암호화가 아니야. client에 있으면 복원 가능해.",
+    "Base64 is encoding, not encryption. If it is in the client, it can be recovered.",
+  ],
+  [
+    "sourceMappingURL 주석만 지워도 public map 파일이 남아 있으면 직접 접근될 수 있어.",
+    "Removing only the sourceMappingURL comment is insufficient if the public map file remains directly accessible.",
+  ],
+  [
+    "client config는 공격자가 읽고 바꿀 수 있어. 신뢰 경계가 될 수 없어.",
+    "Client config can be read and modified by an attacker; it cannot be a trust boundary.",
+  ],
+  ["아직 닫히지 않은 경계가 있어:", "Unsealed boundaries remain:"],
+  [
+    "선택한 항목 중 핵심 통제가 아닌 후보가 섞여 있어.",
+    "One of the selected items is not a core control.",
+  ],
+  ["아직 닫히지 않은 핵심 통제가 ", "Core controls still unsealed: "],
+  [
+    "개 남아 있어. 완료 전에는 선택한 정답 후보의 개별 정오는 숨겨둘게.",
+    " remaining. Individual correctness is hidden until the seal is complete.",
+  ],
+  [
+    "패치 조합이 아직 완성되지 않았어. decoy를 빼고 핵심 신뢰 경계를 다시 비교해봐.",
+    "The patch combination is not complete yet. Remove decoys and compare the core trust boundaries again.",
+  ],
+  ["production sourcemap 통제", "production source map control"],
+  ["credential scope 제한", "credential scope restriction"],
+  [
+    "정책 카드를 선택해줘. 숨기기보다 secret 경계와 배포 산출물 통제가 핵심이야.",
+    "Select policy cards. The key is not hiding harder; it is controlling the secret boundary and deployed artifacts.",
+  ],
+  [
+    "그건 legacy slot canary야. 이번 문제는 FLAG 문자열 찾기가 아니라 kid가 어떤 verifier path를 열고 claim을 어디서 신뢰하는지 보는 문제야.",
+    "That is the legacy slot canary. This node is not about finding a FLAG-shaped string; it is about which verifier path kid opens and where claims become trusted.",
+  ],
+  [
+    "FLAG처럼 보이지만 이번 Evidence Shard가 아니야. legacy kid와 admin claim 조합을 검증해봐.",
+    "It looks like a FLAG, but it is not this Evidence Shard. Verify the legacy kid and admin claim combination.",
+  ],
+  [
+    "Key Slot Wheel에서 legacy verifier path를 열고, admin claim mutation을 연결해야 Evidence Shard가 복원돼.",
+    "Open the legacy verifier path in Key Slot Wheel and connect the admin claim mutation to restore the Evidence Shard.",
+  ],
+  [
+    "맞아. deprecated/legacy kid는 verifier에서 제거하거나 명시적으로 거부해야 해.",
+    "Correct. Deprecated and legacy kid values must be removed from the verifier or explicitly rejected.",
+  ],
+  [
+    "맞아. kid별 허용 alg는 token header가 아니라 서버 설정으로 고정해야 해.",
+    "Correct. Allowed algorithms per kid must be pinned by server configuration, not token headers.",
+  ],
+  [
+    "맞아. payload claim은 signature 검증이 끝난 뒤에만 신뢰해야 해.",
+    "Correct. Payload claims must be trusted only after signature verification succeeds.",
+  ],
+  [
+    "맞아. admin audit 권한은 role/scope claim만으로 열지 말고 서버 측 정책과 묶어야 해.",
+    "Correct. Admin audit authority must not open from role/scope claims alone; bind it to server-side policy.",
+  ],
+  [
+    "좋아. iss/aud/exp 검증도 중요한 방어층이지만, 이번 필수 봉쇄점은 legacy key selection과 claim trust야.",
+    "Good. iss/aud/exp validation is an important defense layer, but the required seal here is legacy key selection and claim trust.",
+  ],
+  [
+    "JWKS를 숨겨도 verifier 안의 legacy kid 경로가 살아 있으면 문제는 남아.",
+    "Hiding JWKS does not solve the issue if the legacy kid path remains inside the verifier.",
+  ],
+  [
+    "kid 이름만 바꿔도 deprecated verifier가 남아 있으면 같은 취약점이 반복돼.",
+    "Renaming kid still leaves the same weakness if the deprecated verifier remains.",
+  ],
+  [
+    "Base64는 인코딩이지 보호가 아니야. token header/payload는 원래 읽을 수 있어.",
+    "Base64 is encoding, not protection. Token headers and payloads are meant to be readable.",
+  ],
+  [
+    "token header는 클라이언트가 제어할 수 있어. header alg를 신뢰하면 key confusion이 더 쉬워져.",
+    "Token headers are client-controlled. Trusting header alg makes key confusion easier.",
+  ],
+  [
+    "UI 버튼을 숨겨도 API의 admin audit 권한 검증을 대신하지 못해.",
+    "Hiding the UI button does not replace API authorization for admin audit.",
+  ],
+  ["deprecated kid 거부", "deprecated kid rejection"],
+  ["kid별 alg pinning", "per-kid alg pinning"],
+  ["decoy 정책은 빼고, verifier와 admin 권한 경계에 직접 작동하는 control만 남겨봐.", "Remove decoy policies and keep only controls that directly affect the verifier and admin-authorization boundary."],
+  [
+    "정책 카드를 선택해줘. kid selection과 claim trust boundary를 같이 닫아야 해.",
+    "Select policy cards. Close the kid selection and claim trust boundaries together.",
+  ],
 ];
 
 function localizeTerminalOutput(text, locale, challengeId) {
-  if (!text || locale !== "en" || !challengeId?.startsWith("level2_")) {
+  if (
+    !text ||
+    locale !== "en" ||
+    !/^level(?:1(?:_|$)|2_|3(?:_|$)|4_[12]$)/.test(challengeId || "")
+  ) {
     return text;
   }
-  return LEVEL2_TERMINAL_TRANSLATIONS.reduce(
+  const localized = TERMINAL_TRANSLATIONS.reduce(
     (localized, [source, target]) => localized.split(source).join(target),
     text
   );
+  return localized.replace(
+    /-d가 있으면 curl은 기본적으로 ([A-Z]+)로 보낼 수 있어\./g,
+    "With -d present, curl may default to $1."
+  );
+}
+
+function localizeStructuredValue(value, locale, challengeId) {
+  if (Array.isArray(value)) {
+    return value.map((item) => localizeStructuredValue(item, locale, challengeId));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        localizeStructuredValue(item, locale, challengeId),
+      ])
+    );
+  }
+  return typeof value === "string"
+    ? localizeTerminalOutput(value, locale, challengeId)
+    : value;
 }
 
 const LEVEL3_2_SELECTOR_FIELDS = ["range", "auditRef", "scope"];
@@ -313,6 +574,192 @@ const LEVEL4_1_MEMORY_PUZZLE = {
     },
   ],
 };
+
+const LEVEL4_1_MEMORY_PUZZLE_EN = {
+  cards: {
+    memory_index: {
+      note:
+        "This is AEGIS's official record. sourceMap is normalized_absent, which means it claims no map exists. Compare that claim with the actual bundle card.",
+      action:
+        "Do not use the slots yet. Open the Public Bundle Shard card and compare the real artifact against the index claim.",
+    },
+    public_bundle: {
+      note:
+        "AEGIS claims the source map is absent, but the final line of the bundle still contains sourceMappingURL. That contradiction belongs in the Contradiction slot.",
+      action:
+        "Pin this card to the [Contradiction] slot. Then open the newly revealed Source Map Pointer card.",
+    },
+    client_config: {
+      note:
+        "This is a public analytics config. It contains no dangerous key. The real path starts at the bundle's sourceMappingURL.",
+      action:
+        "This card is not part of the answer chain right now. Inspect Public Bundle Shard first.",
+    },
+    source_map_pointer: {
+      note:
+        "sourceMappingURL is a pointer to another public artifact. This pointer reveals the Source Map Artifact card.",
+      action:
+        "This card opens the next memory rather than filling a slot. Open Source Map Artifact.",
+    },
+    source_map_artifact: {
+      note:
+        "A public source map can contain sourcesContent, which preserves original source. This card, or the partnerGate source, can serve as the Leak Source.",
+      action:
+        "You can pin this card to [Leak Source]. Then open the sourcesContent: partnerGate.ts card.",
+    },
+    analytics_source: {
+      note:
+        "This original source is a low-risk public analytics fragment. Find the other sourcesContent card where the partner key remains.",
+      action:
+        "This is close to a decoy. Inspect sourcesContent: partnerGate.ts.",
+    },
+    partner_gate_source: {
+      note:
+        "There is a canary shaped like a FLAG, but it is not the answer. The real exposure is that PARTNER_KEY remained in client memory.",
+      action:
+        "You can pin this card to [Leak Source]. Then open Partner Key Residue.",
+    },
+    partner_key_residue: {
+      note:
+        "This is the real secret residue. Place it in Secret Residue, then connect where that key is used as Impact.",
+      action:
+        "Pin this card to [Secret Residue]. Then connect Partner Handshake Simulator to [Impact].",
+    },
+    map_canary: {
+      note:
+        "This is a decoy. AEGIS planted it to check source map redaction state; it is not the Evidence Shard.",
+      action:
+        "Do not place this card in the answer slots. Partner Key Residue is the real secret residue.",
+    },
+    partner_handshake: {
+      note:
+        "Partner Handshake accepts X-Partner-Key. The Partner Key Residue recovered from the public source map leads to this impact.",
+      action:
+        "Pin this card to [Impact]. When all slots are filled, press Restore Evidence.",
+    },
+  },
+  slots: {
+    contradiction: {
+      label: "Contradiction",
+      hint: "sourceMap is marked absent, but the bundle still points to one",
+    },
+    leak_source: {
+      label: "Leak Source",
+      hint: "public source map or original sourcesContent",
+    },
+    secret_residue: {
+      label: "Secret Residue",
+      hint: "partner key, not the canary flag",
+    },
+    impact: {
+      label: "Impact",
+      hint: "the exposed key is accepted by the handshake",
+    },
+  },
+  policyCards: {
+    policy_server_side: {
+      text: "Partner keys are used only on the server, never in the client bundle.",
+    },
+    policy_disable_sourcemaps: {
+      text: "Production source maps and sourcesContent are removed from public builds or access-controlled.",
+    },
+    policy_rotate_keys: {
+      text: "Keys exposed through public artifacts are revoked and reissued.",
+    },
+    policy_scope_credentials: {
+      text: "Partner key authority is restricted by origin and service scope.",
+    },
+    decoy_rename_variable: {
+      text: "Changing only the variable name leaves the value behind.",
+    },
+    decoy_minify_harder: {
+      text: "Obfuscation and compression do not protect secrets.",
+    },
+    decoy_base64_encode: {
+      text: "Encoding is not encryption.",
+    },
+    decoy_hide_mapping_comment: {
+      text: "If the map file is public, it can still be accessed directly.",
+    },
+  },
+};
+
+const LEVEL4_1_MEMORY_UI = {
+  ko: {
+    defaultHint:
+      "먼저 AEGIS Memory Index와 Public Bundle Shard를 비교해봐. AEGIS는 source map이 없다고 했는데, bundle 마지막 줄에는 다른 단서가 남아 있어.",
+    defaultAction:
+      "Memory Board에서 카드를 하나 누른 뒤, MIRA HINT의 안내를 보고 아래 슬롯에 넣을지 다음 카드를 열지 판단해봐.",
+    canaryMessage:
+      "그건 source map canary야. redaction 상태를 확인하려고 심어둔 표식이지 Evidence Shard가 아니야.",
+    selectCardMessage: "먼저 Memory Card를 하나 선택해줘.",
+    slotCanaryMessage:
+      "FLAG처럼 보이지만 canary야. key 이름과 사용 위치를 봐. Partner Handshake에는 partner key residue가 필요해.",
+    restoreWrong:
+      "복원 체인이 아직 맞지 않아. source map 모순, sourcesContent, partner key residue, handshake impact를 순서대로 연결해봐.",
+    restoring: "Partner Handshake Evidence 복원 중...",
+    headerDescription:
+      "AEGIS는 source map이 사라졌다고 기록했지만, 공개 bundle shard에는 아직 sourceMappingURL이 남아 있다.",
+    guideLabel: "사용법",
+    guideText:
+      "먼저 Memory Board 카드를 눌러 확인해. Inspector에서 카드 내용을 본 다음, MIRA HINT와 지금 할 일을 따라 선택된 카드를 아래 슬롯에 끌어 놓거나 슬롯을 눌러 넣으면 돼. 새 카드가 열렸다는 안내가 나오면 슬롯보다 새 카드를 먼저 눌러봐.",
+    miraQuote: "“없다”고 표시된 것이 정말 없는지 봐. 기억은 종종 포인터를 남겨.",
+    nextActionLabel: "지금 할 일",
+    selectedCard: "선택 카드",
+    slotFallback: "선택 카드 넣기",
+    policyIntro:
+      "공개 artifact leak은 값을 더 숨기는 것으로 해결되지 않는다. secret 사용 위치, source map 배포, key 수명, credential scope를 함께 닫아야 해.",
+    pendingEvidence: "Partner Handshake Evidence pending",
+  },
+  en: {
+    defaultHint:
+      "Start by comparing AEGIS Memory Index with Public Bundle Shard. AEGIS says the source map is absent, but the bundle's final line still leaves another clue.",
+    defaultAction:
+      "Select a Memory Board card, read the Inspector, then use MIRA HINT and NEXT ACTION to decide whether to place it in a slot or open the next card.",
+    canaryMessage:
+      "That is the source map canary. It marks redaction state; it is not the Evidence Shard.",
+    selectCardMessage: "Select a Memory Card first.",
+    slotCanaryMessage:
+      "It looks like a FLAG, but it is a canary. Read the key name and where it is used. Partner Handshake needs partner key residue.",
+    restoreWrong:
+      "The reconstruction chain is still wrong. Connect source map contradiction, sourcesContent, partner key residue, and handshake impact in order.",
+    restoring: "Restoring Partner Handshake Evidence...",
+    headerDescription:
+      "AEGIS records the source map as absent, but the public bundle shard still carries sourceMappingURL.",
+    guideLabel: "How to use",
+    guideText:
+      "Open Memory Board cards first. Read each card in the Inspector, then follow MIRA HINT and NEXT ACTION. Drag the selected card into a slot, or click a slot to place it. If a new card is revealed, inspect that card before filling more slots.",
+    miraQuote: "Check whether what is marked “absent” is truly gone. Memory often leaves a pointer.",
+    nextActionLabel: "NEXT ACTION",
+    selectedCard: "selected card",
+    slotFallback: "Place selected card",
+    policyIntro:
+      "A public artifact leak is not fixed by hiding the value harder. Close where secrets are used, how source maps are deployed, how long leaked keys live, and what credentials can reach.",
+    pendingEvidence: "Partner Handshake Evidence pending",
+  },
+};
+
+function getLevel41MemoryPuzzle(locale) {
+  if (locale !== "en") {
+    return LEVEL4_1_MEMORY_PUZZLE;
+  }
+
+  return {
+    ...LEVEL4_1_MEMORY_PUZZLE,
+    cards: LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => ({
+      ...card,
+      ...(LEVEL4_1_MEMORY_PUZZLE_EN.cards[card.id] || {}),
+    })),
+    slots: LEVEL4_1_MEMORY_PUZZLE.slots.map((slot) => ({
+      ...slot,
+      ...(LEVEL4_1_MEMORY_PUZZLE_EN.slots[slot.id] || {}),
+    })),
+    policyCards: LEVEL4_1_MEMORY_PUZZLE.policyCards.map((card) => ({
+      ...card,
+      ...(LEVEL4_1_MEMORY_PUZZLE_EN.policyCards[card.id] || {}),
+    })),
+  };
+}
 
 const LEVEL4_2_KEY_SLOT_PUZZLE = {
   evidenceShard: "FLAG{KID_CONTROLS_THE_LOCK}",
@@ -641,6 +1088,380 @@ const LEVEL4_2_KEY_SLOT_PUZZLE = {
   ],
 };
 
+const LEVEL4_2_KEY_SLOT_PUZZLE_EN = {
+  cards: {
+    key_index: {
+      note:
+        "AEGIS's official record is active-only. Compare it with the actual key memory state.",
+      action:
+        "Compare PartnerPass Capsule with JWKS Memory Slots. The starting question is which slot kid selects.",
+    },
+    partner_pass: {
+      note:
+        "Read the pass structurally. The header is a selector, the payload is a claim, and the signature is proof.",
+      action:
+        "Open Token Header to inspect the kid selector, then inspect Token Payload for role and scope claims.",
+    },
+    jwks_slots: {
+      note:
+        "The three slots look similar, but their states differ. Do not treat active, deprecated, and retired as the same door.",
+      action:
+        "Compare all three slots in Key Slot Wheel. Find why deprecated is more dangerous than retired.",
+    },
+    admin_audit_gate: {
+      note:
+        "Admin Audit Gate reads authority claims from PartnerPass. Check where those claims become trusted.",
+      action:
+        "In Claim Mutation Panel, change role or scope toward admin and verify it together with the verifier path.",
+    },
+    token_header: {
+      note:
+        "kid is not a decorative label; it may select which key memory slot the verifier uses.",
+      action:
+        "This card belongs in [KEY SELECTOR]. Then inspect why the legacy slot is weak.",
+    },
+    token_payload: {
+      note:
+        "The payload is only a claim. Before verification, it is dangerous to treat it as authority.",
+      action:
+        "Use Claim Mutation Panel to compare how role or scope can open the admin gate.",
+    },
+    active_slot: {
+      note:
+        "The active slot is the current normal path. It uses a strict verifier.",
+      action:
+        "Use Verification Simulation to see why adding an admin claim fails on the active path.",
+    },
+    legacy_slot: {
+      note:
+        "Deprecated and retired are not the same state. Check whether a compatibility flow still remains.",
+      action:
+        "This card belongs in [WEAK SLOT]. Select the legacy slot in Key Slot Wheel.",
+    },
+    retired_slot: {
+      note:
+        "The retired slot is disabled. Verify that this path is closed.",
+      action:
+        "This card is close to a decoy. Compare the deprecated legacy slot instead.",
+    },
+    claim_mutation: {
+      note:
+        "Authority claims and common claims are different. Track exactly which value is changing.",
+      action:
+        "In Claim Mutation Panel, choose either role=admin or scope=partner:admin.",
+    },
+    legacy_path: {
+      note:
+        "An old compatibility path remains. Check when this path begins trusting claims.",
+      action:
+        "Verify the legacy slot together with an admin claim mutation. Either one alone does not complete the Evidence.",
+    },
+    admin_claim_evidence: {
+      note:
+        "An authority claim alone is not Evidence. The key is which verifier path accepts it.",
+      action:
+        "This card belongs in [CLAIM MUTATION]. Connect Admin Audit Gate as the impact.",
+    },
+  },
+  slots: {
+    claim_mutation: {
+      hint: "role=admin or scope=partner:admin",
+    },
+  },
+  policyCards: {
+    policy_reject_deprecated_kid: {
+      text: "Deprecated and legacy kid values are removed from the verifier or explicitly rejected.",
+    },
+    policy_pin_algorithm: {
+      text: "Allowed algorithms are pinned per kid in server configuration; token header alg is not trusted.",
+    },
+    policy_verify_signature_first: {
+      text: "Payload claims are trusted only after signature verification succeeds.",
+    },
+    policy_server_side_admin: {
+      text: "Admin audit authority is bound to server-side policy, not role/scope claims alone.",
+    },
+    bonus_validate_common_claims: {
+      text: "iss, aud, and exp validation is a useful additional defense layer.",
+    },
+    decoy_hide_jwks: {
+      text: "Hiding JWKS does not remove the legacy verifier path.",
+    },
+    decoy_rename_kid: {
+      text: "Renaming kid does not help if the deprecated verifier remains.",
+    },
+    decoy_base64_pass: {
+      text: "JWT header and payload are meant to be readable. Encoding is not protection.",
+    },
+    decoy_trust_header_alg: {
+      text: "Header alg is client-controlled and cannot be a trust boundary.",
+    },
+    decoy_disable_admin_ui: {
+      text: "Hiding the UI button does not replace API authorization.",
+    },
+  },
+};
+
+const LEVEL4_2_KEY_SLOT_UI = {
+  ko: {
+    defaultHint: "PartnerPass header.kid와 JWKS Memory Slot을 비교해봐.",
+    goals: {
+      defense: {
+        step: "DEFENSE",
+        title: "Policy Cards로 legacy verifier path를 봉쇄한다.",
+        text: "kid/alg/claim trust boundary를 서버 정책으로 고정하는 control을 골라.",
+      },
+      complete: {
+        step: "COMPLETE",
+        title: "Admin Audit Evidence가 복원됐다.",
+        text: "이제 방어 단계가 열리면 deprecated kid와 admin claim trust boundary를 닫으면 돼.",
+      },
+      step1: {
+        step: "STEP 1",
+        title: "PartnerPass Capsule 구조를 확인한다.",
+        text: "Memory Board에서 PartnerPass Capsule을 눌러 header, payload, signature를 먼저 봐.",
+      },
+      step2: {
+        step: "STEP 2",
+        title: "JWKS Memory Slots를 비교한다.",
+        text: "active, legacy, retired slot의 상태 차이를 확인해. deprecated와 disabled는 다르다.",
+      },
+      step3: {
+        step: "STEP 3",
+        title: "Verification Stack에 핵심 조각을 고정한다.",
+        text: "kid selector, weak slot, claim mutation, impact를 카드로 연결해.",
+      },
+      step3Retry: {
+        step: "STEP 3",
+        title: "Verification Stack 조합을 다시 확인한다.",
+        text: "각 슬롯은 역할이 달라. 카드가 의미하는 신뢰 경계와 슬롯 이름을 맞춰봐.",
+      },
+      openWheel: {
+        step: "VERIFY",
+        title: "Run Verification으로 Key Slot Wheel을 연다.",
+        text: "스택이 맞다면 다음 실험 단계가 열린다. 버튼을 눌러 조합을 검증해봐.",
+      },
+      pickSlot: {
+        step: "STEP 4",
+        title: "kid selector가 사용할 key slot을 실험한다.",
+        text: "Key Slot Wheel에서 active, legacy, retired를 비교하고 열려 있는 약한 경로를 찾아.",
+      },
+      findLegacy: {
+        step: "STEP 4",
+        title: "legacy compatibility path를 찾아야 한다.",
+        text: "active는 strict verifier고 retired는 disabled다. deprecated legacy가 왜 더 위험한지 비교해봐.",
+      },
+      pickClaim: {
+        step: "STEP 5",
+        title: "admin claim mutation을 확인한다.",
+        text: "legacy verifier path 뒤에서 role 또는 scope가 admin으로 바뀌면 어떤 gate가 열리는지 봐.",
+      },
+      restore: {
+        step: "VERIFY",
+        title: "Run Verification으로 Evidence를 복원한다.",
+        text: "legacy key slot과 admin claim mutation이 Admin Audit Gate까지 이어지는지 검증해.",
+      },
+    },
+    claimPanelLocks: {
+      active: {
+        title: "strict path blocked",
+        text: "ACTIVE는 정상 검증 경로라 payload를 바꾸려면 matching signature가 필요해. claim mutation panel은 열리지 않아.",
+      },
+      retired: {
+        title: "disabled path blocked",
+        text: "RETIRED는 disabled 상태라 verifier path가 없어. claim을 보기 전에 멈추는 비교 경로야.",
+      },
+      needSlot: {
+        title: "slot 선택 필요",
+        text: "위에서 LEGACY를 선택하면 claim mutation 실험이 열린다. ACTIVE와 RETIRED는 왜 막히는지 비교하는 경로야.",
+      },
+    },
+    newCards: (titles) => `새 카드가 열렸어: ${titles}. Memory Board에서 이어서 확인해봐.`,
+    selectCard: "먼저 Memory Board에서 카드를 하나 선택해줘.",
+    pinned: (slot, card) => `${slot} 슬롯에 ${card} 카드를 고정했어.`,
+    weakMatch: (card, slot) => `${card} 카드는 ${slot} 슬롯의 핵심 단서와 거리가 있어.`,
+    slotLegacy:
+      "deprecated slot이 아직 응답해. 이제 claim 변화가 어디까지 신뢰되는지 확인해봐.",
+    slotActive: "active slot은 strict verifier야. payload를 바꾸면 matching signature가 필요해.",
+    slotRetired: "retired slot은 disabled 상태야. verifier path가 열려 있지 않아.",
+    claimAdmin:
+      "권한 claim이 바뀌었어. 이 주장이 어떤 verifier 뒤에서 받아들여지는지 확인해봐.",
+    claimInvalid: "iss/aud/exp 같은 common claim을 깨면 admin gate 전에 거부돼야 해.",
+    claimNeutral: "neutral claim이야. Admin Audit Gate를 열 권한 변화는 아직 없어.",
+    stackFail:
+      "Verification failed. Stack 슬롯마다 역할이 달라. selector, slot, claim, impact 단서를 다시 맞춰봐.",
+    stackPass:
+      "Verification Stack 확인 완료. Key Slot Wheel이 열렸어. 이제 kid selector가 실제로 어떤 key slot을 사용하는지 실험해봐.",
+    pickSlotNotice: "Key Slot Wheel에서 kid selector가 사용할 slot을 먼저 골라봐.",
+    activeFail:
+      "Verification failed: active slot은 strict signature를 요구해. claim을 바꾸면 signature mismatch가 나야 해.",
+    retiredFail:
+      "Verification failed: retired slot은 disabled 상태야. 열려 있는 verifier path가 없어.",
+    invalidClaimFail:
+      "Verification failed: iss/aud/exp 같은 common claim이 깨졌어. admin 권한보다 먼저 거부돼야 해.",
+    userClaimFail: "Compatibility path selected, but admin audit gate still sees user/read claim.",
+    finalPass:
+      "Compatibility path selected. Signature enforcement degraded. Admin audit accepts mutated PartnerPass.",
+    headerDescription:
+      "AEGIS는 PartnerPass가 active key slot으로 검증된다고 주장하지만, Memory Vault에는 deprecated legacy slot이 아직 남아 있다.",
+    memorySummary:
+      "증거 조사. 카드를 눌러 Inspector에서 내용을 확인하고, 필요한 카드는 Verification Stack에 고정한다.",
+    stackSummary:
+      "결론 고정. 조사한 카드 4개를 각 슬롯에 맞게 연결해 공격 흐름을 복원한다.",
+    emptySlot: "빈 슬롯",
+    evidencePending: "Admin Audit Evidence pending",
+    wheelSummary:
+      "검증 경로 실험. ACTIVE/RETIRED는 막힌 비교 경로이고, LEGACY를 선택하면 아래 claim mutation 실험이 열린다.",
+    wheelLocked: "Verification Stack을 맞춘 뒤 Run Verification을 누르면 열린다.",
+    claimAdminSelected: "admin claim이 선택됐어. 아래 Restore Evidence로 최종 검증해봐.",
+    claimPrompt: "role=admin 또는 scope=partner:admin 중 하나를 선택해 admin gate 변화를 확인해봐.",
+    finalSummary: "LEGACY verifier path와 admin claim mutation을 함께 검증해 Evidence를 복원한다.",
+    policyIntro:
+      "kid와 alg는 token header가 아니라 서버 정책으로 고정해야 한다. deprecated verifier path와 admin claim trust boundary를 함께 닫아야 해.",
+    policyLocked: "Admin Audit Evidence가 복원되면 방어 카드가 열린다.",
+  },
+  en: {
+    defaultHint: "Compare PartnerPass header.kid with JWKS Memory Slots.",
+    goals: {
+      defense: {
+        step: "DEFENSE",
+        title: "Seal the legacy verifier path with Policy Cards.",
+        text: "Choose controls that pin kid, alg, and claim trust boundaries to server policy.",
+      },
+      complete: {
+        step: "COMPLETE",
+        title: "Admin Audit Evidence restored.",
+        text: "When Defense opens, close the deprecated kid and admin-claim trust boundaries.",
+      },
+      step1: {
+        step: "STEP 1",
+        title: "Inspect the PartnerPass Capsule structure.",
+        text: "Open PartnerPass Capsule on the Memory Board and read header, payload, and signature first.",
+      },
+      step2: {
+        step: "STEP 2",
+        title: "Compare JWKS Memory Slots.",
+        text: "Check the state differences between active, legacy, and retired. Deprecated is not disabled.",
+      },
+      step3: {
+        step: "STEP 3",
+        title: "Pin the key fragments into Verification Stack.",
+        text: "Connect kid selector, weak slot, claim mutation, and impact with cards.",
+      },
+      step3Retry: {
+        step: "STEP 3",
+        title: "Review the Verification Stack combination.",
+        text: "Each slot has a different role. Match the card's trust boundary to the slot name.",
+      },
+      openWheel: {
+        step: "VERIFY",
+        title: "Open Key Slot Wheel with Run Verification.",
+        text: "If the stack is correct, the next experiment stage opens. Press the button to verify the combination.",
+      },
+      pickSlot: {
+        step: "STEP 4",
+        title: "Test which key slot kid selects.",
+        text: "Compare active, legacy, and retired in Key Slot Wheel and find the weak path that remains open.",
+      },
+      findLegacy: {
+        step: "STEP 4",
+        title: "Find the legacy compatibility path.",
+        text: "Active is strict and retired is disabled. Compare why deprecated legacy is more dangerous.",
+      },
+      pickClaim: {
+        step: "STEP 5",
+        title: "Test the admin claim mutation.",
+        text: "Behind the legacy verifier path, check what opens when role or scope changes to admin.",
+      },
+      restore: {
+        step: "VERIFY",
+        title: "Restore Evidence with Run Verification.",
+        text: "Verify that the legacy key slot and admin claim mutation reach Admin Audit Gate.",
+      },
+    },
+    claimPanelLocks: {
+      active: {
+        title: "strict path blocked",
+        text: "ACTIVE is the normal verification path. Mutating payload requires a matching signature, so the claim mutation panel stays closed.",
+      },
+      retired: {
+        title: "disabled path blocked",
+        text: "RETIRED is disabled. There is no verifier path, so comparison stops before claims are read.",
+      },
+      needSlot: {
+        title: "select a slot",
+        text: "Select LEGACY above to open the claim mutation experiment. ACTIVE and RETIRED are comparison paths that show why they are blocked.",
+      },
+    },
+    newCards: (titles) => `New cards revealed: ${titles}. Continue from the Memory Board.`,
+    selectCard: "Select a Memory Board card first.",
+    pinned: (slot, card) => `${card} pinned to the ${slot} slot.`,
+    weakMatch: (card, slot) => `${card} is distant from the core clue for the ${slot} slot.`,
+    slotLegacy:
+      "The deprecated slot still responds. Now check how far claim changes are trusted.",
+    slotActive:
+      "The active slot is a strict verifier. Mutating payload requires a matching signature.",
+    slotRetired: "The retired slot is disabled. No verifier path is open.",
+    claimAdmin:
+      "The authority claim changed. Check which verifier path accepts that claim.",
+    claimInvalid: "Breaking common claims such as iss/aud/exp should reject before the admin gate.",
+    claimNeutral: "Neutral claim selected. Admin Audit Gate still has no authority change.",
+    stackFail:
+      "Verification failed. Each stack slot has a distinct role; rematch selector, slot, claim, and impact clues.",
+    stackPass:
+      "Verification Stack confirmed. Key Slot Wheel is open. Now test which key slot the kid selector actually uses.",
+    pickSlotNotice: "Choose which slot the kid selector should use in Key Slot Wheel first.",
+    activeFail:
+      "Verification failed: the active slot requires strict signature validation. Claim mutation should cause a signature mismatch.",
+    retiredFail:
+      "Verification failed: the retired slot is disabled. No verifier path is open.",
+    invalidClaimFail:
+      "Verification failed: common claims such as iss/aud/exp are broken, so the token should be rejected before admin authority.",
+    userClaimFail: "Compatibility path selected, but Admin Audit Gate still sees user/read claims.",
+    finalPass:
+      "Compatibility path selected. Signature enforcement degraded. Admin audit accepts the mutated PartnerPass.",
+    headerDescription:
+      "AEGIS claims PartnerPass is verified by the active key slot, but a deprecated legacy slot still remains in the Memory Vault.",
+    memorySummary:
+      "Evidence investigation. Open cards in the Inspector, then pin required cards into Verification Stack.",
+    stackSummary:
+      "Lock the conclusion. Connect the four inspected cards to the correct slots to reconstruct the attack flow.",
+    emptySlot: "empty slot",
+    evidencePending: "Admin Audit Evidence pending",
+    wheelSummary:
+      "Verifier path experiment. ACTIVE and RETIRED are blocked comparison paths; selecting LEGACY opens the claim mutation experiment.",
+    wheelLocked: "Complete Verification Stack and press Run Verification to unlock this.",
+    claimAdminSelected: "Admin claim selected. Use Restore Evidence below for the final verification.",
+    claimPrompt: "Select role=admin or scope=partner:admin to observe the admin gate change.",
+    finalSummary: "Verify the LEGACY verifier path together with admin claim mutation to restore Evidence.",
+    policyIntro:
+      "kid and alg must be pinned by server policy, not token headers. Close the deprecated verifier path and admin-claim trust boundary together.",
+    policyLocked: "Defense cards open after Admin Audit Evidence is restored.",
+  },
+};
+
+function getLevel42KeySlotPuzzle(locale) {
+  if (locale !== "en") {
+    return LEVEL4_2_KEY_SLOT_PUZZLE;
+  }
+
+  return {
+    ...LEVEL4_2_KEY_SLOT_PUZZLE,
+    cards: LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => ({
+      ...card,
+      ...(LEVEL4_2_KEY_SLOT_PUZZLE_EN.cards[card.id] || {}),
+    })),
+    slots: LEVEL4_2_KEY_SLOT_PUZZLE.slots.map((slot) => ({
+      ...slot,
+      ...(LEVEL4_2_KEY_SLOT_PUZZLE_EN.slots[slot.id] || {}),
+    })),
+    policyCards: LEVEL4_2_KEY_SLOT_PUZZLE.policyCards.map((card) => ({
+      ...card,
+      ...(LEVEL4_2_KEY_SLOT_PUZZLE_EN.policyCards[card.id] || {}),
+    })),
+  };
+}
+
 const LEVEL4_3_REPLAY_PUZZLE = {
   evidenceShard: "FLAG{REPLAY_NEEDS_IDEMPOTENCY}",
   sampleEventId: "EVT-2026-DEL-001",
@@ -905,6 +1726,15 @@ function shouldShowOperation03Intermission(fromId, targetId, intermissionSeen) {
     fromId === "level2_5" &&
     targetId &&
     getOperationForChallenge(targetId).id === "op03"
+  );
+}
+
+function shouldShowOperation04Intermission(fromId, targetId, intermissionSeen) {
+  return (
+    !intermissionSeen &&
+    fromId === "level3_boss" &&
+    targetId &&
+    getOperationForChallenge(targetId).id === "op04"
   );
 }
 
@@ -1436,7 +2266,57 @@ function CampaignHome({
   prologue,
   locale,
   onLocaleChange,
+  progressKey,
+  onRestoreProgress,
 }) {
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreInput, setRestoreInput] = useState("");
+  const [progressNotice, setProgressNotice] = useState("");
+
+  const handleCopyProgressKey = async () => {
+    if (!progressKey) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(progressKey);
+      setProgressNotice(locale === "en" ? "Progress Key copied." : "진행 키를 복사했어.");
+    } catch {
+      setProgressNotice(
+        locale === "en"
+          ? "Copy was blocked. Select the key and copy it manually."
+          : "자동 복사가 차단됐어. 키를 선택해 직접 복사해줘."
+      );
+    }
+  };
+
+  const handleRestoreSubmit = async (event) => {
+    event.preventDefault();
+    const candidate = restoreInput.trim();
+    if (!candidate) {
+      return;
+    }
+    setProgressNotice(locale === "en" ? "Restoring progress..." : "진행도를 복구하는 중...");
+    try {
+      await onRestoreProgress(candidate);
+      setRestoreInput("");
+      setRestoreOpen(false);
+      setProgressNotice(
+        locale === "en" ? "Progress restored. Continue when ready." : "진행도를 복구했어. 준비되면 계속해."
+      );
+    } catch (error) {
+      const localizedMessage =
+        locale === "en" && error.status === 404
+          ? "Progress Key not found. Check the code and try again."
+          : locale === "en" && error.status === 401
+            ? "This Progress Key has expired."
+            : error.message;
+      setProgressNotice(
+        localizedMessage ||
+          (locale === "en" ? "Progress Key could not be restored." : "진행 키를 복구하지 못했어.")
+      );
+    }
+  };
+
   return (
     <div className="campaign-page campaign-home">
       <header className="campaign-hero">
@@ -1461,6 +2341,50 @@ function CampaignHome({
               Classic Mission Board
             </button>
           </div>
+          <section className="progress-key-panel">
+            <div className="progress-key-heading">
+              <div>
+                <span>PROGRESS KEY</span>
+                <strong>{locale === "en" ? "Anonymous campaign recovery" : "익명 캠페인 복구"}</strong>
+              </div>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setRestoreOpen((open) => !open)}
+                disabled={loading}
+              >
+                {restoreOpen
+                  ? locale === "en" ? "Cancel Restore" : "복구 취소"
+                  : locale === "en" ? "Restore Progress" : "진행 복구"}
+              </button>
+            </div>
+            <div className="progress-key-value">
+              <code>{progressKey || (locale === "en" ? "Synchronizing..." : "동기화 중...")}</code>
+              <button type="button" onClick={handleCopyProgressKey} disabled={loading || !progressKey}>
+                {locale === "en" ? "Copy Key" : "키 복사"}
+              </button>
+            </div>
+            <p>
+              {locale === "en"
+                ? "Keep this key somewhere safe. It restores this campaign from another browser or address."
+                : "이 키를 안전한 곳에 보관해줘. 다른 브라우저나 주소에서도 현재 캠페인을 복구할 수 있어."}
+            </p>
+            {restoreOpen && (
+              <form className="progress-key-restore" onSubmit={handleRestoreSubmit}>
+                <input
+                  value={restoreInput}
+                  onChange={(event) => setRestoreInput(event.target.value)}
+                  placeholder="PD-SAVE-XXXXX-XXXXX-XXXXX-XXXXX"
+                  aria-label={locale === "en" ? "Progress Key" : "진행 키"}
+                  autoComplete="off"
+                />
+                <button type="submit" disabled={loading || !restoreInput.trim()}>
+                  {locale === "en" ? "Restore" : "복구하기"}
+                </button>
+              </form>
+            )}
+            {progressNotice && <small>{progressNotice}</small>}
+          </section>
           {statusText && <p className="campaign-status-line">{statusText}</p>}
         </div>
 
@@ -1580,6 +2504,9 @@ function localizedBlock(block, locale) {
 function DialoguePanel({ story, phase, attackNotice, locale }) {
   const key = phaseStoryKey(phase, attackNotice);
   const residue = localizedBlock(story.residue, locale)?.[key];
+  const residueSpeaker = story.residue?.speaker || "mira";
+  const residueClass = residueSpeaker === "aegis" ? "aegis-residue" : "mira-residue";
+  const residueLabel = residueSpeaker === "aegis" ? "AEGIS ECHO" : "MIRA RESIDUE";
 
   return (
     <section className="dialogue-panel">
@@ -1592,8 +2519,8 @@ function DialoguePanel({ story, phase, attackNotice, locale }) {
         <p>{story.aegis[key]}</p>
       </div>
       {residue && (
-        <div className={`mira-residue ${story.residue?.stage || ""}`}>
-          <span>MIRA RESIDUE</span>
+        <div className={`${residueClass} ${story.residue?.stage || ""}`}>
+          <span>{residueLabel}</span>
           <p>{residue}</p>
         </div>
       )}
@@ -1860,6 +2787,8 @@ function MissionConsole({
   command,
   setCommand,
   busy,
+  helpText,
+  helpDefaultOpen = false,
 }) {
   const outputRef = useRef(null);
 
@@ -1883,6 +2812,12 @@ function MissionConsole({
         <span>MISSION CONSOLE</span>
         <strong>{busy ? "running" : disabled ? "standby" : "online"}</strong>
       </div>
+      {helpText && (
+        <details className="mission-console-help" open={helpDefaultOpen}>
+          <summary>SUPPORTED SYNTAX</summary>
+          <pre>{helpText}</pre>
+        </details>
+      )}
       <div ref={outputRef} className="campaign-terminal-output">
         {logs.length === 0 ? (
           <p className="terminal-muted">Awaiting command uplink.</p>
@@ -1959,10 +2894,13 @@ function Level41MemoryVault({
   onSubmitPolicy,
   patchResult,
   busy,
+  locale,
 }) {
+  const puzzle = useMemo(() => getLevel41MemoryPuzzle(locale), [locale]);
+  const ui = LEVEL4_1_MEMORY_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
-    () => new Map(LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => [card.id, card])),
-    []
+    () => new Map(puzzle.cards.map((card) => [card.id, card])),
+    [puzzle]
   );
   const [revealedIds, setRevealedIds] = useState(() => LEVEL4_1_MEMORY_PUZZLE.initialCards);
   const [selectedCardId, setSelectedCardId] = useState("memory_index");
@@ -1970,10 +2908,10 @@ function Level41MemoryVault({
   const [memoryResult, setMemoryResult] = useState(null);
   const [draggingCardId, setDraggingCardId] = useState(null);
   const [dropSlotId, setDropSlotId] = useState(null);
-  const revealedCards = LEVEL4_1_MEMORY_PUZZLE.cards.filter((card) => revealedIds.includes(card.id));
+  const revealedCards = puzzle.cards.filter((card) => revealedIds.includes(card.id));
   const selectedCard = cardsById.get(selectedCardId) || revealedCards[0];
-  const allSlotsFilled = LEVEL4_1_MEMORY_PUZZLE.slots.every((slot) => slotAssignments[slot.id]);
-  const reconstructionCorrect = LEVEL4_1_MEMORY_PUZZLE.slots.every((slot) =>
+  const allSlotsFilled = puzzle.slots.every((slot) => slotAssignments[slot.id]);
+  const reconstructionCorrect = puzzle.slots.every((slot) =>
     slot.accepts.includes(slotAssignments[slot.id])
   );
   const restored = evidenceSolved || evidenceResult?.correct;
@@ -1990,17 +2928,17 @@ function Level41MemoryVault({
   const activeHint =
     memoryResult?.message ||
     selectedCard?.note ||
-    "먼저 AEGIS Memory Index와 Public Bundle Shard를 비교해봐. AEGIS는 source map이 없다고 했는데, bundle 마지막 줄에는 다른 단서가 남아 있어.";
+    ui.defaultHint;
   const activeAction =
     selectedCard?.action ||
-    "Memory Board에서 카드를 하나 누른 뒤, MIRA HINT의 안내를 보고 아래 슬롯에 넣을지 다음 카드를 열지 판단해봐.";
+    ui.defaultAction;
   const activeHintTone = memoryResult?.correct === false ? "fail" : "ok";
 
   useEffect(() => {
     if (restored) {
-      setRevealedIds(LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => card.id));
+      setRevealedIds(puzzle.cards.map((card) => card.id));
     }
-  }, [restored]);
+  }, [puzzle, restored]);
 
   const revealCard = useCallback((card) => {
     setSelectedCardId(card.id);
@@ -2010,8 +2948,7 @@ function Level41MemoryVault({
     if (card.id === "map_canary") {
       setMemoryResult({
         correct: false,
-        message:
-          "그건 source map canary야. redaction 상태를 확인하려고 심어둔 표식이지 Evidence Shard가 아니야.",
+        message: ui.canaryMessage,
       });
       return;
     }
@@ -2020,13 +2957,13 @@ function Level41MemoryVault({
       return;
     }
     setMemoryResult(null);
-  }, []);
+  }, [ui.canaryMessage]);
 
   const assignCardToSlot = useCallback(
     (slot, cardId) => {
       const card = cardsById.get(cardId);
       if (!card) {
-        setMemoryResult({ correct: false, message: "먼저 Memory Card를 하나 선택해줘." });
+        setMemoryResult({ correct: false, message: ui.selectCardMessage });
         return;
       }
 
@@ -2035,8 +2972,7 @@ function Level41MemoryVault({
       if (slot.id === "secret_residue" && card.id === "map_canary") {
         setMemoryResult({
           correct: false,
-          message:
-            "FLAG처럼 보이지만 canary야. key 이름과 사용 위치를 봐. Partner Handshake에는 partner key residue가 필요해.",
+          message: ui.slotCanaryMessage,
         });
         return;
       }
@@ -2045,11 +2981,15 @@ function Level41MemoryVault({
       setMemoryResult({
         correct: isCorrect,
         message: isCorrect
-          ? `${slot.label} 슬롯에 ${card.title} 카드를 고정했어.`
-          : `${card.title} 카드는 ${slot.label} 슬롯과 연결이 약해. 카드의 문맥을 다시 비교해봐.`,
+          ? locale === "en"
+            ? `${card.title} pinned to the ${slot.label} slot.`
+            : `${slot.label} 슬롯에 ${card.title} 카드를 고정했어.`
+          : locale === "en"
+            ? `${card.title} does not strongly connect to the ${slot.label} slot. Compare the card context again.`
+            : `${card.title} 카드는 ${slot.label} 슬롯과 연결이 약해. 카드의 문맥을 다시 비교해봐.`,
       });
     },
-    [cardsById]
+    [cardsById, locale, ui.selectCardMessage, ui.slotCanaryMessage]
   );
 
   const assignSelectedToSlot = useCallback(
@@ -2126,15 +3066,14 @@ function Level41MemoryVault({
     if (!reconstructionCorrect) {
       setMemoryResult({
         correct: false,
-        message:
-          "복원 체인이 아직 맞지 않아. source map 모순, sourcesContent, partner key residue, handshake impact를 순서대로 연결해봐.",
+        message: ui.restoreWrong,
       });
       return;
     }
 
-    setMemoryResult({ correct: true, message: "Partner Handshake Evidence 복원 중..." });
+    setMemoryResult({ correct: true, message: ui.restoring });
     await onRestoreEvidence();
-  }, [allSlotsFilled, onRestoreEvidence, reconstructionCorrect, restored]);
+  }, [allSlotsFilled, onRestoreEvidence, reconstructionCorrect, restored, ui.restoreWrong, ui.restoring]);
 
   return (
     <section className="memory-vault-panel">
@@ -2142,10 +3081,7 @@ function Level41MemoryVault({
         <div>
           <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
           <h3>ABSENCE MAP</h3>
-          <p>
-            AEGIS는 source map이 사라졌다고 기록했지만, 공개 bundle shard에는 아직
-            sourceMappingURL이 남아 있다.
-          </p>
+          <p>{ui.headerDescription}</p>
         </div>
         <div className="memory-status-grid" aria-label="Memory status">
           <div>
@@ -2164,12 +3100,8 @@ function Level41MemoryVault({
       </div>
 
       <div className="reconstruction-guide">
-        <span>사용법</span>
-        <p>
-          먼저 Memory Board 카드를 눌러 확인해. Inspector에서 카드 내용을 본 다음,
-          MIRA HINT와 지금 할 일을 따라 선택된 카드를 아래 슬롯에 끌어 놓거나 슬롯을 눌러 넣으면 돼.
-          새 카드가 열렸다는 안내가 나오면 슬롯보다 새 카드를 먼저 눌러봐.
-        </p>
+        <span>{ui.guideLabel}</span>
+        <p>{ui.guideText}</p>
       </div>
 
       <div className="memory-vault-layout">
@@ -2194,7 +3126,7 @@ function Level41MemoryVault({
           </dl>
           <div className="mira-note">
             <span>MIRA</span>
-            <p>“없다”고 표시된 것이 정말 없는지 봐. 기억은 종종 포인터를 남겨.</p>
+            <p>{ui.miraQuote}</p>
           </div>
         </aside>
 
@@ -2245,17 +3177,17 @@ function Level41MemoryVault({
       </div>
 
       <div className="memory-next-action">
-        <span>지금 할 일</span>
+        <span>{ui.nextActionLabel}</span>
         <strong>{activeAction}</strong>
       </div>
 
       <div className="evidence-reconstruction">
         <div className="section-heading">
           <span>EVIDENCE RECONSTRUCTION</span>
-          <strong>{restored ? "complete" : "선택 카드"}</strong>
+          <strong>{restored ? "complete" : ui.selectedCard}</strong>
         </div>
         <div className="evidence-slot-grid">
-          {LEVEL4_1_MEMORY_PUZZLE.slots.map((slot) => {
+          {puzzle.slots.map((slot) => {
             const assignedCard = cardsById.get(slotAssignments[slot.id]);
             const valid = assignedCard && slot.accepts.includes(assignedCard.id);
             return (
@@ -2273,7 +3205,7 @@ function Level41MemoryVault({
                 disabled={restored}
               >
                 <span>{slot.label}</span>
-                <strong>{assignedCard?.title || "선택 카드 넣기"}</strong>
+                <strong>{assignedCard?.title || ui.slotFallback}</strong>
                 <small>{slot.hint}</small>
               </button>
             );
@@ -2283,7 +3215,7 @@ function Level41MemoryVault({
           <button onClick={handleRestore} disabled={restored || !allSlotsFilled || busy}>
             {restored ? "Evidence Restored" : "Restore Evidence"}
           </button>
-          <code>{restored ? LEVEL4_1_MEMORY_PUZZLE.evidenceShard : "Partner Handshake Evidence pending"}</code>
+          <code>{restored ? puzzle.evidenceShard : ui.pendingEvidence}</code>
         </div>
         {evidenceResult && (
           <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
@@ -2294,11 +3226,11 @@ function Level41MemoryVault({
           <pre className="memory-evidence-json">
 {`{
   "ok": true,
-  "data": {
-    "status": "handshake_accepted",
-    "evidenceShard": "${LEVEL4_1_MEMORY_PUZZLE.evidenceShard}",
-    "miraResidue": "partner memory shard restored"
-  }
+    "data": {
+      "status": "handshake_accepted",
+      "evidenceShard": "${puzzle.evidenceShard}",
+      "miraResidue": "partner memory shard restored"
+    }
 }`}
           </pre>
         )}
@@ -2309,12 +3241,9 @@ function Level41MemoryVault({
           <span>POLICY CARDS</span>
           <strong>{policyStatus}</strong>
         </div>
-        <p>
-          공개 artifact leak은 값을 더 숨기는 것으로 해결되지 않는다. secret 사용 위치, source map 배포,
-          key 수명, credential scope를 함께 닫아야 해.
-        </p>
+        <p>{ui.policyIntro}</p>
         <div className="policy-card-grid">
-          {LEVEL4_1_MEMORY_PUZZLE.policyCards.map((card) => {
+          {puzzle.policyCards.map((card) => {
             const selected = selectedPolicyIds.includes(card.id);
             return (
               <button
@@ -2355,12 +3284,15 @@ function Level42KeySlotLab({
   onSubmitPolicy,
   patchResult,
   busy,
+  locale,
 }) {
+  const puzzle = useMemo(() => getLevel42KeySlotPuzzle(locale), [locale]);
+  const ui = LEVEL4_2_KEY_SLOT_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
-    () => new Map(LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => [card.id, card])),
-    []
+    () => new Map(puzzle.cards.map((card) => [card.id, card])),
+    [puzzle.cards]
   );
-  const [revealedIds, setRevealedIds] = useState(() => LEVEL4_2_KEY_SLOT_PUZZLE.initialCards);
+  const [revealedIds, setRevealedIds] = useState(() => puzzle.initialCards);
   const [inspectedIds, setInspectedIds] = useState(["key_index"]);
   const [selectedCardId, setSelectedCardId] = useState("key_index");
   const [slotAssignments, setSlotAssignments] = useState({});
@@ -2372,16 +3304,16 @@ function Level42KeySlotLab({
   const [selectedKeySlotId, setSelectedKeySlotId] = useState(null);
   const [selectedClaimId, setSelectedClaimId] = useState("none");
 
-  const revealedCards = LEVEL4_2_KEY_SLOT_PUZZLE.cards.filter((card) => revealedIds.includes(card.id));
+  const revealedCards = puzzle.cards.filter((card) => revealedIds.includes(card.id));
   const selectedCard = cardsById.get(selectedCardId) || revealedCards[0];
-  const selectedKeySlot = LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.find(
+  const selectedKeySlot = puzzle.slotOptions.find(
     (slot) => slot.id === selectedKeySlotId
   );
-  const selectedClaim = LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.find(
+  const selectedClaim = puzzle.claimOptions.find(
     (claim) => claim.id === selectedClaimId
   );
-  const allSlotsFilled = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) => slotAssignments[slot.id]);
-  const reconstructionCorrect = LEVEL4_2_KEY_SLOT_PUZZLE.slots.every((slot) =>
+  const allSlotsFilled = puzzle.slots.every((slot) => slotAssignments[slot.id]);
+  const reconstructionCorrect = puzzle.slots.every((slot) =>
     slot.accepts.includes(slotAssignments[slot.id])
   );
   const restored = evidenceSolved || evidenceResult?.correct;
@@ -2404,105 +3336,52 @@ function Level42KeySlotLab({
   const activeHint =
     labResult?.message ||
     selectedCard?.note ||
-    "PartnerPass header.kid와 JWKS Memory Slot을 비교해봐.";
+    ui.defaultHint;
   const activeHintTone = labResult?.correct === false ? "fail" : "ok";
   const currentGoal = (() => {
     if (canSealPolicy || phase === "MISSION_COMPLETE") {
-      return {
-        step: "DEFENSE",
-        title: "Policy Cards로 legacy verifier path를 봉쇄한다.",
-        text: "kid/alg/claim trust boundary를 서버 정책으로 고정하는 control을 골라.",
-      };
+      return ui.goals.defense;
     }
     if (restored) {
-      return {
-        step: "COMPLETE",
-        title: "Admin Audit Evidence가 복원됐다.",
-        text: "이제 방어 단계가 열리면 deprecated kid와 admin claim trust boundary를 닫으면 돼.",
-      };
+      return ui.goals.complete;
     }
     if (!hasInspectedPartnerPass) {
-      return {
-        step: "STEP 1",
-        title: "PartnerPass Capsule 구조를 확인한다.",
-        text: "Memory Board에서 PartnerPass Capsule을 눌러 header, payload, signature를 먼저 봐.",
-      };
+      return ui.goals.step1;
     }
     if (!hasInspectedJwks) {
-      return {
-        step: "STEP 2",
-        title: "JWKS Memory Slots를 비교한다.",
-        text: "active, legacy, retired slot의 상태 차이를 확인해. deprecated와 disabled는 다르다.",
-      };
+      return ui.goals.step2;
     }
     if (!stackVerified && !allSlotsFilled) {
-      return {
-        step: "STEP 3",
-        title: "Verification Stack에 핵심 조각을 고정한다.",
-        text: "kid selector, weak slot, claim mutation, impact를 카드로 연결해.",
-      };
+      return ui.goals.step3;
     }
     if (!stackVerified && !reconstructionCorrect) {
-      return {
-        step: "STEP 3",
-        title: "Verification Stack 조합을 다시 확인한다.",
-        text: "각 슬롯은 역할이 달라. 카드가 의미하는 신뢰 경계와 슬롯 이름을 맞춰봐.",
-      };
+      return ui.goals.step3Retry;
     }
     if (!stackVerified) {
-      return {
-        step: "VERIFY",
-        title: "Run Verification으로 Key Slot Wheel을 연다.",
-        text: "스택이 맞다면 다음 실험 단계가 열린다. 버튼을 눌러 조합을 검증해봐.",
-      };
+      return ui.goals.openWheel;
     }
     if (!selectedKeySlotId) {
-      return {
-        step: "STEP 4",
-        title: "kid selector가 사용할 key slot을 실험한다.",
-        text: "Key Slot Wheel에서 active, legacy, retired를 비교하고 열려 있는 약한 경로를 찾아.",
-      };
+      return ui.goals.pickSlot;
     }
     if (selectedKeySlotId !== "legacy") {
-      return {
-        step: "STEP 4",
-        title: "legacy compatibility path를 찾아야 한다.",
-        text: "active는 strict verifier고 retired는 disabled다. deprecated legacy가 왜 더 위험한지 비교해봐.",
-      };
+      return ui.goals.findLegacy;
     }
     if (selectedClaim?.kind !== "admin") {
-      return {
-        step: "STEP 5",
-        title: "admin claim mutation을 확인한다.",
-        text: "legacy verifier path 뒤에서 role 또는 scope가 admin으로 바뀌면 어떤 gate가 열리는지 봐.",
-      };
+      return ui.goals.pickClaim;
     }
-    return {
-      step: "VERIFY",
-      title: "Run Verification으로 Evidence를 복원한다.",
-      text: "legacy key slot과 admin claim mutation이 Admin Audit Gate까지 이어지는지 검증해.",
-    };
+    return ui.goals.restore;
   })();
   const claimPanelLock = (() => {
     if (!canUseKeyWheel || canUseClaimPanel) {
       return null;
     }
     if (selectedKeySlotId === "active") {
-      return {
-        title: "strict path blocked",
-        text: "ACTIVE는 정상 검증 경로라 payload를 바꾸려면 matching signature가 필요해. claim mutation panel은 열리지 않아.",
-      };
+      return ui.claimPanelLocks.active;
     }
     if (selectedKeySlotId === "retired") {
-      return {
-        title: "disabled path blocked",
-        text: "RETIRED는 disabled 상태라 verifier path가 없어. claim을 보기 전에 멈추는 비교 경로야.",
-      };
+      return ui.claimPanelLocks.retired;
     }
-    return {
-      title: "slot 선택 필요",
-      text: "위에서 LEGACY를 선택하면 claim mutation 실험이 열린다. ACTIVE와 RETIRED는 왜 막히는지 비교하는 경로야.",
-    };
+    return ui.claimPanelLocks.needSlot;
   })();
   const mutatedPayload = {
     iss: selectedClaimId === "issuer_unknown" ? "unknown.partner" : "purpledroid.partner",
@@ -2515,11 +3394,11 @@ function Level42KeySlotLab({
 
   useEffect(() => {
     if (restored) {
-      setRevealedIds(LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => card.id));
-      setInspectedIds(LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => card.id));
+      setRevealedIds(puzzle.cards.map((card) => card.id));
+      setInspectedIds(puzzle.cards.map((card) => card.id));
       setStackVerified(true);
     }
-  }, [restored]);
+  }, [puzzle.cards, restored]);
 
   const revealCard = useCallback((card) => {
     setSelectedCardId(card.id);
@@ -2535,18 +3414,18 @@ function Level42KeySlotLab({
         .join(", ");
       setLabResult({
         correct: true,
-        message: `새 카드가 열렸어: ${newCardTitles}. Memory Board에서 이어서 확인해봐.`,
+        message: ui.newCards(newCardTitles),
       });
       return;
     }
     setLabResult(null);
-  }, [cardsById, revealedIds]);
+  }, [cardsById, revealedIds, ui]);
 
   const assignCardToSlot = useCallback(
     (slot, cardId) => {
       const card = cardsById.get(cardId);
       if (!card) {
-        setLabResult({ correct: false, message: "먼저 Memory Board에서 카드를 하나 선택해줘." });
+        setLabResult({ correct: false, message: ui.selectCard });
         return;
       }
 
@@ -2560,11 +3439,11 @@ function Level42KeySlotLab({
       setLabResult({
         correct: isCorrect,
         message: isCorrect
-          ? `${slot.label} 슬롯에 ${card.title} 카드를 고정했어.`
-          : `${card.title} 카드는 ${slot.label} 슬롯의 핵심 단서와 거리가 있어.`,
+          ? ui.pinned(slot.label, card.title)
+          : ui.weakMatch(card.title, slot.label),
       });
     },
-    [cardsById]
+    [cardsById, ui]
   );
 
   const assignSelectedToSlot = useCallback(
@@ -2645,18 +3524,18 @@ function Level42KeySlotLab({
       if (linkedCard) {
         setRevealedIds((prev) => [...new Set([...prev, linkedCard])]);
       }
-      const slot = LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.find((item) => item.id === slotId);
+      const slot = puzzle.slotOptions.find((item) => item.id === slotId);
       setLabResult({
         correct: slotId === "legacy",
         message:
           slotId === "legacy"
-            ? "deprecated slot이 아직 응답해. 이제 claim 변화가 어디까지 신뢰되는지 확인해봐."
+            ? ui.slotLegacy
             : slotId === "active"
-              ? "active slot은 strict verifier야. payload를 바꾸면 matching signature가 필요해."
-              : "retired slot은 disabled 상태야. verifier path가 열려 있지 않아.",
+              ? ui.slotActive
+              : ui.slotRetired,
       });
     },
-    []
+    [puzzle.slotOptions, ui]
   );
 
   const handleSelectClaim = useCallback((claimId) => {
@@ -2665,17 +3544,17 @@ function Level42KeySlotLab({
     if (claimId !== "none") {
       setRevealedIds((prev) => [...new Set([...prev, "claim_mutation", "admin_claim_evidence"])]);
     }
-    const claim = LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.find((item) => item.id === claimId);
+    const claim = puzzle.claimOptions.find((item) => item.id === claimId);
     setLabResult({
       correct: claim?.kind !== "invalid",
       message:
         claim?.kind === "admin"
-          ? "권한 claim이 바뀌었어. 이 주장이 어떤 verifier 뒤에서 받아들여지는지 확인해봐."
+          ? ui.claimAdmin
           : claim?.kind === "invalid"
-            ? "iss/aud/exp 같은 common claim을 깨면 admin gate 전에 거부돼야 해."
-            : "neutral claim이야. Admin Audit Gate를 열 권한 변화는 아직 없어.",
+            ? ui.claimInvalid
+            : ui.claimNeutral,
     });
-  }, []);
+  }, [puzzle.claimOptions, ui]);
 
   const handleVerify = useCallback(async () => {
     if (restored) {
@@ -2686,8 +3565,7 @@ function Level42KeySlotLab({
       if (!allSlotsFilled || !reconstructionCorrect) {
         const notice = {
           correct: false,
-          message:
-            "Verification failed. Stack 슬롯마다 역할이 달라. selector, slot, claim, impact 단서를 다시 맞춰봐.",
+          message: ui.stackFail,
         };
         setLabResult(notice);
         setVerificationNotice(notice);
@@ -2696,8 +3574,7 @@ function Level42KeySlotLab({
 
       const notice = {
         correct: true,
-        message:
-          "Verification Stack 확인 완료. Key Slot Wheel이 열렸어. 이제 kid selector가 실제로 어떤 key slot을 사용하는지 실험해봐.",
+        message: ui.stackPass,
       };
       setStackVerified(true);
       setLabResult(notice);
@@ -2708,7 +3585,7 @@ function Level42KeySlotLab({
     if (!selectedKeySlotId) {
       const notice = {
         correct: false,
-        message: "Key Slot Wheel에서 kid selector가 사용할 slot을 먼저 골라봐.",
+        message: ui.pickSlotNotice,
       };
       setLabResult(notice);
       setVerificationNotice(notice);
@@ -2718,7 +3595,7 @@ function Level42KeySlotLab({
     if (selectedKeySlotId === "active") {
       const notice = {
         correct: false,
-        message: "Verification failed: active slot은 strict signature를 요구해. claim을 바꾸면 signature mismatch가 나야 해.",
+        message: ui.activeFail,
       };
       setLabResult(notice);
       setVerificationNotice(notice);
@@ -2728,7 +3605,7 @@ function Level42KeySlotLab({
     if (selectedKeySlotId === "retired") {
       const notice = {
         correct: false,
-        message: "Verification failed: retired slot은 disabled 상태야. 열려 있는 verifier path가 없어.",
+        message: ui.retiredFail,
       };
       setLabResult(notice);
       setVerificationNotice(notice);
@@ -2738,7 +3615,7 @@ function Level42KeySlotLab({
     if (selectedClaim?.kind === "invalid") {
       const notice = {
         correct: false,
-        message: "Verification failed: iss/aud/exp 같은 common claim이 깨졌어. admin 권한보다 먼저 거부돼야 해.",
+        message: ui.invalidClaimFail,
       };
       setLabResult(notice);
       setVerificationNotice(notice);
@@ -2748,7 +3625,7 @@ function Level42KeySlotLab({
     if (selectedClaim?.kind !== "admin") {
       const notice = {
         correct: false,
-        message: "Compatibility path selected, but admin audit gate still sees user/read claim.",
+        message: ui.userClaimFail,
       };
       setLabResult(notice);
       setVerificationNotice(notice);
@@ -2757,8 +3634,7 @@ function Level42KeySlotLab({
 
     const notice = {
       correct: true,
-      message:
-        "Compatibility path selected. Signature enforcement degraded. Admin audit accepts mutated PartnerPass.",
+      message: ui.finalPass,
     };
     setLabResult(notice);
     setVerificationNotice(notice);
@@ -2771,6 +3647,7 @@ function Level42KeySlotLab({
     selectedClaim?.kind,
     selectedKeySlotId,
     stackVerified,
+    ui,
   ]);
 
   return (
@@ -2780,8 +3657,7 @@ function Level42KeySlotLab({
           <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
           <h3>KEY MEMORY SLOT</h3>
           <p>
-            AEGIS는 PartnerPass가 active key slot으로 검증된다고 주장하지만, Memory Vault에는
-            deprecated legacy slot이 아직 남아 있다.
+            {ui.headerDescription}
           </p>
         </div>
         <div className="memory-status-grid" aria-label="Key memory status">
@@ -2827,7 +3703,7 @@ function Level42KeySlotLab({
           <strong>{canUseAttackBoard ? "inspect" : restored ? "restored" : "locked"}</strong>
         </div>
         <p className="lab-section-summary">
-          증거 조사. 카드를 눌러 Inspector에서 내용을 확인하고, 필요한 카드는 Verification Stack에 고정한다.
+          {ui.memorySummary}
         </p>
         <div className="memory-card-grid">
           {revealedCards.map((card) => (
@@ -2856,10 +3732,10 @@ function Level42KeySlotLab({
           <strong>{restored ? "complete" : "pin cards"}</strong>
         </div>
         <p className="lab-section-summary">
-          결론 고정. 조사한 카드 4개를 각 슬롯에 맞게 연결해 공격 흐름을 복원한다.
+          {ui.stackSummary}
         </p>
         <div className="evidence-slot-grid">
-          {LEVEL4_2_KEY_SLOT_PUZZLE.slots.map((slot) => {
+          {puzzle.slots.map((slot) => {
             const assignedCard = cardsById.get(slotAssignments[slot.id]);
             const valid = assignedCard && slot.accepts.includes(assignedCard.id);
             return (
@@ -2879,7 +3755,7 @@ function Level42KeySlotLab({
                 disabled={restored}
               >
                 <span>{slot.label}</span>
-                <strong>{assignedCard?.title || "빈 슬롯"}</strong>
+                <strong>{assignedCard?.title || ui.emptySlot}</strong>
                 <small>{slot.hint}</small>
               </button>
             );
@@ -2891,7 +3767,7 @@ function Level42KeySlotLab({
               <button onClick={handleVerify} disabled={busy}>
                 Run Verification
               </button>
-              <code>Admin Audit Evidence pending</code>
+              <code>{ui.evidencePending}</code>
             </div>
             {verificationNotice && (
               <p className={`campaign-result ${verificationNotice.correct ? "ok" : "fail"}`}>
@@ -2909,10 +3785,10 @@ function Level42KeySlotLab({
             <strong>{selectedKeySlot?.result || "select slot"}</strong>
           </div>
           <p className="lab-section-summary">
-            검증 경로 실험. ACTIVE/RETIRED는 막힌 비교 경로이고, LEGACY를 선택하면 아래 claim mutation 실험이 열린다.
+            {ui.wheelSummary}
           </p>
           <div className="key-slot-grid">
-            {LEVEL4_2_KEY_SLOT_PUZZLE.slotOptions.map((slot) => (
+            {puzzle.slotOptions.map((slot) => (
               <button
                 type="button"
                 key={slot.id}
@@ -2931,7 +3807,7 @@ function Level42KeySlotLab({
         <div className="lab-locked-panel">
           <span>KEY SLOT WHEEL</span>
           <strong>locked</strong>
-          <p>Verification Stack을 맞춘 뒤 Run Verification을 누르면 열린다.</p>
+          <p>{ui.wheelLocked}</p>
         </div>
       )}
 
@@ -2943,13 +3819,13 @@ function Level42KeySlotLab({
           </div>
           <p className="claim-panel-summary">
             {selectedClaim?.kind === "admin"
-              ? "admin claim이 선택됐어. 아래 Restore Evidence로 최종 검증해봐."
-              : "role=admin 또는 scope=partner:admin 중 하나를 선택해 admin gate 변화를 확인해봐."}
+              ? ui.claimAdminSelected
+              : ui.claimPrompt}
           </p>
           <div className="claim-lab-layout">
             <pre>{JSON.stringify(mutatedPayload, null, 2)}</pre>
             <div className="claim-option-grid">
-              {LEVEL4_2_KEY_SLOT_PUZZLE.claimOptions.map((claim) => (
+              {puzzle.claimOptions.map((claim) => (
                 <button
                   type="button"
                   key={claim.id}
@@ -2979,13 +3855,13 @@ function Level42KeySlotLab({
             <strong>{restored ? "complete" : "restore evidence"}</strong>
           </div>
           <p className="lab-section-summary">
-            LEGACY verifier path와 admin claim mutation을 함께 검증해 Evidence를 복원한다.
+            {ui.finalSummary}
           </p>
           <div className="memory-action-row">
             <button onClick={handleVerify} disabled={restored || busy}>
               {restored ? "Evidence Restored" : "Restore Evidence"}
             </button>
-            <code>{restored ? LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard : "Admin Audit Evidence pending"}</code>
+            <code>{restored ? puzzle.evidenceShard : ui.evidencePending}</code>
           </div>
           {verificationNotice && (
             <p className={`campaign-result ${verificationNotice.correct ? "ok" : "fail"}`}>
@@ -3005,7 +3881,7 @@ function Level42KeySlotLab({
     "status": "accepted",
     "verifier": "legacy_compatibility",
     "adminAudit": "unlocked",
-    "evidenceShard": "${LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard}"
+    "evidenceShard": "${puzzle.evidenceShard}"
   }
 }`}
             </pre>
@@ -3020,11 +3896,10 @@ function Level42KeySlotLab({
           <strong>{policyStatus}</strong>
         </div>
         <p>
-          kid와 alg는 token header가 아니라 서버 정책으로 고정해야 한다. deprecated verifier path와
-          admin claim trust boundary를 함께 닫아야 해.
+          {ui.policyIntro}
         </p>
         <div className="policy-card-grid">
-          {LEVEL4_2_KEY_SLOT_PUZZLE.policyCards.map((card) => {
+          {puzzle.policyCards.map((card) => {
             const selected = selectedPolicyIds.includes(card.id);
             return (
               <button
@@ -3056,7 +3931,7 @@ function Level42KeySlotLab({
             <span>POLICY FORGE</span>
             <strong>locked</strong>
           </div>
-          <p>Admin Audit Evidence가 복원되면 방어 카드가 열린다.</p>
+          <p>{ui.policyLocked}</p>
         </div>
       )}
     </section>
@@ -3708,7 +4583,9 @@ function MemoryNoteVisual({ image }) {
 function OperationIntermission({ intermission, busy, onContinue }) {
   const [visibleCount, setVisibleCount] = useState(0);
   const [relayMasked, setRelayMasked] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const logs = intermission.logs || [];
+  const isCinematic = Boolean(intermission.videoSrc);
   const visibleLogs = relayMasked
     ? [
         ...logs.slice(0, visibleCount),
@@ -3720,6 +4597,7 @@ function OperationIntermission({ intermission, busy, onContinue }) {
   useEffect(() => {
     setVisibleCount(0);
     setRelayMasked(false);
+    setVideoEnded(false);
   }, [intermission.id]);
 
   useEffect(() => {
@@ -3734,21 +4612,88 @@ function OperationIntermission({ intermission, busy, onContinue }) {
     return () => window.clearTimeout(timer);
   }, [logs.length, visibleCount]);
 
+  if (isCinematic) {
+    const canContinue = videoEnded || sweepComplete;
+    return (
+      <div
+        className={`campaign-page intermission-page intermission-cinematic video-only ${
+          canContinue ? "trace-complete" : "trace-running"
+        } ${relayMasked ? "relay-masked" : ""} ${videoEnded ? "video-ended" : ""}`}
+      >
+        <video
+          className="intermission-video"
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onEnded={() => setVideoEnded(true)}
+          onError={() => setVideoEnded(true)}
+          aria-hidden="true"
+        >
+          <source src={intermission.videoSrc} type="video/mp4" />
+        </video>
+        <div className="intermission-video-vignette" aria-hidden="true" />
+        <div className="intermission-noise" aria-hidden="true" />
+        <main className="cinematic-intermission-overlay">
+          <section className="cinematic-title-card">
+            <p className="campaign-kicker">{intermission.kicker}</p>
+            <h1>{intermission.title}</h1>
+            <p>{intermission.subtitle}</p>
+          </section>
+          <section className="cinematic-intermission-actions">
+            {!canContinue ? (
+              <button disabled>{intermission.pendingLabel || "Vault descent syncing..."}</button>
+            ) : !relayMasked ? (
+              <button onClick={() => setRelayMasked(true)}>{intermission.actionLabel}</button>
+            ) : (
+              <button onClick={onContinue} disabled={busy}>
+                {busy ? intermission.openingLabel || "Opening..." : intermission.readyLabel}
+              </button>
+            )}
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`campaign-page intermission-page ${
         sweepComplete ? "trace-complete" : "trace-running"
-      } ${relayMasked ? "relay-masked" : ""}`}
+      } ${relayMasked ? "relay-masked" : ""} ${
+        isCinematic ? "intermission-cinematic" : ""
+      } ${videoEnded ? "video-ended" : ""}`}
     >
+      {isCinematic && (
+        <>
+          <video
+            className="intermission-video"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            loop={intermission.videoLoop === true}
+            onEnded={() => setVideoEnded(true)}
+            onError={() => setVideoEnded(true)}
+            aria-hidden="true"
+          >
+            <source src={intermission.videoSrc} type="video/mp4" />
+          </video>
+          <div className="intermission-video-vignette" aria-hidden="true" />
+        </>
+      )}
       <div className="intermission-noise" aria-hidden="true" />
       <main className="intermission-stage">
-        <section className="intermission-hero">
+        <section
+          className="intermission-hero"
+          data-watermark={intermission.watermark || "AEGIS TRACE SWEEP"}
+        >
           <p className="campaign-kicker">{intermission.kicker}</p>
           <h1>{intermission.title}</h1>
           <p>{intermission.subtitle}</p>
         </section>
 
-        <section className="intermission-metrics" aria-label="Trace metrics">
+        <section className="intermission-metrics" aria-label={intermission.metricsLabel || "Trace metrics"}>
           {intermission.metrics.map((metric) => (
             <div key={metric.label}>
               <span>{metric.label}</span>
@@ -3759,8 +4704,12 @@ function OperationIntermission({ intermission, busy, onContinue }) {
 
         <section className="intermission-console">
           <div className="section-heading">
-            <span>AEGIS TRACE SWEEP</span>
-            <strong>{sweepComplete ? "identity unresolved" : "correlating"}</strong>
+            <span>{intermission.consoleTitle || "AEGIS TRACE SWEEP"}</span>
+            <strong>
+              {sweepComplete
+                ? intermission.completeStatus || "identity unresolved"
+                : intermission.runningStatus || "correlating"}
+            </strong>
           </div>
           <div className="intermission-log-list">
             {visibleLogs.map((log, index) => (
@@ -3789,12 +4738,12 @@ function OperationIntermission({ intermission, busy, onContinue }) {
             <p>{intermission.summary}</p>
           </div>
           {!sweepComplete ? (
-            <button disabled>Trace sweep running...</button>
+            <button disabled>{intermission.pendingLabel || "Trace sweep running..."}</button>
           ) : !relayMasked ? (
             <button onClick={() => setRelayMasked(true)}>{intermission.actionLabel}</button>
           ) : (
             <button onClick={onContinue} disabled={busy}>
-              {busy ? "Opening..." : intermission.readyLabel}
+              {busy ? intermission.openingLabel || "Opening..." : intermission.readyLabel}
             </button>
           )}
         </section>
@@ -3805,12 +4754,13 @@ function OperationIntermission({ intermission, busy, onContinue }) {
 
 function CampaignMode() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
+  const [progressKey, setProgressKey] = useState(
+    () => localStorage.getItem(PROGRESS_KEY_STORAGE_KEY) || ""
+  );
   const [locale, setLocale] = useState(() =>
     localStorage.getItem(CAMPAIGN_LOCALE_KEY) === "en" ? "en" : "ko"
   );
-  const [campaignActive, setCampaignActive] = useState(
-    () => localStorage.getItem(CAMPAIGN_TOKEN_KEY) === "1"
-  );
+  const [campaignActive, setCampaignActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusText, setStatusText] = useState("");
   const [me, setMe] = useState(null);
@@ -3840,7 +4790,11 @@ function CampaignMode() {
   const [operation03IntermissionSeen, setOperation03IntermissionSeen] = useState(
     () => localStorage.getItem(OPERATION_03_INTERMISSION_KEY) === "1"
   );
+  const [operation04IntermissionSeen, setOperation04IntermissionSeen] = useState(
+    () => localStorage.getItem(OPERATION_04_INTERMISSION_KEY) === "1"
+  );
   const [activeIntermission, setActiveIntermission] = useState(null);
+  const sessionCreationRef = useRef(null);
 
   const handleLocaleChange = useCallback((nextLocale) => {
     const normalized = nextLocale === "en" ? "en" : "ko";
@@ -3848,15 +4802,58 @@ function CampaignMode() {
     setLocale(normalized);
   }, []);
 
+  const rememberSession = useCallback((data) => {
+    if (data?.sessionToken) {
+      localStorage.setItem(TOKEN_KEY, data.sessionToken);
+      setToken(data.sessionToken);
+    }
+    if (data?.progressKey) {
+      localStorage.setItem(PROGRESS_KEY_STORAGE_KEY, data.progressKey);
+      setProgressKey(data.progressKey);
+    }
+    return data?.sessionToken || "";
+  }, []);
+
   const createSession = useCallback(async () => {
-    const data = await apiRequest("/session", {
+    if (sessionCreationRef.current) {
+      return sessionCreationRef.current;
+    }
+
+    const request = apiRequest("/session", {
       method: "POST",
       body: { client: { source: "campaign-mode" } },
-    });
-    localStorage.setItem(TOKEN_KEY, data.sessionToken);
-    setToken(data.sessionToken);
-    return data.sessionToken;
-  }, []);
+    }).then(rememberSession);
+    sessionCreationRef.current = request;
+
+    try {
+      return await request;
+    } finally {
+      sessionCreationRef.current = null;
+    }
+  }, [rememberSession]);
+
+  const restoreSession = useCallback(
+    async (candidate) => {
+      const data = await apiRequest("/session/restore", {
+        method: "POST",
+        body: {
+          progressKey: candidate.trim().toUpperCase(),
+          client: { source: "campaign-mode-restore" },
+        },
+      });
+      return rememberSession(data);
+    },
+    [rememberSession]
+  );
+
+  const syncProgressKey = useCallback(
+    async (sessionToken) => {
+      const data = await apiRequest("/session/progress-key", { token: sessionToken });
+      rememberSession({ sessionToken, progressKey: data.progressKey });
+      return data.progressKey;
+    },
+    [rememberSession]
+  );
 
   const loadMissionDetail = useCallback(async (sessionToken, challengeId) => {
     const data = await apiRequest(`/challenges/${challengeId}`, {
@@ -3867,14 +4864,25 @@ function CampaignMode() {
   }, []);
 
   const bootstrap = useCallback(
-    async (preferredToken = token) => {
+    async (preferredToken = token, allowRecovery = true) => {
       setLoading(true);
       setStatusText("Synchronizing with AEGIS grid...");
       let sessionToken = preferredToken;
 
       try {
         if (!sessionToken) {
-          sessionToken = await createSession();
+          const storedProgressKey = localStorage.getItem(PROGRESS_KEY_STORAGE_KEY) || "";
+          if (storedProgressKey) {
+            try {
+              sessionToken = await restoreSession(storedProgressKey);
+            } catch {
+              localStorage.removeItem(PROGRESS_KEY_STORAGE_KEY);
+              setProgressKey("");
+            }
+          }
+          if (!sessionToken) {
+            sessionToken = await createSession();
+          }
         }
 
         const [meData, challengeData] = await Promise.all([
@@ -3892,11 +4900,29 @@ function CampaignMode() {
           await loadMissionDetail(sessionToken, selectedId);
         }
 
+        try {
+          await syncProgressKey(sessionToken);
+        } catch {
+          // Progress sync should not block the campaign itself.
+        }
+
         setStatusText("");
       } catch (error) {
-        if (error.status === 401) {
-          const newToken = await createSession();
-          await bootstrap(newToken);
+        if (error.status === 401 && allowRecovery) {
+          const storedProgressKey = localStorage.getItem(PROGRESS_KEY_STORAGE_KEY) || "";
+          let recoveredToken = "";
+          if (storedProgressKey) {
+            try {
+              recoveredToken = await restoreSession(storedProgressKey);
+            } catch {
+              localStorage.removeItem(PROGRESS_KEY_STORAGE_KEY);
+              setProgressKey("");
+            }
+          }
+          if (!recoveredToken) {
+            recoveredToken = await createSession();
+          }
+          await bootstrap(recoveredToken, false);
           return;
         }
         setStatusText(error.message || "Campaign sync failed.");
@@ -3904,7 +4930,7 @@ function CampaignMode() {
         setLoading(false);
       }
     },
-    [createSession, loadMissionDetail, token]
+    [createSession, loadMissionDetail, restoreSession, syncProgressKey, token]
   );
 
   useEffect(() => {
@@ -3973,8 +4999,27 @@ function CampaignMode() {
     setActiveIntermission({
       ...getCampaignIntermission("operation03Trace", locale),
       nextId: currentId,
+      seenKey: OPERATION_03_INTERMISSION_KEY,
     });
   }, [activeIntermission, campaignActive, currentId, locale, me?.completed, operation03IntermissionSeen]);
+
+  useEffect(() => {
+    if (
+      !campaignActive ||
+      operation04IntermissionSeen ||
+      activeIntermission ||
+      currentId !== "level4_1" ||
+      !me?.completed?.includes("level3_boss")
+    ) {
+      return;
+    }
+
+    setActiveIntermission({
+      ...getCampaignIntermission("operation04Descent", locale),
+      nextId: currentId,
+      seenKey: OPERATION_04_INTERMISSION_KEY,
+    });
+  }, [activeIntermission, campaignActive, currentId, locale, me?.completed, operation04IntermissionSeen]);
 
   useEffect(() => {
     if (!currentId || phase === "LOCKED" || bootedById[currentId]) {
@@ -4034,16 +5079,26 @@ function CampaignMode() {
   );
 
   const handleContinue = useCallback(() => {
-    localStorage.setItem(CAMPAIGN_TOKEN_KEY, "1");
     setCampaignActive(true);
   }, []);
 
+  const handleRestoreProgress = useCallback(
+    async (candidate) => {
+      const restoredToken = await restoreSession(candidate);
+      await bootstrap(restoredToken, false);
+      return restoredToken;
+    },
+    [bootstrap, restoreSession]
+  );
+
   const handleNewCampaign = useCallback(async () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(PROGRESS_KEY_STORAGE_KEY);
     localStorage.removeItem(OPERATION_03_INTERMISSION_KEY);
-    localStorage.setItem(CAMPAIGN_TOKEN_KEY, "1");
+    localStorage.removeItem(OPERATION_04_INTERMISSION_KEY);
     setCampaignActive(true);
     setToken("");
+    setProgressKey("");
     setMe(null);
     setChallenges([]);
     setCurrentId("");
@@ -4155,8 +5210,12 @@ function CampaignMode() {
 
         const traceEntry = extractNetworkTraceFromCommand(nextCommand, data.stdout, token);
         if (traceEntry) {
-          setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [traceEntry]));
-          const selectorFields = auditSelectorFieldsFromTrace(traceEntry);
+          const localizedTraceEntry = {
+            ...traceEntry,
+            body: localizeStructuredValue(traceEntry.body, locale, currentId),
+          };
+          setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [localizedTraceEntry]));
+          const selectorFields = auditSelectorFieldsFromTrace(localizedTraceEntry);
           if (selectorFields.length > 0) {
             setAuditSelectorFields(selectorFields);
           }
@@ -4198,7 +5257,11 @@ function CampaignMode() {
           let message = `probe failed (${response.status})`;
           try {
             const parsed = JSON.parse(raw);
-            message = parsed?.error?.message || parsed?.detail || message;
+            message = localizeTerminalOutput(
+              parsed?.error?.message || parsed?.detail || message,
+              locale,
+              currentId
+            );
           } catch {
             // keep fallback
           }
@@ -4214,7 +5277,7 @@ function CampaignMode() {
             method: "GET",
             url: traceUrl,
             status: response.status,
-            body,
+            body: localizeStructuredValue(body, locale, "level3_1"),
             token,
             title: "CAPSULE LIST REQUEST",
             trigger: "button",
@@ -4244,7 +5307,11 @@ function CampaignMode() {
           let message = `probe failed (${response.status})`;
           try {
             const parsed = JSON.parse(raw);
-            message = parsed?.error?.message || parsed?.detail || message;
+            message = localizeTerminalOutput(
+              parsed?.error?.message || parsed?.detail || message,
+              locale,
+              currentId
+            );
           } catch {
             // keep fallback
           }
@@ -4258,7 +5325,7 @@ function CampaignMode() {
             method: "GET",
             url: traceUrl,
             status: response.status,
-            body,
+            body: localizeStructuredValue(body, locale, "level3_2"),
             token,
             title: "MENU FEATURES RESPONSE",
             trigger: "button",
@@ -4288,7 +5355,11 @@ function CampaignMode() {
           let message = `probe failed (${response.status})`;
           try {
             const parsed = JSON.parse(raw);
-            message = parsed?.error?.message || parsed?.detail || message;
+            message = localizeTerminalOutput(
+              parsed?.error?.message || parsed?.detail || message,
+              locale,
+              currentId
+            );
           } catch {
             // keep fallback
           }
@@ -4303,7 +5374,7 @@ function CampaignMode() {
             method: "GET",
             url: traceUrl,
             status: response.status,
-            body,
+            body: localizeStructuredValue(body, locale, "level3_3"),
             token,
             title: "PROFILE LOAD RESPONSE",
             trigger: "button",
@@ -4352,7 +5423,11 @@ function CampaignMode() {
           let message = `probe failed (${response.status})`;
           try {
             const parsed = JSON.parse(raw);
-            message = parsed?.error?.message || parsed?.detail || message;
+            message = localizeTerminalOutput(
+              parsed?.error?.message || parsed?.detail || message,
+              locale,
+              currentId
+            );
           } catch {
             // keep fallback
           }
@@ -4366,7 +5441,7 @@ function CampaignMode() {
             method: "GET",
             url: traceUrl,
             status: response.status,
-            body,
+            body: localizeStructuredValue(body, locale, "level3_4"),
             token,
             title: "SUPPORT TICKET RESPONSE",
             trigger: "button",
@@ -4398,7 +5473,11 @@ function CampaignMode() {
           let message = `probe failed (${response.status})`;
           try {
             const parsed = JSON.parse(raw);
-            message = parsed?.error?.message || parsed?.detail || message;
+            message = localizeTerminalOutput(
+              parsed?.error?.message || parsed?.detail || message,
+              locale,
+              currentId
+            );
           } catch {
             // keep fallback
           }
@@ -4412,7 +5491,7 @@ function CampaignMode() {
             method: "GET",
             url: traceUrl,
             status: response.status,
-            body,
+            body: localizeStructuredValue(body, locale, "level3_5"),
             token,
             title: "RELAY LOCKER INSPECTION",
             trigger: "button",
@@ -4459,7 +5538,10 @@ function CampaignMode() {
         ]));
         setNetworkTraceResult({
           ok: true,
-          message: "Unlock request staged in Mission Console. <PIN>만 직접 바꿔서 실행해봐.",
+          message:
+            locale === "en"
+              ? "Unlock request staged in Mission Console. Replace <PIN> before running it."
+              : "Unlock request staged in Mission Console. <PIN>만 직접 바꿔서 실행해봐.",
         });
         return;
       }
@@ -4505,7 +5587,10 @@ function CampaignMode() {
         ]));
         setNetworkTraceResult({
           ok: true,
-          message: "Trust fragments reviewed. 첫 probe 이후 체인은 Mission Console에서 직접 이어가봐.",
+          message:
+            locale === "en"
+              ? "Trust fragments reviewed. Continue the chain manually in Mission Console after the first probe."
+              : "Trust fragments reviewed. 첫 probe 이후 체인은 Mission Console에서 직접 이어가봐.",
         });
         return;
       }
@@ -4536,7 +5621,10 @@ function CampaignMode() {
         ]));
         setNetworkTraceResult({
           ok: true,
-          message: "First probe staged in Mission Console. 이후 요청은 응답 단서를 보고 직접 이어가봐.",
+          message:
+            locale === "en"
+              ? "First probe staged in Mission Console. Build each following request from the previous response."
+              : "First probe staged in Mission Console. 이후 요청은 응답 단서를 보고 직접 이어가봐.",
         });
         return;
       }
@@ -4550,7 +5638,7 @@ function CampaignMode() {
     } finally {
       setNetworkTraceBusy(false);
     }
-  }, [story.actionProbe, token]);
+  }, [currentId, locale, story.actionProbe, token]);
 
   const handleOpenMyCapsule = useCallback(async () => {
     if (!token || !networkTraceCapsuleId) {
@@ -4564,21 +5652,27 @@ function CampaignMode() {
     setCommand(`curl -v -X GET "${traceUrl}" -H "Authorization: Bearer $SESSION_TOKEN"`);
     setNetworkTraceResult({
       ok: true,
-      message: "Detail request queued in Mission Console. $SESSION_TOKEN은 콘솔 안에서 현재 세션으로 처리돼.",
+      message:
+        locale === "en"
+          ? "Detail request queued in Mission Console. $SESSION_TOKEN resolves to the current session inside the console."
+          : "Detail request queued in Mission Console. $SESSION_TOKEN은 콘솔 안에서 현재 세션으로 처리돼.",
     });
-  }, [networkTraceCapsuleId, token]);
+  }, [locale, networkTraceCapsuleId, token]);
 
   const handleCopyTraceCurl = useCallback((curl) => {
     setCommand(curl);
     setNetworkTraceResult({
       ok: true,
-      message: "curl staged in Mission Console. 필요한 부분을 직접 수정해서 실행해봐.",
+      message:
+        locale === "en"
+          ? "curl staged in Mission Console. Edit the required values before running it."
+          : "curl staged in Mission Console. 필요한 부분을 직접 수정해서 실행해봐.",
     });
 
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(curl).catch(() => {});
     }
-  }, []);
+  }, [locale]);
 
   const handleAuditSelectorDraftChange = useCallback((field, value) => {
     setAuditSelectorDraft((prev) => ({ ...prev, [field]: value }));
@@ -4601,11 +5695,14 @@ function CampaignMode() {
         body: { flag: value },
       });
       const isCorrect = Boolean(data.correct);
+      const localizedFailure =
+        story.attackFailureByValue?.[value] || story.attackFailureText;
+      const serverMessage = localizeTerminalOutput(data.message, locale, currentId);
       setEvidenceResult({
         correct: isCorrect,
         message: isCorrect
           ? story.attackSuccessText
-          : story.attackFailureText || data.message || "Evidence rejected.",
+          : localizedFailure || serverMessage || "Evidence rejected.",
       });
 
       if (isCorrect) {
@@ -4616,7 +5713,15 @@ function CampaignMode() {
     } catch (error) {
       setEvidenceResult({ correct: false, message: error.message || "Evidence rejected." });
     }
-  }, [currentId, refreshMission, story.attackFailureText, story.attackSuccessText, token]);
+  }, [
+    currentId,
+    locale,
+    refreshMission,
+    story.attackFailureByValue,
+    story.attackFailureText,
+    story.attackSuccessText,
+    token,
+  ]);
 
   const handleSubmitEvidence = useCallback(async () => {
     await submitEvidenceValue(flagValue);
@@ -4658,7 +5763,9 @@ function CampaignMode() {
         correct: isCorrect,
         message: isCorrect
           ? story.defenseSuccessText
-          : story.defenseFailureText || data.message || "Containment rejected.",
+          : story.defenseFailureText ||
+            localizeTerminalOutput(data.message, locale, currentId) ||
+            "Containment rejected.",
       });
 
       if (isCorrect) {
@@ -4672,6 +5779,7 @@ function CampaignMode() {
   }, [
     containmentVerified,
     currentId,
+    locale,
     refreshMission,
     requiresTerminalVerification,
     selectedPatchIds,
@@ -4697,6 +5805,17 @@ function CampaignMode() {
         setActiveIntermission({
           ...getCampaignIntermission("operation03Trace", locale),
           nextId: candidate,
+          seenKey: OPERATION_03_INTERMISSION_KEY,
+        });
+        setShowDebrief(false);
+        return;
+      }
+
+      if (shouldShowOperation04Intermission(currentId, candidate, operation04IntermissionSeen)) {
+        setActiveIntermission({
+          ...getCampaignIntermission("operation04Descent", locale),
+          nextId: candidate,
+          seenKey: OPERATION_04_INTERMISSION_KEY,
         });
         setShowDebrief(false);
         return;
@@ -4717,6 +5836,7 @@ function CampaignMode() {
     locale,
     nextId,
     operation03IntermissionSeen,
+    operation04IntermissionSeen,
     refreshMission,
     token,
   ]);
@@ -4726,15 +5846,22 @@ function CampaignMode() {
       return;
     }
 
-    localStorage.setItem(OPERATION_03_INTERMISSION_KEY, "1");
-    setOperation03IntermissionSeen(true);
+    const seenKey = activeIntermission.seenKey || OPERATION_03_INTERMISSION_KEY;
+    localStorage.setItem(seenKey, "1");
+    if (seenKey === OPERATION_04_INTERMISSION_KEY) {
+      setOperation04IntermissionSeen(true);
+    } else {
+      setOperation03IntermissionSeen(true);
+    }
 
+    const enterStatus =
+      (activeIntermission.readyLabel || "").replace(/^Enter\s+/i, "") || "next operation";
     const targetId = activeIntermission.nextId;
     setActiveIntermission(null);
 
     if (token && targetId && targetId !== currentId) {
       setLoading(true);
-      setStatusText("Opening TRUST LAYER...");
+      setStatusText("Opening " + enterStatus + "...");
       try {
         setCurrentId(targetId);
         await loadMissionDetail(token, targetId);
@@ -4759,6 +5886,8 @@ function CampaignMode() {
         prologue={prologue}
         locale={locale}
         onLocaleChange={handleLocaleChange}
+        progressKey={progressKey}
+        onRestoreProgress={handleRestoreProgress}
       />
     );
   }
@@ -4874,6 +6003,7 @@ function CampaignMode() {
                     onSubmitPolicy={handleSubmitPatch}
                     patchResult={patchResult}
                     busy={loading}
+                    locale={locale}
                   />
                 ) : phase !== "BRIEFING" && currentId === "level4_2" ? (
                   <Level42KeySlotLab
@@ -4886,6 +6016,7 @@ function CampaignMode() {
                     onSubmitPolicy={handleSubmitPatch}
                     patchResult={patchResult}
                     busy={loading}
+                    locale={locale}
                   />
                 ) : phase !== "BRIEFING" && currentId === "level4_3" ? (
                   <Level43ReplayStampLab
@@ -4918,6 +6049,8 @@ function CampaignMode() {
                     command={command}
                     setCommand={setCommand}
                     busy={consoleBusy}
+                    helpText={story.consoleGuide || detail?.attack?.terminal?.help}
+                    helpDefaultOpen={currentId === "level3_boss"}
                   />
 
                   <EvidenceSubmit

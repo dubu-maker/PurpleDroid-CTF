@@ -32,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SESSION_TTL_SEC = 7 * 24 * 3600  # 7일
+SESSION_TTL_SEC = 90 * 24 * 3600  # 마지막 활동부터 90일
 CMD_RATE_WINDOW_SEC = 5
 CMD_RATE_MAX = 25  # 5초에 25번 이상이면 제한
 PARCEL_RATE_WINDOW_SEC = 60
@@ -107,6 +107,15 @@ def _new_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _new_progress_key() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    while True:
+        groups = ["".join(secrets.choice(alphabet) for _ in range(5)) for _ in range(4)]
+        key = f"PD-SAVE-{'-'.join(groups)}"
+        if not any(session.get("progressKey") == key for session in _sessions.values()):
+            return key
+
+
 def _init_progress() -> Dict[str, Dict[str, bool]]:
     return _apply_test_unlock_until(
         {
@@ -174,6 +183,7 @@ def _normalize_session(token: str, raw: Any) -> Optional[Dict[str, Any]]:
     session.setdefault("createdAt", now)
     session.setdefault("lastSeenAt", now)
     session.setdefault("expiresAt", now + SESSION_TTL_SEC)
+    session.setdefault("progressKey", _new_progress_key())
     session.setdefault("client", {})
     session.setdefault("userId", "user_1004")
     session.setdefault("primaryParcelId", "PD-1004")
@@ -261,7 +271,9 @@ def _get_session(authorization: Optional[str]) -> Tuple[str, Dict[str, Any]]:
         _sessions.pop(token, None)
         raise APIError("UNAUTHORIZED", "세션이 만료됐어. /session 다시 호출해줘.", 401)
 
-    s["lastSeenAt"] = _now()
+    now = _now()
+    s["lastSeenAt"] = now
+    s["expiresAt"] = now + SESSION_TTL_SEC
     return token, s
 
 
@@ -382,6 +394,11 @@ class SessionCreateReq(BaseModel):
     client: Optional[Dict[str, Any]] = None
 
 
+class SessionRestoreReq(BaseModel):
+    progressKey: str = Field(..., min_length=12, max_length=80)
+    client: Optional[Dict[str, Any]] = None
+
+
 class TerminalExecReq(BaseModel):
     command: str = Field(..., min_length=1, max_length=1250)
 
@@ -417,9 +434,11 @@ def health():
 @app.post("/api/v1/session")
 def create_session(req: SessionCreateReq = SessionCreateReq()):
     token = _new_token()
+    progress_key = _new_progress_key()
     user_id = "user_1004"
     s = {
         "token": token,
+        "progressKey": progress_key,
         "createdAt": _now(),
         "lastSeenAt": _now(),
         "expiresAt": _now() + SESSION_TTL_SEC,
@@ -431,7 +450,52 @@ def create_session(req: SessionCreateReq = SessionCreateReq()):
         "parcelLookupRate": [],
     }
     _sessions[token] = s
-    return ok({"sessionToken": token, "expiresInSec": SESSION_TTL_SEC})
+    return ok(
+        {
+            "sessionToken": token,
+            "progressKey": progress_key,
+            "expiresInSec": SESSION_TTL_SEC,
+        }
+    )
+
+
+@app.post("/api/v1/session/restore")
+def restore_session(req: SessionRestoreReq):
+    progress_key = req.progressKey.strip().upper()
+    now = _now()
+
+    for token, session in list(_sessions.items()):
+        stored_key = str(session.get("progressKey", "")).strip().upper()
+        if not stored_key or not secrets.compare_digest(stored_key, progress_key):
+            continue
+        if float(session.get("expiresAt", 0)) < now:
+            _sessions.pop(token, None)
+            raise APIError("PROGRESS_EXPIRED", "진행 키가 만료됐어.", 401)
+
+        session["lastSeenAt"] = now
+        session["expiresAt"] = now + SESSION_TTL_SEC
+        if req.client:
+            session["client"] = {**session.get("client", {}), **req.client}
+        return ok(
+            {
+                "sessionToken": token,
+                "progressKey": session["progressKey"],
+                "expiresInSec": SESSION_TTL_SEC,
+            }
+        )
+
+    raise APIError("PROGRESS_NOT_FOUND", "진행 키를 찾을 수 없어.", 404)
+
+
+@app.get("/api/v1/session/progress-key")
+def get_progress_key(authorization: Optional[str] = Header(None)):
+    _, session = _get_session(authorization)
+    return ok(
+        {
+            "progressKey": session["progressKey"],
+            "expiresInSec": SESSION_TTL_SEC,
+        }
+    )
 
 
 @app.get("/api/v1/challenges")

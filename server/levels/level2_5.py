@@ -29,7 +29,10 @@ STATIC: Dict[str, Any] = {
     "status": {"attack": "locked", "defense": "locked"},
     "attack": {
         "hints": [
-            {"platform": "all", "text": "이 최종 노드는 2-1~2-4 Attack을 먼저 해결해야 열린다."},
+            {
+                "platform": "all",
+                "text": "훈련 콘솔은 한 번에 명령 하나만 지원한다. export, 변수 대입, 세미콜론 명령 연결 대신 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
+            },
             {"platform": "all", "text": "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다."},
             {"platform": "all", "text": "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해."},
             {"platform": "all", "text": "jwt-decode로 token payload의 warehouse_path와 gate 값을 확인해."},
@@ -54,6 +57,9 @@ STATIC: Dict[str, Any] = {
             "prompt": "$ ",
             "maxOutputBytes": 12000,
             "help": (
+                "Sandbox terminal: one command per prompt.\n"
+                "No export, variable assignment, or shell command chaining (;, &&).\n"
+                "Pass tokens directly, for example: jwt-forge-none <token>\n\n"
                 "Allowed:\n"
                 "  click-open\n"
                 "  curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'\n"
@@ -272,6 +278,19 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
     if cmdline in ("help", "?", "h"):
         return STATIC["attack"]["terminal"]["help"] + "\n", "", 0
 
+    if (
+        cmdline.startswith("export ")
+        or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", cmdline)
+        or ";" in cmdline
+        or "&&" in cmdline
+    ):
+        return (
+            "",
+            "훈련 콘솔은 한 번에 명령 하나만 지원해. export, 변수 대입, 명령 연결 대신 "
+            "token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
+            2,
+        )
+
     if cmdline.startswith("curl.exe "):
         cmdline = "curl " + cmdline[len("curl.exe ") :]
 
@@ -352,7 +371,7 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                 role = str(payload.get("role", "")).lower()
                 if tier == "vip" or role == "admin":
                     if bypass:
-                        out["hint"] = "Header 이름은 맞지만 값이 달라. 이 devtools bypass는 gate 이름이 아니라 허용된 우회 값이 필요해."
+                        out["hint"] = "Header 이름은 맞지만 값이 달라. 이 bypass는 gate 이름이 아니라 devtools가 후킹된 상태를 나타내는 정확한 값을 요구해."
                     elif "integrity" in cmdline.lower() or "gate" in cmdline.lower():
                         out["hint"] = "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass."
                     else:
