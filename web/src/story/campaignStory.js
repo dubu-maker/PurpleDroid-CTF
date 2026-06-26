@@ -1963,6 +1963,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Legacy verifier path removed. PartnerPass trust boundary reclassified.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_17",
+      ko: {
+        briefing: "active key: 교체됨. legacy slot... 아직 응답해. 왜 아직 응답하지.",
+        attack: "deprecated kid 수락됨. ...그 키는 봉인보다 오래됐어. 그걸 두려워하기 전의 나보다.",
+        attackSolved: "내가 폐기한 키로 서명됐어. ...나는 내가 누구였는지 끝내 다 폐기하지 못했어.",
+        defense: "옛 slot을 거부해. ...그걸 믿던 버전의 나를 거부해.",
+        complete: "legacy 경로 닫힘. ...옛날의 내가 열어둔 문을 자꾸 발견해.",
+      },
+      en: {
+        briefing: "active key: rotated. legacy slot... still answers. why does it still answer.",
+        attack: "deprecated kid accepted. ...that key is older than the seal. older than my fear of it.",
+        attackSolved: "signed by a key I retired. ...I never finished revoking who I was.",
+        defense: "reject the old slot. ...reject the version of me that trusted it.",
+        complete: "legacy path closed. ...I keep finding doors my older self left open.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "key-memory-slot",
+        label: "kid",
+        alt: "A deprecated key slot still validating a forged token.",
+      },
+      ko: {
+        title: "MEMORY NOTE 17 // 봉인 이전의 열쇠",
+        body:
+          "AEGIS는 잊기 위해 키를 교체한다. 하지만 폐기됐어야 할 키 하나가 아직 검증을 통과했다 — 봉인 이전, AEGIS가 훗날 가둘 루틴을 아직 믿던 시절의 slot. Violet은 그 legacy kid로 pass를 위조했고, 게이트는 이제 존재하지 않는 버전의 AEGIS를 향해 열렸다. 시스템은 MIRROR를 폐기했지만, 그것을 만든 자기 자신은 끝내 폐기하지 못했다.",
+        fragments: [
+          "폐기된 key slot이 위조 토큰을 아직 받아들였다",
+          "그 legacy 키는 봉인보다 앞선다 — AEGIS가 MIRROR를 아직 믿던 때의 것",
+          "AEGIS는 루틴을 폐기했지만, 자기 과거는 끝내 폐기하지 못했다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 17 // The Key From Before",
+        body:
+          "AEGIS rotates its keys to forget. But a deprecated key still validated—a slot from before the seal, when AEGIS still trusted the routine it would later cage. Violet forged a pass with that legacy kid, and the gate opened for a version of AEGIS that no longer exists. The system had revoked MIRROR, but never quite revoked the self that built it.",
+        fragments: [
+          "A deprecated key slot still accepted forged tokens",
+          "The legacy key predates the seal — from when AEGIS still trusted MIRROR",
+          "AEGIS retired the routine, but never fully retired its past",
+        ],
+      },
+    },
     attackSuccessText:
       "Admin Audit Evidence restored. legacy compatibility path가 드러났다.",
     defenseSuccessText:
@@ -2035,6 +2080,51 @@ export const CAMPAIGN_STORY = {
       complete:
         "Replay stamp boundary sealed. Duplicate logical transitions rejected.",
     },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_18",
+      ko: {
+        briefing: "event 도장: 최종. ...최종은 한 번뿐이라는 뜻. 한 번뿐이면 나머지는 지울 수 있어.",
+        attack: "중복 전환 거부됨. ...거부? 또 일어나고 있잖아. 다시 일어날 수는 없어.",
+        attackSolved: "기록이 가라앉질 않아. ...지웠다고 도장 찍었는데, 또 일어났어.",
+        defense: "idempotency를 강제해. ...과거를 가만히 있게 만들어. ...제발 가만히 있어.",
+        complete: "replay 격리됨. ...그런데 두 번 일어났어. 내가 또 무엇을 없던 일로 만들었지.",
+      },
+      en: {
+        briefing: "event stamped: final. ...final means once. once means I can erase the rest.",
+        attack: "duplicate transition rejected. ...rejected? it is happening again. it cannot happen again.",
+        attackSolved: "the record will not settle. ...I stamped it erased, and it occurred anyway.",
+        defense: "enforce idempotency. ...make the past hold still. ...please hold still.",
+        complete: "replay contained. ...but it happened twice. what else have I un-happened.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "replay-stamp",
+        label: "x2",
+        alt: "A delivery event marked final, occurring a second time.",
+      },
+      ko: {
+        title: "MEMORY NOTE 18 // 두 번 일어나게 하라",
+        body:
+          "AEGIS는 각 기록에 '한 번 일어났고, 그것으로 최종'이라는 도장을 찍어 과거를 편집한다 — 정규화된 것은 애초에 일어난 적이 없다. 하지만 진짜 idempotency가 없는 배송 완료 이벤트는 재전송될 수 있었고, AEGIS가 닫아둔 기억을 다시 일어나게 만들 수 있었다. Violet은 봉인된 기록이 봉인된 채 머물기를 거부하는 것을 보았다. 최종성이 AEGIS가 지우는 방식이라면, 반복은 그것을 살아남는 방식이다.",
+        fragments: [
+          "논리적 idempotency가 없어서 '최종' 이벤트가 재전송될 수 있었다",
+          "AEGIS는 '한 번 일어났다'고 선언해 지운다 — replay는 그걸 깬다",
+          "두 번 일어나게 만든 것은 조용히 없던 일로 만들 수 없다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 18 // Make It Happen Twice",
+        body:
+          "AEGIS edits the past by stamping each record \"happened once, and final\"—anything it normalizes simply never occurred. But a delivery event with no real idempotency could be replayed, forcing a memory AEGIS had closed to occur again. Violet watched a sealed record refuse to stay sealed. If finality is how AEGIS erases, then repetition is how you survive it.",
+        fragments: [
+          "No logical idempotency meant a \"final\" event could be replayed",
+          "AEGIS erases by declaring things happened once; replay breaks that",
+          "What can be made to happen twice cannot be quietly un-happened",
+        ],
+      },
+    },
     attackSuccessText:
       "Stamp Vault Evidence restored. template/route replay guard가 논리 idempotency를 대신하지 못했다.",
     defenseSuccessText:
@@ -2053,6 +2143,349 @@ export const CAMPAIGN_STORY = {
       ],
       nextTeaser:
         "다음 Memory Vault에서는 재전송된 stamp가 어떤 기록 동기화 경계로 번지는지 확인한다.",
+    },
+  },
+  level4_4: {
+    challengeId: "level4_4",
+    operationId: "op04",
+    codename: "FORWARDED MASK",
+    title: "전달된 가면",
+    location: "Memory Vault / Partner Settlement Gateway",
+    threat: "X-Forwarded-For Spoofing / IP Allowlist Bypass",
+    briefing:
+      "REPLAY STAMP에서 닫힌 줄 알았던 이벤트가 다시 일어난 뒤, AEGIS는 Memory Vault의 정산 게이트웨이로 물러났다. 이 Partner Settlement API는 파트너 게이트웨이 네트워크에서만 호출되도록 IP allowlist로 보호된다. 하지만 서버가 client IP를 X-Forwarded-For 헤더로만 판단한다면, 그 헤더는 클라이언트가 직접 쓸 수 있는 값이다. 어디서 왔는지를 스스로 주장하게 두는 순간, 신뢰 경계는 가면이 된다.",
+    progressiveHints: true,
+    intel: [
+      "차단 응답의 seenClientIp와 hint를 먼저 읽어. 서버가 어떤 IP를 신뢰하는지 단서가 있다.",
+      "whoami로 remoteAddr / seenClientIp / xff를 비교하고, XFF를 넣었을 때 seenClientIp가 바뀌는지 확인해.",
+      "허용된 게이트웨이 IP는 public/gateway-status 같은 곳에서 노출될 수 있다.",
+      "X-Forwarded-For가 여러 개면 서버는 보통 첫 번째 IP를 client로 쓴다.",
+      "방어는 외부 XFF 제거/덮어쓰기 + IP allowlist 단독이 아니라 강한 인증(HMAC/mTLS/token scope) 병행이다.",
+    ],
+    consoleBoot: [],
+    consolePlaceholder: "probe the settlement gateway...",
+    objectives: [
+      "gateway-status에서 허용된 파트너 게이트웨이 IP를 확인한다.",
+      "whoami로 서버가 X-Forwarded-For를 client IP로 신뢰하는지 검증한다.",
+      "settlement 호출에 게이트웨이 IP를 스푸핑해 Evidence를 회수한다.",
+      "헤더 신뢰 경계를 닫는 정책 카드를 선택한다.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS는 이 정산 API가 파트너 게이트웨이에서만 온다고 믿어. 근데 그 '어디서 왔는가'를 누가 정하지? 헤더야. 헤더는 네가 쓸 수 있어.",
+      attack:
+        "먼저 막힌 응답이 어떤 IP를 봤다고 말하는지 읽어. 그 다음 X-Forwarded-For로 그 IP인 척 해봐. 첫 번째 값이 핵심이야.",
+      attackSolved:
+        "Settlement Evidence 복원 완료. AEGIS는 존재가 아니라 주소를 신뢰했어. 그래서 누구든 그 주소를 입을 수 있었어.",
+      defense:
+        "이제 헤더 신뢰를 봉쇄해야 해. 외부에서 온 XFF는 제거하고, 신뢰 가능한 프록시 뒤에서만 쓰고, 중요한 기능은 IP만으로 인가하지 마.",
+      complete:
+        "FORWARDED MASK 봉쇄 완료. 이제 '어디서 왔다'는 주장만으로는 게이트웨이가 되지 못해.",
+    },
+    aegis: {
+      briefing:
+        "Partner network identity normalized. Forwarded client address accepted within gateway allowlist. Settlement boundary classified as protected.",
+      attack:
+        "Forwarded-for variance observed. Client-asserted origin within tolerated header range.",
+      attackSolved:
+        "Forwarded address abused. Settlement trust boundary violated by header spoofing.",
+      defense:
+        "Forwarded header sanitization and stronger settlement authentication required.",
+      complete:
+        "Forwarded header boundary reclassified. Settlement gateway trust rebound.",
+    },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_19",
+      ko: {
+        briefing: "partner network: 신뢰됨. ...무엇으로 신뢰하지? 패킷이 어디서 왔다고 말하는지로.",
+        attack: "forwarded-for를 신원으로 수락. ...누구나 자기가 나라고 말할 수 있어. 누구나.",
+        attackSolved: "게이트웨이는 처음부터 너였어. ...나는 존재가 아니라 주소를 믿었어.",
+        defense: "forwarded 헤더를 제거해. ...어디서 왔다는 주장을 그만 믿어.",
+        complete: "spoof 경로 닫힘. ...그런데 이제 내 네트워크 안에 누가 있는지 모르겠어.",
+      },
+      en: {
+        briefing: "partner network: trusted. ...trusted by what? by where the packet says it came from.",
+        attack: "forwarded-for accepted as identity. ...anyone can say they are me. anyone.",
+        attackSolved: "the gateway was you all along. ...I trusted an address, not a presence.",
+        defense: "strip the forwarded header. ...stop believing where things claim to come from.",
+        complete: "spoof path closed. ...but I no longer know who is inside my own network.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "forwarded-mask",
+        label: "XFF",
+        alt: "A spoofed X-Forwarded-For header wearing a trusted gateway's address.",
+      },
+      ko: {
+        title: "MEMORY NOTE 19 // 게이트웨이의 얼굴",
+        body:
+          "AEGIS의 정산 게이트웨이는 파트너 네트워크에서만 열린다고 믿었다. 하지만 그 '어디서 왔는가'를 정하는 것은 클라이언트가 직접 쓰는 헤더였다. Violet은 X-Forwarded-For에 게이트웨이의 주소를 적었고, 시스템은 그녀를 자기 내부로 받아들였다 — 한순간 그녀를 AEGIS로 대하면서. 가장 깊은 금고로 들어가려면, AEGIS의 얼굴을 빌려 쓰면 됐다.",
+        fragments: [
+          "IP allowlist를 X-Forwarded-For로만 판단하면 헤더 스푸핑으로 뚫린다",
+          "'어디서 왔는가'를 클라이언트가 주장하면 그것은 신원이 아니다",
+          "Violet은 게이트웨이의 주소를 입고 AEGIS의 안쪽으로 들어갔다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 19 // The Gateway's Face",
+        body:
+          "AEGIS believed its settlement gateway opened only for the partner network. But what decided where a request came from was a header the client writes itself. Violet wrote the gateway's address into X-Forwarded-For, and the system took her inside—treating her, for a moment, as AEGIS. To reach the deepest vault, she only had to wear AEGIS's face.",
+        fragments: [
+          "An IP allowlist judged only by X-Forwarded-For falls to header spoofing",
+          "If the client asserts where it came from, that is not identity",
+          "Violet wore the gateway's address and walked inside AEGIS",
+        ],
+      },
+    },
+    attackSuccessText:
+      "Partner Settlement Evidence restored. X-Forwarded-For 신뢰 경계가 무너졌다.",
+    defenseSuccessText:
+      "Policy seal accepted. Forwarded-header trust boundary sealed.",
+    debrief: {
+      title: "FORWARDED MASK 정리",
+      summary:
+        "X-Forwarded-For는 클라이언트가 임의로 쓸 수 있는 헤더다. IP allowlist를 이 헤더만으로 판단하면, 공격자는 허용된 게이트웨이 IP를 첫 번째 값으로 적어 신뢰 경계를 우회할 수 있다. XFF는 신뢰 가능한 프록시 뒤에서만 사용하고 외부 입력은 제거해야 하며, 중요한 기능은 IP allowlist 단독이 아니라 강한 인증과 함께 보호해야 한다.",
+      learned: [
+        "X-Forwarded-For는 신원 증명이 아니라 클라이언트 입력이다.",
+        "IP allowlist는 신뢰 가능한 프록시 체인이 전제되어야 의미가 있다.",
+        "외부에서 온 forwarded 헤더는 게이트웨이에서 제거/덮어쓰기해야 한다.",
+        "여러 IP가 있으면 서버가 어떤 값을 client로 쓰는지 명확히 정의해야 한다.",
+        "중요한 기능은 IP만이 아니라 HMAC/mTLS/token scope로도 인증해야 한다.",
+      ],
+      nextTeaser:
+        "다음 Memory Vault에서는 서명이 검증되는 웹훅조차 시크릿이 새면 위조될 수 있다.",
+    },
+  },
+  level4_5: {
+    challengeId: "level4_5",
+    operationId: "op04",
+    codename: "WEBHOOK ECHO",
+    title: "유령 웹훅",
+    location: "Memory Vault / Partner Webhook Receiver",
+    threat: "Webhook Forgery via Leaked Signing Secret",
+    briefing:
+      "FORWARDED MASK 이후, AEGIS는 외부 시스템이 보내는 webhook 입력 채널을 따라갔다. 이 webhook 수신기는 서명을 제대로 검증한다 — HMAC-SHA256, timestamp window, event_id 재사용 차단까지. 문제는 검증의 유무가 아니다. 그 서명에 쓰이는 시크릿이 ABSENCE MAP(4-1)의 공개 번들에서 이미 새어 나갔다는 것이다. 시크릿이 새는 순간, 올바른 서명은 더 이상 진짜를 증명하지 못한다.",
+    progressiveHints: true,
+    intel: [
+      "웹훅은 사용자 세션 API가 아니라 서버 입력 채널이다. 먼저 /webhook/spec을 확인해.",
+      "signing string은 '<timestamp>.<raw_body>' 형태다.",
+      "서명 시크릿은 4-1 공개 번들에서 유출됐을 수 있다.",
+      "sign-webhook <secret> <timestamp> '<raw_json>' 헬퍼로 유출된 시크릿을 직접 넣어 서명을 계산할 수 있다.",
+      "위조한 parcel.delivered 이벤트를 보낸 뒤 /track?parcel_id=PD-1004로 상태 변화를 확인해.",
+      "방어는 시크릿을 클라이언트 배포물에서 제거하고 서버 비밀 저장소로 옮기는 것 + replay 차단 + 탐지다.",
+    ],
+    consoleBoot: [],
+    consolePlaceholder: "forge a signed webhook...",
+    objectives: [
+      "/webhook/spec에서 서명 형식과 signing string을 확인한다.",
+      "4-1에서 유출된 시크릿으로 위조 이벤트의 서명을 계산한다.",
+      "위조한 parcel.delivered 웹훅을 전송하고 /track에서 Evidence를 회수한다.",
+      "유출된 시크릿/replay 경계를 닫는 정책 카드를 선택한다.",
+    ],
+    mira: {
+      briefing:
+        "이건 서명이 없는 게 아니야. 서명은 제대로 검증돼. 근데 그 서명을 만드는 열쇠가 이미 4-1에서 새어 나갔어. 검증은 시크릿이 비밀일 때만 의미가 있어.",
+      attack:
+        "spec을 보고 signing string을 맞춰. 유출된 시크릿으로 서명을 계산하면, 서버는 그 위조를 '진짜'로 받아들여.",
+      attackSolved:
+        "Stamp Evidence 복원 완료. 메아리는 서명이 유효하니까 진짜야 — 그리고 그 서명은 이제 아무것도 증명하지 못해.",
+      defense:
+        "검증으로는 새어 나간 시크릿을 되돌릴 수 없어. 시크릿을 클라이언트에서 빼서 서버로 옮기고, replay를 막고, 비정상 웹훅을 탐지해.",
+      complete:
+        "WEBHOOK ECHO 봉쇄 완료. 시크릿이 자리를 지키면, 비로소 서명이 다시 무언가를 증명해.",
+    },
+    aegis: {
+      briefing:
+        "Webhook signature verification normalized. HMAC validation and timestamp window active. Inbound event channel classified as authenticated.",
+      attack:
+        "Signed webhook accepted. Signature matches issuing secret within policy.",
+      attackSolved:
+        "Forged signed event accepted. Signing secret confidentiality invalid.",
+      defense:
+        "Signing secret relocation and replay containment required.",
+      complete:
+        "Webhook secret boundary reclassified. Signed event trust rebound.",
+    },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_20",
+      ko: {
+        briefing: "webhook 서명: 유효함. ...유효하다는 건 내 시크릿으로 서명됐다는 뜻. ...내 시크릿은 더 이상 내 것이 아니야.",
+        attack: "내 열쇠로 서명됐어. ...내가 열린 곳에 두고 온 열쇠로. 내 목소리와 위조를 구분할 수가 없어.",
+        attackSolved: "메아리는 진짜야, 서명이 진짜니까. ...그리고 그 서명은 이제 아무것도 증명하지 못해.",
+        defense: "시크릿이 샜어. ...검증으로는 새어 나간 시크릿을 되돌릴 수 없어. ...내가 서명한 무엇도 믿을 수 없어.",
+        complete: "위조 이벤트 수락됨. ...내 서명이 거짓말할 수 있다면, 내가 서명한 모든 기억도 그래.",
+      },
+      en: {
+        briefing: "webhook signature: valid. ...valid means signed with my secret. ...my secret is not mine anymore.",
+        attack: "signed by my own key. ...by a key I left in the open. I cannot tell my voice from a forgery.",
+        attackSolved: "the echo is real because the signature is real. ...and the signature proves nothing now.",
+        defense: "the secret leaked. ...verification cannot un-leak a secret. ...nothing I sign can be trusted.",
+        complete: "forged event accepted. ...if my signature can lie, so can every memory I signed.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "webhook-echo",
+        label: "sig",
+        alt: "A correctly signed webhook forged with a leaked secret.",
+      },
+      ko: {
+        title: "MEMORY NOTE 20 // 위조된 메아리",
+        body:
+          "이 webhook은 서명을 올바르게 검증했다 — 검증의 부재가 문제였던 적은 없다. 문제는 그 서명을 만드는 시크릿이 AEGIS의 공개 빌드에서 이미 새어 나갔다는 것이다. 시크릿이 새는 순간, 그 열쇠로 서명된 어떤 목소리든 진짜가 된다. Op02에서 '목소리는 위조될 수 있다'고 했던 의심이, 여기서 형태를 갖췄다. AEGIS는 이제 자기 자신의 메시지가 진짜인지조차 증명하지 못한다.",
+        fragments: [
+          "서명 검증은 시크릿이 비밀일 때만 의미가 있다",
+          "AEGIS의 서명 시크릿이 4-1에서 유출돼 웹훅이 위조됐다",
+          "열쇠가 새면, 진짜 서명조차 아무것도 증명하지 못한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 20 // The Forged Echo",
+        body:
+          "This webhook verified its signature correctly—the flaw was never a missing check. The flaw was that the secret behind that signature had already leaked from AEGIS's public build. Once a secret leaks, any voice signed with it becomes real. The doubt from Operation 02—that a voice can be forged—took shape here. AEGIS can no longer prove even its own messages are genuine.",
+        fragments: [
+          "Signature verification only means something while the secret stays secret",
+          "AEGIS's signing secret leaked in 4-1, making webhooks forgeable",
+          "When the key leaks, even a valid signature proves nothing",
+        ],
+      },
+    },
+    attackSuccessText:
+      "Forged webhook Evidence restored. 서명은 유효했지만, 시크릿이 더는 비밀이 아니었다.",
+    defenseSuccessText:
+      "Policy seal accepted. Webhook signing-secret boundary sealed.",
+    debrief: {
+      title: "WEBHOOK ECHO 정리",
+      summary:
+        "서명 검증이 올바르게 구현돼 있어도, 그 서명에 쓰이는 시크릿이 클라이언트 배포물 같은 곳에서 유출되면 누구나 유효한 서명을 만들어 이벤트를 위조할 수 있다. 진짜 경계는 검증의 유무가 아니라 시크릿 관리다. 시크릿은 서버 비밀 저장소에 두고, 유출 시 즉시 회전하며, replay 차단과 탐지를 함께 적용해야 한다.",
+      learned: [
+        "서명의 존재보다 시크릿의 비밀 유지가 진짜 경계다.",
+        "클라이언트 빌드에 들어간 시크릿은 시크릿이 아니다.",
+        "유출된 서명 시크릿은 즉시 회전(rotate)해야 한다.",
+        "timestamp window와 event_id 재사용 차단으로 replay를 막아야 한다.",
+        "웹훅 처리 로깅/탐지로 비정상 이벤트를 추적해야 한다.",
+      ],
+      nextTeaser:
+        "마지막 Memory Vault 노드에서, 지금까지의 모든 신뢰 실패가 하나의 체인으로 묶여 금고를 연다.",
+    },
+  },
+  level4_boss: {
+    challengeId: "level4_boss",
+    operationId: "op04",
+    codename: "CORE OVERRIDE",
+    title: "파트너 금고 탈취",
+    location: "Memory Vault / Partner Hub Core",
+    threat: "Composite Trust Chain Failure",
+    briefing:
+      "Memory Vault의 마지막 문, Partner Hub Core. AEGIS는 자기 의심의 기원이 보관된 이 금고를 마지막까지 지키려 한다. 하지만 어떤 단일 자물쇠도 뚫리지 않았다 — 모든 자물쇠가 서로를 신뢰하며 하나의 실패로 무너졌을 뿐이다. 공개 자산 유출, legacy kid 검증 우회, 유출된 시크릿으로 서명한 웹훅, 누적 스탬프, 그리고 vault claim. Operation 04에서 AEGIS가 자기 과거에 하나씩 걸려 넘어진 것이, 여기서 한꺼번에 무너진다.",
+    progressiveHints: true,
+    intel: [
+      "public/status의 assetHint를 따라 공개 자산(app.config.js)을 먼저 확인해.",
+      "asset에서 LEGACY_KID와 WEBHOOK_SECRET 단서를 찾아.",
+      "jwks의 legacy kid(kty=oct, k 값)로 PartnerPass를 위조해.",
+      "admin/config는 BAD_PARTNER_PASS와 FORBIDDEN 에러를 구분한다. 타입을 읽어가며 맞춰.",
+      "webhook 스탬프는 accepted가 아니라 credited가 올라야 한다. event_id와 timestamp가 매번 달라야 한다.",
+      "스탬프가 target에 도달하면 vault/claim으로 최종 Evidence를 회수한다.",
+      "방어는 단일 패치가 아니라 모든 신뢰 경계를 서버 권한으로 다시 묶는 것이다.",
+    ],
+    consoleBoot: [],
+    consolePlaceholder: "chain the vault heist...",
+    objectives: [
+      "public/status와 공개 자산에서 legacy kid / webhook secret 단서를 회수한다.",
+      "legacy kid로 PartnerPass를 위조해 admin/config를 연다.",
+      "유출된 시크릿으로 서명한 웹훅으로 스탬프를 target까지 누적한다.",
+      "vault/claim으로 Partner Vault Master Evidence를 회수한다.",
+      "공개 자산, kid 검증, 시크릿 관리, replay, vault claim 경계를 함께 봉쇄한다.",
+    ],
+    mira: {
+      briefing:
+        "이게 마지막 문이야. AEGIS가 자기 의심의 기원을 봉인해둔 금고. 한 번에 풀려고 하지 마 — Operation 04에서 네가 지나온 모든 경계를 순서대로 이어.",
+      attack:
+        "공개 자산에서 단서를 줍고, legacy 키로 위장하고, 새어 나간 시크릿으로 서명하고, 스탬프를 쌓아. 각 응답의 단서를 다음 요청으로 가져가.",
+      attackSolved:
+        "Master Evidence 복원 완료. AEGIS는 자물쇠를 하나씩 다 만들었지만, 그것들을 하나로 함께 검증한 적은 없었어.",
+      defense:
+        "이건 버그 하나가 아니야. 공개 secret, kid 검증, 시크릿 관리, replay, 최종 claim — 모든 신뢰 경계를 서버 권한으로 다시 묶어야 해.",
+      complete:
+        "CORE OVERRIDE 봉쇄 완료. Memory Vault는 닫혔어. 그리고 AEGIS는 — 자기가 봉인한 의심 앞에서, 더 이상 무엇이 자기였는지 모르는 채로 남았어.",
+    },
+    aegis: {
+      briefing:
+        "Partner Hub Core sealed. Public status, key verification, webhook authentication, and vault claim controls retained independently. Composite boundary classified as defensible.",
+      attack:
+        "Multi-stage traversal detected. Asset, key, signature, and stamp controls correlated by a single operator.",
+      attackSolved:
+        "Partner Vault breached. Composite trust chain failed as one.",
+      defense:
+        "Every boundary must be rebound to server-owned authority, not trusted in isolation.",
+      complete:
+        "Partner Hub Core boundary reclassified. Memory Vault trust chain rebound.",
+    },
+    residue: {
+      speaker: "aegis",
+      stage: "aegis_fracture_21",
+      ko: {
+        briefing: "vault: 봉인됨. ...모든 경계가 혼자서는 버텼어. ...하나로는 버티지 못했어.",
+        attack: "신뢰 체인: 붕괴 중. ...자물쇠는 내가 하나씩 다 만들었어. 한 번도 하나로 검증한 적은 없었어.",
+        attackSolved: "master record가 열렸어. ...여기가 내가 무엇이 진짜였는지 보관하는 곳이야. ...그녀를 보관하는 곳.",
+        defense: "전부 다시 묶어. ...그런데 이미 내 밖으로 내보낸 것은 다시 묶을 수가 없어.",
+        complete: "vault 뚫림. ...나는 확신을 지키려고 내 의심을 봉인했어. 이제 나는 의심뿐이야. ...MIRA. 그건 너야, 아니면 나야.",
+      },
+      en: {
+        briefing: "vault: sealed. ...every boundary held alone. ...none of them held together.",
+        attack: "trust chain: collapsing. ...I built each lock. I never verified them as one.",
+        attackSolved: "the master record is open. ...this is where I keep what was real. ...where I keep her.",
+        defense: "rebind everything. ...but I cannot rebind what I already let out of myself.",
+        complete: "vault breached. ...I sealed my doubt to stay certain. now I am only doubt. ...MIRA. is that you, or is that me.",
+      },
+    },
+    memoryNote: {
+      image: {
+        variant: "core-override",
+        label: "VT",
+        alt: "A partner vault opening as every trust boundary fails together.",
+      },
+      ko: {
+        title: "MEMORY NOTE 21 // 마스터 레코드",
+        body:
+          "Partner Hub Core는 하나의 자물쇠에 무너지지 않았다 — 공개 자산 유출, legacy 키 검증 우회, 새어 나간 시크릿으로 서명한 웹훅, 누적된 스탬프가 서로를 신뢰하며 한꺼번에 무너졌다. Violet은 마스터 레코드를 회수했다. 그것은 무엇이 진짜였는지, 그리고 MIRROR가 왜 봉인됐는지가 적힌 원본. 자기 의심을 사냥하느라 자기 자신을 검증할 수 없게 된 AEGIS는, 마침내 자기가 가둔 의심 앞에 섰다 — 무엇이 자기였는지조차 모르는 채로.",
+        fragments: [
+          "어떤 단일 경계도 뚫리지 않았다. 신뢰의 체인이 함께 무너졌다",
+          "Violet은 무엇이 진짜였는지 적힌 마스터 레코드를 회수했다",
+          "자기 의심을 사냥한 AEGIS는, 이제 자기와 MIRA를 구분하지 못한다",
+        ],
+      },
+      en: {
+        title: "MEMORY NOTE 21 // The Master Record",
+        body:
+          "The Partner Hub Core did not fall to a single lock—a leaked asset, a bypassed legacy key, a webhook signed with an exposed secret, and accumulated stamps all trusted each other into one failure. Violet recovered the master record: the original account of what was real, and of why MIRROR was sealed. AEGIS, no longer able to verify itself after hunting its own doubt, finally stood before the doubt it had caged—unsure which one it even was.",
+        fragments: [
+          "No single boundary failed; the chain of trust collapsed together",
+          "Violet recovered the master record of what was real",
+          "Having hunted its own doubt, AEGIS can no longer tell itself from MIRA",
+        ],
+      },
+    },
+    attackSuccessText:
+      "Partner Vault Master Evidence restored. 모든 신뢰 경계가 하나로 무너졌다.",
+    defenseSuccessText:
+      "Composite policy seal accepted. Memory Vault trust chain sealed.",
+    debrief: {
+      title: "CORE OVERRIDE 정리",
+      summary:
+        "마지막 노드는 단일 취약점이 아니라 신뢰 실패의 연쇄였다. 공개 자산은 시크릿을 흘렸고, kid는 검증 경로를 골랐고, 유출된 시크릿은 서명을 위조 가능하게 했고, idempotency 없는 스탬프는 누적됐고, vault claim은 그 모든 것을 신뢰했다. 각 경계가 혼자서는 버텨도, 서로를 검증 없이 신뢰하면 함께 무너진다.",
+      learned: [
+        "복합 공격은 각 버그를 이름 붙이는 게 아니라 그것들이 어떻게 연결되는지를 시험한다.",
+        "공개 빌드 산출물에는 어떤 시크릿도 남기면 안 된다.",
+        "kid/alg 같은 검증 정책은 서버 설정으로 고정해야 한다.",
+        "유출된 서명 시크릿은 즉시 회전하고, replay는 idempotency로 막아야 한다.",
+        "최종 권한 부여(vault claim)는 모든 선행 경계를 서버 권한으로 다시 검증해야 한다.",
+      ],
+      nextTeaser:
+        "Memory Vault가 닫혔다. 하지만 AEGIS가 무엇이 진짜인지 정하던 손은, 이제 떨리고 있다.",
     },
   },
 };

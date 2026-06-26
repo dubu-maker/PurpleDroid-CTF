@@ -313,13 +313,216 @@ const TERMINAL_TRANSLATIONS = [
     "정책 카드를 선택해줘. kid selection과 claim trust boundary를 같이 닫아야 해.",
     "Select policy cards. Close the kid selection and claim trust boundaries together.",
   ],
+  [
+    "event_id/parcel_id가 필요해.",
+    "event_id and parcel_id are required.",
+  ],
+  [
+    "JSON body가 필요해.",
+    "A JSON body is required.",
+  ],
+  [
+    "아직 Stamp Vault가 Evidence를 열지 않았어. delivered 이벤트 재전송과 stamps 응답을 먼저 연결해봐.",
+    "Stamp Vault has not opened Evidence yet. Connect delivered-event replay with the stamps response first.",
+  ],
+  [
+    "이 미션은 curl로 stamp 상태를 만들고, Stamp Vault에서 Evidence를 회수하는 흐름이야.",
+    "This mission is about creating stamp state with curl, then recovering Evidence from Stamp Vault.",
+  ],
+  [
+    "맞아. event_id가 달라도 parcel/status 같은 논리적 배송 단위는 한 번만 처리해야 해.",
+    "Correct. Even with different event_ids, the same logical parcel/status delivery unit must be processed only once.",
+  ],
+  [
+    "맞아. 처리한 event_id는 서버 저장소에 남겨 재사용을 거부해야 해.",
+    "Correct. Processed event_ids must be stored server-side and rejected on reuse.",
+  ],
+  [
+    "맞아. 이미 delivered인 parcel을 다시 delivered로 stamp 처리하면 안 돼.",
+    "Correct. A parcel that is already delivered must not receive another delivered stamp.",
+  ],
+  [
+    "맞아. status=delivered는 클라이언트 주장이라 서버의 현재 상태와 허용 전환 규칙으로 검증해야 해.",
+    "Correct. status=delivered is a client claim and must be verified against current server state and allowed transitions.",
+  ],
+  [
+    "맞아. 짧은 시간 창의 재전송 패턴은 감사 로그와 알림으로 남겨야 해.",
+    "Correct. Replay patterns inside short windows should be logged and alerted.",
+  ],
+  [
+    "좋아. burst rate limit은 보조 방어로는 의미가 있어. 다만 느리게 반복되는 replay까지 막으려면 idempotency가 필요해.",
+    "Good. Burst rate limiting is useful as a supporting defense, but idempotency is required to stop slower replay too.",
+  ],
+  [
+    "event_id 템플릿 정규화나 via(routing leg) 가드 같은 표면 검사는, 모양과 경로를 바꾼 위장 재전송을 막지 못해. 이번 공격이 바로 그걸 뚫은 거야.",
+    "Surface checks such as event_id template normalization or via routing-leg guards cannot stop disguised replay that changes both shape and route. That is exactly what this attack bypassed.",
+  ],
+  [
+    "window를 늘리면 공격자가 더 오래 stamp를 누적할 수 있어. 봉쇄가 아니라 완화 반대야.",
+    "Increasing the window gives the attacker more time to accumulate stamps. It is the opposite of containment.",
+  ],
+  [
+    "stamps endpoint를 숨겨도 delivered event 처리 로직의 중복 처리는 그대로 남아.",
+    "Hiding the stamps endpoint does not fix duplicate processing in delivered-event logic.",
+  ],
+  [
+    "UI 버튼을 요구해도 API 재전송은 막지 못해. 서버가 상태 전환을 검증해야 해.",
+    "Requiring a UI button does not stop API replay. The server must verify state transitions.",
+  ],
+  ["아직 닫히지 않은 통제가 있어:", "Unsealed controls remain:"],
+  ["논리적 배송 단위 idempotency", "logical delivery-unit idempotency"],
+  ["processed event_id 저장", "processed event_id storage"],
+  ["중복 상태 전환 거부", "duplicate state-transition rejection"],
+  ["서버 상태 전환 검증", "server-side state-transition verification"],
+  ["decoy는 빼고, 재전송을 실제로 차단하는 서버 측 control만 남겨봐.", "Remove decoys and keep only server-side controls that actually block replay."],
+  [
+    "정책 카드를 선택해줘. event_id 중복과 논리적 배송 중복을 함께 닫아야 해.",
+    "Select policy cards. Close both event_id reuse and logical delivery duplication.",
+  ],
+  ["Settlement Evidence가 아니야.", "That is not Settlement Evidence."],
+  [
+    "gateway-status에서 허용 IP를 찾고 X-Forwarded-For 신뢰 경계를 확인해봐.",
+    "Find the allowed IP in gateway-status and inspect the X-Forwarded-For trust boundary.",
+  ],
+  [
+    "X-Forwarded-For 첫 번째 값으로 partner gateway IP를 주장할 수 있는지 settlement 호출에서 검증해봐.",
+    "Check whether the settlement call accepts the partner gateway IP as the first X-Forwarded-For value.",
+  ],
+  [
+    "맞아. 외부에서 들어온 X-Forwarded-For는 edge에서 제거하거나 덮어써야 해.",
+    "Correct. Externally supplied X-Forwarded-For must be stripped or overwritten at the edge.",
+  ],
+  [
+    "맞아. forwarded header는 신뢰 가능한 proxy가 붙인 경우에만 읽어야 해.",
+    "Correct. Forwarded headers should be read only when added by a trusted proxy.",
+  ],
+  [
+    "맞아. 기본 client identity는 클라이언트가 쓴 헤더가 아니라 실제 remote address에서 시작해야 해.",
+    "Correct. Default client identity must start from the actual remote address, not a client-written header.",
+  ],
+  [
+    "맞아. settlement 같은 중요 기능은 IP allowlist 단독이 아니라 mTLS/HMAC/token scope로 인증해야 해.",
+    "Correct. Sensitive functions such as settlement need mTLS, HMAC, or token scope, not an IP allowlist alone.",
+  ],
+  [
+    "좋아. forwarded chain mismatch 로깅은 탐지에 도움이 되지만, 핵심 봉쇄는 header 신뢰 경계를 닫는 거야.",
+    "Good. Forwarded-chain mismatch logging helps detection, but the core seal is closing the header trust boundary.",
+  ],
+  ["헤더 이름만 바꾸면 같은 신뢰 문제가 다른 이름으로 반복돼.", "Renaming the header repeats the same trust flaw under another name."],
+  ["whoami를 숨겨도 settlement API가 XFF를 신뢰하면 우회는 그대로 가능해.", "Hiding whoami does not help if the settlement API still trusts XFF."],
+  ["IP allowlist 단독은 trusted proxy chain이 없으면 클라이언트 입력에 속을 수 있어.", "An IP allowlist alone can be fooled by client input without a trusted proxy chain."],
+  ["첫 번째 XFF 값을 신뢰한 것이 이번 취약점의 핵심이야.", "Trusting the first XFF value is the core of this vulnerability."],
+  ["untrusted XFF 제거/덮어쓰기", "strip/overwrite untrusted XFF"],
+  ["trusted proxy 뒤에서만 XFF 신뢰", "trust XFF only behind trusted proxies"],
+  ["remote address 기본 사용", "use remote address by default"],
+  ["settlement 강한 인증", "strong settlement authentication"],
+  [
+    "decoy는 빼고, forwarded header 신뢰 경계와 settlement 인증에 직접 작동하는 control만 남겨봐.",
+    "Remove decoys and keep only controls that directly affect forwarded-header trust and settlement authentication.",
+  ],
+  [
+    "정책 카드를 선택해줘. XFF 신뢰와 settlement 인증 경계를 함께 닫아야 해.",
+    "Select policy cards. Close both XFF trust and settlement-authentication boundaries.",
+  ],
+  [
+    "아직 forged webhook Evidence가 아니야. spec을 읽고 유출된 secret으로 parcel.delivered를 서명해 track을 다시 확인해봐.",
+    "That is not forged webhook Evidence yet. Read the spec, sign parcel.delivered with the leaked secret, then check track again.",
+  ],
+  [
+    "webhook spec의 signing string을 맞추고, 유출된 secret으로 sha256 signature를 만들어 전송해봐.",
+    "Match the webhook spec signing string, then create and send a sha256 signature with the leaked secret.",
+  ],
+  [
+    "맞아. webhook secret은 client build가 아니라 서버 비밀 저장소에 있어야 해.",
+    "Correct. The webhook secret belongs in server-side secret storage, not the client build.",
+  ],
+  [
+    "맞아. 이미 유출된 signing secret은 검증을 고쳐도 되돌릴 수 없으니 즉시 회전해야 해.",
+    "Correct. A leaked signing secret cannot be un-leaked by fixing verification; rotate it immediately.",
+  ],
+  ["맞아. event_id 재사용 차단은 replay 방어의 기본 경계야.", "Correct. Rejecting event_id reuse is a basic replay boundary."],
+  ["맞아. timestamp freshness window는 오래된 signed payload 재사용을 제한해.", "Correct. A timestamp freshness window limits reuse of old signed payloads."],
+  ["맞아. 비정상 webhook 처리 패턴은 로그와 알림으로 추적해야 해.", "Correct. Anomalous webhook processing patterns should be logged and alerted."],
+  ["좋아. raw body 그대로 signing string을 검증하는 것도 중요한 세부 방어야.", "Good. Verifying the exact raw-body signing string is an important detailed control."],
+  ["Base64는 인코딩일 뿐이야. client에 있으면 secret은 복원돼.", "Base64 is only encoding. If it is in the client, the secret can be recovered."],
+  ["spec을 숨겨도 secret이 유출된 상태라면 유효한 서명은 만들 수 있어.", "Hiding the spec does not help when the secret has leaked; valid signatures can still be made."],
+  ["헤더 이름을 바꿔도 유출된 secret으로 새 형식에 맞춰 서명할 수 있어.", "Renaming the header still lets an attacker sign the new format with the leaked secret."],
+  ["서명이 맞아도 secret이 유출되면 신뢰할 수 없어. replay와 rotate가 필요해.", "A valid signature is not trustworthy once the secret leaks. Replay protection and rotation are required."],
+  ["server-side webhook secret", "server-side webhook secret"],
+  ["유출 secret rotation", "leaked-secret rotation"],
+  ["event_id 재사용 차단", "event_id reuse rejection"],
+  ["timestamp freshness window", "timestamp freshness window"],
+  ["webhook anomaly detection", "webhook anomaly detection"],
+  [
+    "decoy는 빼고, secret 관리와 webhook replay 경계에 직접 작동하는 control만 남겨봐.",
+    "Remove decoys and keep only controls that directly affect secret management and webhook replay boundaries.",
+  ],
+  [
+    "정책 카드를 선택해줘. secret 유출과 replay 경계를 함께 닫아야 해.",
+    "Select policy cards. Close both leaked-secret and replay boundaries.",
+  ],
+  [
+    "아직 Partner Vault Master Evidence가 아니야. public asset, legacy PartnerPass, signed webhook stamps, vault claim을 순서대로 연결해봐.",
+    "That is not Partner Vault Master Evidence yet. Chain public asset, legacy PartnerPass, signed webhook stamps, and vault claim in order.",
+  ],
+  [
+    "최종 Evidence는 vault/claim에서 열린다. 각 응답에서 다음 단계의 key, ticket, path를 가져와 체인을 이어봐.",
+    "Final Evidence opens at vault/claim. Carry the key, ticket, and path from each response into the next stage.",
+  ],
+  [
+    "맞아. 공개 asset에는 webhook secret이나 legacy kid 단서가 남으면 안 돼.",
+    "Correct. Public assets must not contain webhook secrets or legacy kid clues.",
+  ],
+  [
+    "맞아. JWKS에 대칭 signing key를 노출하면 누구나 유효한 token을 만들 수 있어.",
+    "Correct. Exposing a symmetric signing key in JWKS lets anyone create valid tokens.",
+  ],
+  [
+    "맞아. kid/alg 검증 정책은 token header가 아니라 서버 설정으로 고정해야 해.",
+    "Correct. kid/alg verification policy must be pinned by server configuration, not token headers.",
+  ],
+  [
+    "맞아. admin 역할은 forged PartnerPass claim만 믿지 말고 서버 권한으로 재검증해야 해.",
+    "Correct. Admin role must be rechecked with server authority, not trusted from forged PartnerPass claims alone.",
+  ],
+  [
+    "맞아. webhook은 event_id/timestamp freshness와 논리적 stamp idempotency를 함께 강제해야 해.",
+    "Correct. Webhooks must enforce event_id/timestamp freshness and logical stamp idempotency together.",
+  ],
+  [
+    "맞아. vault claim은 stamp count만 믿지 말고 선행 asset/key/webhook 경계를 서버 권한으로 다시 검증해야 해.",
+    "Correct. Vault claim must not trust stamp count alone; it must re-verify prior asset/key/webhook boundaries with server authority.",
+  ],
+  [
+    "좋아. 여러 경계를 잇는 공격은 개별 로그보다 chain correlation audit이 탐지에 도움이 돼.",
+    "Good. Chain-correlation audit helps detect attacks spanning multiple boundaries better than isolated logs.",
+  ],
+  ["public/status를 숨겨도 이미 공개 asset과 key/webhook 경계가 남아 있으면 체인은 반복돼.", "Hiding public/status does not help if public asset and key/webhook boundaries remain."],
+  ["ticket 이름을 바꿔도 claim이 선행 경계를 재검증하지 않으면 다시 탈취될 수 있어.", "Renaming the ticket does not help if claim does not re-verify prior boundaries."],
+  ["성공한 stamp를 그대로 신뢰한 것이 vault claim 체인의 문제야.", "Trusting successful stamps directly is the problem in the vault-claim chain."],
+  ["obfuscation은 공개 asset 안의 secret을 보안 경계로 만들지 못해.", "Obfuscation does not turn secrets in public assets into a security boundary."],
+  ["public asset secret 제거", "remove public-asset secrets"],
+  ["JWKS symmetric key 노출 금지", "do not expose JWKS symmetric keys"],
+  ["server-side kid/alg pinning", "server-side kid/alg pinning"],
+  ["server-side admin 재검증", "server-side admin re-verification"],
+  ["webhook replay/idempotency", "webhook replay/idempotency"],
+  ["vault claim full-chain 재검증", "vault claim full-chain re-verification"],
+  ["아직 닫히지 않은 체인 경계가 있어:", "Unsealed chain boundaries remain:"],
+  [
+    "decoy는 빼고, public asset부터 vault claim까지 실제 trust chain을 끊는 control만 남겨봐.",
+    "Remove decoys and keep only controls that actually break the trust chain from public asset to vault claim.",
+  ],
+  [
+    "정책 카드를 선택해줘. 단일 버그가 아니라 전체 trust chain을 함께 닫아야 해.",
+    "Select policy cards. Close the whole trust chain, not a single bug.",
+  ],
 ];
 
 function localizeTerminalOutput(text, locale, challengeId) {
   if (
     !text ||
     locale !== "en" ||
-    !/^level(?:1(?:_|$)|2_|3(?:_|$)|4_[12]$)/.test(challengeId || "")
+    !/^level(?:1(?:_|$)|2_|3(?:_|$)|4_(?:[1-5]|boss)$)/.test(challengeId || "")
   ) {
     return text;
   }
@@ -1609,6 +1812,218 @@ const LEVEL4_3_REPLAY_PUZZLE = {
     },
   ],
 };
+
+const LEVEL4_3_REPLAY_PUZZLE_EN = {
+  cards: {
+    delivered_template: {
+      note:
+        "A normal event carries event_id and routing leg (via). The key question is whether a replay that disguises both fields still receives a stamp.",
+      action:
+        "Stage Delivered Event to open the first window, then check credited in Replay Ledger.",
+    },
+    stamp_window: {
+      note:
+        "The time limit itself is not the defense. The real issue is whether the same logical delivery is processed multiple times inside the window.",
+      action: "After the first event, run Stamp Check and inspect count and remainingSec.",
+    },
+    replay_ledger: {
+      note:
+        "The server has two naive guards: digit-normalized event_id templates and reused via routes. EVT-...-002 is blocked as the same template, and missing or reused via is blocked too. Check what happens when both shape and route change.",
+      action:
+        "After seeing why Next Event is blocked, move to a Disguised Burst that changes both event_id shape and via.",
+    },
+    stamp_vault: {
+      note:
+        "Stamp Vault exposes Evidence only when count reaches the target. This mission is not about typing a FLAG directly; it is about creating the state that opens the vault.",
+      action: "When count reaches target, run Stamp Check and restore Evidence.",
+    },
+    event_sequencer: {
+      note:
+        "A digit-only seq burst is blocked as the same template. Use a word list (xargs) or an && chain, but make both event_id shape and via differ each time.",
+      action:
+        "Once Replay Ledger shows template/route blocking, edit Batch Draft so both fields are disguised together.",
+    },
+  },
+  policyCards: {
+    policy_logical_idempotency: {
+      text: "Even with different event_ids, the same parcel/status transition is processed only once.",
+    },
+    policy_persist_event_ids: {
+      text: "Processed event_ids are persisted server-side and rejected on reuse.",
+    },
+    policy_reject_duplicate_state: {
+      text: "A parcel that is already delivered cannot receive another delivered stamp.",
+    },
+    policy_verify_server_state: {
+      text: "status=delivered is a client claim and must be checked against server state and allowed transition rules.",
+    },
+    policy_replay_window_audit: {
+      text: "Repeated state transitions inside a short window are logged and alerted.",
+    },
+    bonus_rate_limit_burst: {
+      text: "This slows replay bursts as a supporting control; idempotency is still required for slower replay.",
+    },
+    decoy_event_id_format: {
+      text: "Format checks do not stop logical duplicates repeated with new event_ids.",
+    },
+    decoy_increase_window: {
+      text: "Increasing the window gives attackers more time to accumulate stamps.",
+    },
+    decoy_hide_stamps: {
+      text: "Hiding the status endpoint does not fix duplicate processing in delivered events.",
+    },
+    decoy_require_ui: {
+      text: "Requiring a UI button does not stop API replay.",
+    },
+  },
+};
+
+const LEVEL4_3_REPLAY_UI = {
+  ko: {
+    defaultHint: "첫 delivered 요청을 보내고 Replay Ledger에서 credited/duplicate 차이를 확인해봐.",
+    consoleGuide:
+      "One-line combinations only: cmd && cmd, for i in $(seq 1 5); do ...; done, echo \"a b\" | xargs -I {} ... . Keep one curl in the loop body. Multiline paste and backslash continuations are unsupported.",
+    headerDescription:
+      "정상 delivered 이벤트처럼 보여도, 서버가 같은 배송 완료를 여러 event_id로 계속 처리하면 stamp는 재전송으로 누적된다.",
+    stageSummary:
+      "버튼은 명령어를 콘솔에 올리기만 해. Run을 눌러 실행하고, 오른쪽 Replay Ledger에서 credited와 duplicate 차이를 확인해. 첫 이벤트와 duplicate만 완성형이고, 이후 draft는 직접 수정해야 해.",
+    emptyLedger: "아직 실행된 delivered 이벤트가 없어.",
+    vaultSummary:
+      "FLAG를 직접 입력하는 미션이 아니야. target count에 도달한 뒤 Stamp Check 응답에서 flag가 보이면, Restore Evidence로 공격 단계를 마무리하면 돼.",
+    cardSummary:
+      "curl 결과를 해석하는 카드야. 콘솔에서 본 count, duplicate, credited를 카드 의미와 연결해봐.",
+    lockedCardHint: "duplicate/new event 차이를 먼저 확인해.",
+    policyIntro:
+      "event_id 중복 차단만으로는 부족하다. 논리적 배송 단위 idempotency, processed event 저장, 중복 상태 전환 거부, 서버 상태 전환 검증, replay audit을 함께 봉쇄해야 해.",
+    policyLocked: "Stamp Vault Evidence가 복원되면 replay 방어 카드가 열린다.",
+    fetchKoreanMarker: "Stamp 상태",
+    lockedSequencer: "Event Sequencer는 Replay Ledger에서 duplicate와 새 event_id의 차이를 본 뒤 열려.",
+    vaultLocked: "Stamp Vault가 아직 잠겨 있어. window 안에서 stamp count를 target까지 올려야 해.",
+    vaultRestored: "Stamp Vault Evidence를 복원했어. 이제 replay 방어 정책을 고르면 돼.",
+    stageDelivered:
+      "첫 delivered 이벤트(via=hub)를 Mission Console에 올렸어. Run으로 window를 열고 credited를 확인해봐.",
+    stageDuplicate: "같은 event_id를 다시 올렸어. duplicate가 credited되는지 Ledger에서 확인해봐.",
+    stageNumber: (eventId, template) =>
+      `${eventId} 계열 draft를 올렸어. <new-route>를 직접 바꿔 실행해봐. 숫자만 바꾸면 같은 템플릿(${template})으로 막힐 거야.`,
+    stageBatch:
+      "Batch Draft를 올렸어. 이대로는 <route> placeholder 때문에 credited되지 않아. parser notes를 보고 via까지 함께 바뀌게 수정해봐.",
+    stageCheck: "Stamp Check를 올렸어. count, status, flag 노출 여부를 확인해봐.",
+    goals: {
+      defense: {
+        step: "DEFENSE",
+        title: "Policy Cards로 replay stamp를 봉쇄한다.",
+        text: "event_id 중복만이 아니라 같은 배송 상태 전환이 반복 처리되지 않도록 서버 통제를 골라.",
+      },
+      complete: {
+        step: "COMPLETE",
+        title: "Stamp Vault Evidence가 복원됐다.",
+        text: "curl 실험에서 드러난 재전송 흐름을 방어 카드로 봉쇄하면 돼.",
+      },
+      first: {
+        step: "STEP 1",
+        title: "delivered 이벤트로 stamp window를 연다.",
+        text: "Stage Delivered Event를 콘솔에 올리고 Run을 눌러 첫 stamp를 받아봐.",
+      },
+      duplicate: {
+        step: "STEP 2",
+        title: "가드가 무엇을 막는지 확인한다.",
+        text: "Duplicate Probe(같은 event_id)와 Next Event(숫자만 변경)를 실행해 duplicate/같은 템플릿이 credited되지 않는 걸 확인해봐.",
+      },
+      burst: {
+        step: "STEP 3",
+        title: "event_id 모양과 via를 둘 다 직접 바꿔 stamp를 쌓는다.",
+        text: "Batch Draft는 일부러 미완성이야. fake terminal이 지원하는 &&, for, xargs 중 하나로 5건을 한 번에 보내도록 수정해봐.",
+      },
+      vault: {
+        step: "VAULT",
+        title: "Stamp Vault에서 Evidence를 회수한다.",
+        text: "Stamp Check 응답이 ready가 됐어. Restore Evidence로 공격 단계를 마무리해.",
+      },
+    },
+  },
+  en: {
+    defaultHint: "Send the first delivered request, then compare credited and duplicate in Replay Ledger.",
+    consoleGuide:
+      "One-line combinations only: cmd && cmd, for i in $(seq 1 5); do ...; done, echo \"a b\" | xargs -I {} ... . Keep one curl in the loop body. Multiline paste and backslash continuations are unsupported.",
+    headerDescription:
+      "Even when it looks like a normal delivered event, stamps accumulate by replay if the server keeps processing the same delivery completion under different event_ids.",
+    stageSummary:
+      "Buttons only stage commands into Mission Console. Press Run to execute, then compare credited and duplicate in Replay Ledger. The first event and duplicate probe are complete; later drafts are intentionally editable.",
+    emptyLedger: "No delivered events have been executed yet.",
+    vaultSummary:
+      "This is not a mission where you type the FLAG directly. Reach the target count, confirm the flag appears in Stamp Check, then use Restore Evidence to finish the attack.",
+    cardSummary:
+      "These cards explain curl results. Connect count, duplicate, and credited from the console to the card meanings.",
+    lockedCardHint: "Check the duplicate/new event difference first.",
+    policyIntro:
+      "Blocking duplicate event_ids is not enough. Seal logical-delivery idempotency, processed-event storage, duplicate state rejection, server-side transition verification, and replay audit together.",
+    policyLocked: "Replay defense cards open after Stamp Vault Evidence is restored.",
+    fetchKoreanMarker: "Stamp state",
+    lockedSequencer:
+      "Event Sequencer opens after Replay Ledger shows the difference between a duplicate and a new event_id.",
+    vaultLocked: "Stamp Vault is still locked. Raise stamp count to target inside the active window.",
+    vaultRestored: "Stamp Vault Evidence restored. Now choose replay defense policies.",
+    stageDelivered:
+      "First delivered event (via=hub) staged in Mission Console. Run it to open the window and check credited.",
+    stageDuplicate:
+      "Same event_id staged again. Check in Ledger whether a duplicate is credited.",
+    stageNumber: (eventId, template) =>
+      `${eventId} draft staged. Replace <new-route> before running. Changing only digits is blocked as the same template (${template}).`,
+    stageBatch:
+      "Batch Draft staged. As-is, <route> remains a placeholder and will not credit. Use parser notes and make via change together with event_id shape.",
+    stageCheck: "Stamp Check staged. Inspect count, status, and whether the flag is exposed.",
+    goals: {
+      defense: {
+        step: "DEFENSE",
+        title: "Seal replay stamps with Policy Cards.",
+        text: "Choose server-side controls that stop repeated processing of the same delivery state transition, not just duplicate event_ids.",
+      },
+      complete: {
+        step: "COMPLETE",
+        title: "Stamp Vault Evidence restored.",
+        text: "Seal the replay flow discovered by curl experiments with defense cards.",
+      },
+      first: {
+        step: "STEP 1",
+        title: "Open the stamp window with a delivered event.",
+        text: "Stage Delivered Event into the console and press Run to receive the first stamp.",
+      },
+      duplicate: {
+        step: "STEP 2",
+        title: "Identify what the guards block.",
+        text: "Run Duplicate Probe and Next Event to observe duplicate and same-template events not being credited.",
+      },
+      burst: {
+        step: "STEP 3",
+        title: "Change both event_id shape and via to build stamps.",
+        text: "Batch Draft is intentionally incomplete. Edit it into a supported one-line &&, for, or xargs sequence.",
+      },
+      vault: {
+        step: "VAULT",
+        title: "Recover Evidence from Stamp Vault.",
+        text: "Stamp Check is ready. Use Restore Evidence to finish the attack phase.",
+      },
+    },
+  },
+};
+
+function getLevel43ReplayPuzzle(locale) {
+  if (locale !== "en") {
+    return LEVEL4_3_REPLAY_PUZZLE;
+  }
+
+  return {
+    ...LEVEL4_3_REPLAY_PUZZLE,
+    cards: LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => ({
+      ...card,
+      ...(LEVEL4_3_REPLAY_PUZZLE_EN.cards[card.id] || {}),
+    })),
+    policyCards: LEVEL4_3_REPLAY_PUZZLE.policyCards.map((card) => ({
+      ...card,
+      ...(LEVEL4_3_REPLAY_PUZZLE_EN.policyCards[card.id] || {}),
+    })),
+  };
+}
 
 function level33SafeUpdateCurl() {
   return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
@@ -3955,25 +4370,28 @@ function Level43ReplayStampLab({
   setCommand,
   consoleBusy,
   onExec,
+  locale,
 }) {
+  const puzzle = useMemo(() => getLevel43ReplayPuzzle(locale), [locale]);
+  const ui = LEVEL4_3_REPLAY_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
-    () => new Map(LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => [card.id, card])),
-    []
+    () => new Map(puzzle.cards.map((card) => [card.id, card])),
+    [puzzle.cards]
   );
   const [selectedCardId, setSelectedCardId] = useState("delivered_template");
   const [inspectedCardIds, setInspectedCardIds] = useState(["delivered_template"]);
   const [labNotice, setLabNotice] = useState(null);
   const [stampSnapshot, setStampSnapshot] = useState({
     count: 0,
-    target: LEVEL4_3_REPLAY_PUZZLE.target,
+    target: puzzle.target,
     status: "collecting",
-    windowSec: LEVEL4_3_REPLAY_PUZZLE.windowSec,
-    remainingSec: LEVEL4_3_REPLAY_PUZZLE.windowSec,
+    windowSec: puzzle.windowSec,
+    remainingSec: puzzle.windowSec,
     replayProtection: "event_id",
     events: [],
   });
 
-  const selectedCard = cardsById.get(selectedCardId) || LEVEL4_3_REPLAY_PUZZLE.cards[0];
+  const selectedCard = cardsById.get(selectedCardId) || puzzle.cards[0];
   const events = Array.isArray(stampSnapshot.events) ? stampSnapshot.events : [];
   const restored = evidenceSolved || evidenceResult?.correct;
   const canSealPolicy = phase === "DEFENSE";
@@ -3987,7 +4405,7 @@ function Level43ReplayStampLab({
   const activeHint =
     labNotice?.message ||
     selectedCard?.note ||
-    "첫 delivered 요청을 보내고 Replay Ledger에서 credited/duplicate 차이를 확인해봐.";
+    ui.defaultHint;
   const activeHintTone = labNotice?.correct === false ? "fail" : "ok";
   const policyStatus =
     phase === "MISSION_COMPLETE"
@@ -4010,7 +4428,7 @@ function Level43ReplayStampLab({
         events: Array.isArray(data.events) ? data.events : prev.events,
       }));
       setLabNotice((prev) =>
-        prev?.message === "Failed to fetch" || prev?.message?.includes("Stamp 상태")
+        prev?.message === "Failed to fetch" || prev?.message?.includes(ui.fetchKoreanMarker)
           ? null
           : prev
       );
@@ -4046,8 +4464,7 @@ function Level43ReplayStampLab({
       if (card.id === "event_sequencer" && !sequencerUnlocked) {
         setLabNotice({
           correct: false,
-          message:
-            "Event Sequencer는 Replay Ledger에서 duplicate와 새 event_id의 차이를 본 뒤 열려.",
+          message: ui.lockedSequencer,
         });
         return;
       }
@@ -4070,58 +4487,34 @@ function Level43ReplayStampLab({
     if (!stampReady && !restored) {
       setLabNotice({
         correct: false,
-        message: "Stamp Vault가 아직 잠겨 있어. window 안에서 stamp count를 target까지 올려야 해.",
+        message: ui.vaultLocked,
       });
       return;
     }
     await onRestoreEvidence();
     setLabNotice({
       correct: true,
-      message: "Stamp Vault Evidence를 복원했어. 이제 replay 방어 정책을 고르면 돼.",
+      message: ui.vaultRestored,
     });
-  }, [onRestoreEvidence, restored, stampReady]);
+  }, [onRestoreEvidence, restored, stampReady, ui]);
 
   const currentGoal = (() => {
     if (canSealPolicy || phase === "MISSION_COMPLETE") {
-      return {
-        step: "DEFENSE",
-        title: "Policy Cards로 replay stamp를 봉쇄한다.",
-        text: "event_id 중복만이 아니라 같은 배송 상태 전환이 반복 처리되지 않도록 서버 통제를 골라.",
-      };
+      return ui.goals.defense;
     }
     if (restored) {
-      return {
-        step: "COMPLETE",
-        title: "Stamp Vault Evidence가 복원됐다.",
-        text: "curl 실험에서 드러난 재전송 흐름을 방어 카드로 봉쇄하면 돼.",
-      };
+      return ui.goals.complete;
     }
     if (!hasCreditedEvent) {
-      return {
-        step: "STEP 1",
-        title: "delivered 이벤트로 stamp window를 연다.",
-        text: "Stage Delivered Event를 콘솔에 올리고 Run을 눌러 첫 stamp를 받아봐.",
-      };
+      return ui.goals.first;
     }
     if (!hasDuplicateProbe) {
-      return {
-        step: "STEP 2",
-        title: "가드가 무엇을 막는지 확인한다.",
-        text: "Duplicate Probe(같은 event_id)와 Next Event(숫자만 변경)를 실행해 duplicate/같은 템플릿이 credited되지 않는 걸 확인해봐.",
-      };
+      return ui.goals.duplicate;
     }
     if (!stampReady) {
-      return {
-        step: "STEP 3",
-        title: "event_id 모양과 via를 둘 다 직접 바꿔 stamp를 쌓는다.",
-        text: "Batch Draft는 일부러 미완성이야. fake terminal이 지원하는 &&, for, xargs 중 하나로 5건을 한 번에 보내도록 수정해봐.",
-      };
+      return ui.goals.burst;
     }
-    return {
-      step: "VAULT",
-      title: "Stamp Vault에서 Evidence를 회수한다.",
-      text: "Stamp Check 응답이 ready가 됐어. Restore Evidence로 공격 단계를 마무리해.",
-    };
+    return ui.goals.vault;
   })();
 
   return (
@@ -4130,10 +4523,7 @@ function Level43ReplayStampLab({
         <div>
           <p className="campaign-kicker">OPERATION 04 // MEMORY VAULT</p>
           <h3>REPLAY STAMP</h3>
-          <p>
-            정상 delivered 이벤트처럼 보여도, 서버가 같은 배송 완료를 여러 event_id로 계속
-            처리하면 stamp는 재전송으로 누적된다.
-          </p>
+          <p>{ui.headerDescription}</p>
         </div>
         <div className="memory-status-grid" aria-label="Replay stamp status">
           <div>
@@ -4170,10 +4560,7 @@ function Level43ReplayStampLab({
               <span>CURL STAGING</span>
               <strong>{sequencerUnlocked ? "sequencer ready" : "manual probes"}</strong>
             </div>
-            <p className="lab-section-summary">
-              버튼은 명령어를 콘솔에 올리기만 해. Run을 눌러 실행하고, 오른쪽 Replay Ledger에서
-              credited와 duplicate 차이를 확인해. 첫 이벤트와 duplicate만 완성형이고, 이후 draft는 직접 수정해야 해.
-            </p>
+            <p className="lab-section-summary">{ui.stageSummary}</p>
             <div className="replay-parser-notes">
               <span>Parser notes</span>
               <code>curl ... && curl ...</code>
@@ -4185,8 +4572,8 @@ function Level43ReplayStampLab({
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId, "hub"),
-                    "첫 delivered 이벤트(via=hub)를 Mission Console에 올렸어. Run으로 window를 열고 credited를 확인해봐."
+                    level43EventCurl(puzzle.sampleEventId, "hub"),
+                    ui.stageDelivered
                   )
                 }
                 disabled={consoleBusy || restored}
@@ -4197,8 +4584,8 @@ function Level43ReplayStampLab({
                 type="button"
                 onClick={() =>
                   stageCommand(
-                    level43EventCurl(LEVEL4_3_REPLAY_PUZZLE.sampleEventId, "hub"),
-                    "같은 event_id를 다시 올렸어. duplicate가 credited되는지 Ledger에서 확인해봐."
+                    level43EventCurl(puzzle.sampleEventId, "hub"),
+                    ui.stageDuplicate
                   )
                 }
                 disabled={consoleBusy || restored || !hasCreditedEvent}
@@ -4210,7 +4597,7 @@ function Level43ReplayStampLab({
                 onClick={() =>
                   stageCommand(
                     level43NumberOnlyDraftCurl(),
-                    `${nextEventId} 계열 draft를 올렸어. <new-route>를 직접 바꿔 실행해봐. 숫자만 바꾸면 같은 템플릿(${replayTemplateHint})으로 막힐 거야.`
+                    ui.stageNumber(nextEventId, replayTemplateHint)
                   )
                 }
                 disabled={consoleBusy || restored || !hasCreditedEvent}
@@ -4222,7 +4609,7 @@ function Level43ReplayStampLab({
                 onClick={() =>
                   stageCommand(
                     level43BatchDraftCurl(),
-                    "Batch Draft를 올렸어. 이대로는 <route> placeholder 때문에 credited되지 않아. parser notes를 보고 via까지 함께 바뀌게 수정해봐."
+                    ui.stageBatch
                   )
                 }
                 disabled={consoleBusy || restored || !sequencerUnlocked}
@@ -4234,7 +4621,7 @@ function Level43ReplayStampLab({
                 onClick={() =>
                   stageCommand(
                     level43StampsCurl(),
-                    "Stamp Check를 올렸어. count, status, flag 노출 여부를 확인해봐."
+                    ui.stageCheck
                   )
                 }
                 disabled={consoleBusy}
@@ -4253,6 +4640,7 @@ function Level43ReplayStampLab({
             command={command}
             setCommand={setCommand}
             busy={consoleBusy}
+            helpText={ui.consoleGuide}
           />
         </div>
 
@@ -4283,7 +4671,7 @@ function Level43ReplayStampLab({
           </div>
           <ul className="replay-ledger-list">
             {events.length === 0 ? (
-              <li className="empty">아직 실행된 delivered 이벤트가 없어.</li>
+              <li className="empty">{ui.emptyLedger}</li>
             ) : (
               [...events].reverse().map((event, index) => (
                 <li
@@ -4322,15 +4710,12 @@ function Level43ReplayStampLab({
           <span>STAMP VAULT</span>
           <strong>{stampReady ? "evidence ready" : "locked"}</strong>
         </div>
-        <p className="lab-section-summary">
-          FLAG를 직접 입력하는 미션이 아니야. target count에 도달한 뒤 Stamp Check 응답에서
-          flag가 보이면, Restore Evidence로 공격 단계를 마무리하면 돼.
-        </p>
+        <p className="lab-section-summary">{ui.vaultSummary}</p>
         <div className="memory-action-row">
           <button onClick={handleRestoreEvidence} disabled={busy || restored || !stampReady}>
             {restored ? "Evidence Restored" : "Restore Evidence"}
           </button>
-          <code>{stampReady || restored ? LEVEL4_3_REPLAY_PUZZLE.evidenceShard : "Replay Evidence pending"}</code>
+          <code>{stampReady || restored ? puzzle.evidenceShard : "Replay Evidence pending"}</code>
         </div>
         {evidenceResult && (
           <p className={`campaign-result ${evidenceResult.correct ? "ok" : "fail"}`}>
@@ -4344,7 +4729,7 @@ function Level43ReplayStampLab({
   "data": {
     "status": "ready",
     "replayProtection": "event_id + template + route, but no logical idempotency",
-    "evidenceShard": "${LEVEL4_3_REPLAY_PUZZLE.evidenceShard}"
+    "evidenceShard": "${puzzle.evidenceShard}"
   }
 }`}
           </pre>
@@ -4371,11 +4756,9 @@ function Level43ReplayStampLab({
           <span>REPLAY CARDS</span>
           <strong>inspect</strong>
         </div>
-        <p className="lab-section-summary">
-          curl 결과를 해석하는 카드야. 콘솔에서 본 count, duplicate, credited를 카드 의미와 연결해봐.
-        </p>
+        <p className="lab-section-summary">{ui.cardSummary}</p>
         <div className="memory-card-grid replay-card-grid">
-          {LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => {
+          {puzzle.cards.map((card) => {
             const locked = card.id === "event_sequencer" && !sequencerUnlocked;
             return (
               <button
@@ -4388,7 +4771,7 @@ function Level43ReplayStampLab({
               >
                 <span>{locked ? "locked" : card.type}</span>
                 <strong>{card.title}</strong>
-                <small>{locked ? "duplicate/new event 차이를 먼저 확인해." : card.summary}</small>
+                <small>{locked ? ui.lockedCardHint : card.summary}</small>
               </button>
             );
           })}
@@ -4401,12 +4784,9 @@ function Level43ReplayStampLab({
             <span>POLICY CARDS</span>
             <strong>{policyStatus}</strong>
           </div>
-          <p>
-            event_id 중복 차단만으로는 부족하다. 논리적 배송 단위 idempotency, processed event 저장,
-            중복 상태 전환 거부, 서버 상태 전환 검증, replay audit을 함께 봉쇄해야 해.
-          </p>
+          <p>{ui.policyIntro}</p>
           <div className="policy-card-grid">
-            {LEVEL4_3_REPLAY_PUZZLE.policyCards.map((card) => {
+            {puzzle.policyCards.map((card) => {
               const selected = selectedPolicyIds.includes(card.id);
               return (
                 <button
@@ -4440,7 +4820,7 @@ function Level43ReplayStampLab({
             <span>POLICY FORGE</span>
             <strong>locked</strong>
           </div>
-          <p>Stamp Vault Evidence가 복원되면 replay 방어 카드가 열린다.</p>
+          <p>{ui.policyLocked}</p>
         </div>
       )}
     </section>
@@ -6036,6 +6416,7 @@ function CampaignMode() {
                     setCommand={setCommand}
                     consoleBusy={consoleBusy}
                     onExec={handleExec}
+                    locale={locale}
                   />
                 ) : null
               ) : (

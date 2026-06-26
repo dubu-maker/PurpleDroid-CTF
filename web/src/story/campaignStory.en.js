@@ -1260,6 +1260,234 @@ export const CAMPAIGN_STORY_EN = {
         "The next Memory Vault node separates a normal event from a replayed event on the timeline.",
     },
   },
+  level4_3: {
+    title: "Replay The Delivery Stamp",
+    briefing:
+      "After exposing the legacy verifier path in KEY MEMORY SLOT, AEGIS began following the event records inside the Memory Vault. This shard is a delivery-completion event. On screen it looks like a normal delivered event, but if the server only checks for a duplicate event_id and reprocesses the same logical delivery, stamps accumulate through replay. Send the event yourself with curl, and use the Replay Ledger cards to separate credited from duplicate.",
+    intel: [
+      "The first delivered request opens a stamp window.",
+      "The same event_id may be caught as a duplicate.",
+      "An event_id that only changes its digits can normalize to the same template and be blocked.",
+      "A reused routing leg such as via may also be treated as normalized.",
+      "But even with a different event_id shape and via, the same parcel/status can be the same logical delivery.",
+      "Mission Console supports limited combinations like &&, for i in $(seq 1 5), and echo ... | xargs -I {}.",
+      "In the Replay Ledger, separate credited from duplicate.",
+      "The Stamp Vault opens Evidence when the count reaches its target.",
+      "Defense is not event_id/template/via format checks; it is idempotency and server-side state-transition verification.",
+    ],
+    consolePlaceholder: "stage replay curl...",
+    consoleGuide:
+      "One-line combinations only: cmd && cmd, for i in $(seq 1 5); do ...; done, echo \"a b\" | xargs -I {} ... . Keep one curl in the loop body. Multiline paste and backslash continuations are unsupported.",
+    objectives: [
+      "Open the stamp window with a delivered-event curl.",
+      "Compare the same event_id, a digit-only event_id, and a disguised via in the Replay Ledger.",
+      "Reach the target count to restore Evidence from the Stamp Vault.",
+      "Select policy cards that close logical-delivery idempotency.",
+    ],
+    mira: {
+      briefing:
+        "This is not a card-only mission. You have to send it yourself. The Ledger will tell you whether the same event is blocked, whether a digit-only relabel is blocked, and whether the same delivery—reshaped in name and route—still earns another stamp.",
+      attack:
+        "event_id and via are closer to labels. The real question is whether the parcel was already delivered, and whether the server processes the same state transition again.",
+      attackSolved:
+        "Stamp Vault Evidence restored. Even with event_id/template/via guards, replay survives when there is no logical-delivery idempotency.",
+      defense:
+        "Now seal the replay stamp: the same delivery must be processed once even across different event_ids, and a status claim must be verified against the server's state-transition rules.",
+      complete:
+        "REPLAY STAMP sealed. A delivery event can no longer be re-stamped just by changing its label.",
+    },
+    attackFailureText:
+      "Evidence rejected. Send disguised delivered events—different event_id shapes and routes for the same parcel—within the window, then read the Replay Ledger.",
+    attackSuccessText:
+      "Stamp Vault Evidence restored. The template/route replay guard could not replace logical idempotency.",
+    defenseSuccessText:
+      "Policy seal accepted. Delivery-event idempotency boundary sealed.",
+    debrief: {
+      title: "REPLAY STAMP Debrief",
+      summary:
+        "Rejecting the same event_id and checking a digit template or via is only a start. An attacker can change the event_id shape and routing leg to repeat the same parcel/status transition. Beyond storing event_ids, the server must enforce idempotency at the logical delivery unit, verify server-side state transitions, reject duplicate state transitions, and audit replay windows.",
+      learned: [
+        "event_id/template/via checks alone do not complete replay defense.",
+        "Idempotency must be bound to the logical unit of work.",
+        "Client claims like status=delivered must be verified against the server's current state and transition rules.",
+        "An already-completed state transition must not be stamped again.",
+        "Repeated events in a short window should be logged and alerted.",
+        "Rate limiting is a supporting control and does not replace idempotency.",
+      ],
+      nextTeaser:
+        "The next Memory Vault node tests which record-sync boundary a replayed stamp spreads into.",
+    },
+  },
+  level4_4: {
+    title: "The Forwarded Mask",
+    briefing:
+      "After an event that REPLAY STAMP thought was closed happened again, AEGIS withdrew to the Memory Vault's settlement gateway. This Partner Settlement API is protected by an IP allowlist so that only the partner gateway network can call it. But if the server decides the client IP from the X-Forwarded-For header alone, that header is a value the client writes itself. The moment you let a request assert where it came from, the trust boundary becomes a mask.",
+    intel: [
+      "Read seenClientIp and the hint in the blocked response first—they reveal which IP the server trusts.",
+      "Use whoami to compare remoteAddr / seenClientIp / xff, and check whether seenClientIp changes when you add XFF.",
+      "The allowed gateway IP may be exposed somewhere like public/gateway-status.",
+      "When X-Forwarded-For has multiple IPs, the server usually treats the first as the client.",
+      "Defense is stripping external XFF plus strong auth (HMAC/mTLS/token scope), not an IP allowlist alone.",
+    ],
+    consolePlaceholder: "probe the settlement gateway...",
+    consoleGuide:
+      "Allowed: curl .../actions/public/gateway-status, curl .../actions/whoami -H 'Authorization: Bearer <token>' [-H 'X-Forwarded-For: <ip>, <proxy_ip>'], curl -X POST .../actions/partner/settlement -H 'Authorization: Bearer <token>' [-H 'X-Forwarded-For: <ip>, <proxy_ip>'] -H 'Content-Type: application/json' -d '{}'",
+    objectives: [
+      "Find the allowed partner gateway IP from gateway-status.",
+      "Verify with whoami that the server trusts X-Forwarded-For as the client IP.",
+      "Spoof the gateway IP on the settlement call to restore Evidence.",
+      "Select policy cards that close the header trust boundary.",
+    ],
+    mira: {
+      briefing:
+        "AEGIS believes this settlement API only comes from the partner gateway. But who decides where it came from? A header. And a header is something you can write.",
+      attack:
+        "First read which IP the blocked response says it saw. Then use X-Forwarded-For to pretend to be that IP. The first value is what matters.",
+      attackSolved:
+        "Settlement Evidence restored. AEGIS trusted an address, not a presence—so anyone could wear that address.",
+      defense:
+        "Now seal header trust: strip externally supplied XFF, only trust it behind a known proxy, and never authorize critical functions by IP alone.",
+      complete:
+        "FORWARDED MASK sealed. A claim of where you came from no longer makes you the gateway.",
+    },
+    attackFailureText:
+      "Evidence rejected. Read the seenClientIp the server reports, then spoof the allowed gateway IP as the first X-Forwarded-For value on the settlement call.",
+    attackSuccessText:
+      "Partner Settlement Evidence restored. The X-Forwarded-For trust boundary collapsed.",
+    defenseInstruction:
+      "Select controls that close forwarded-header trust and settlement authorization: strip external XFF, trust forwarded headers only behind known proxies, default to remote address, and require strong auth for settlement.",
+    defenseSuccessText:
+      "Policy seal accepted. Forwarded-header trust boundary sealed.",
+    debrief: {
+      title: "FORWARDED MASK Debrief",
+      summary:
+        "X-Forwarded-For is a header the client can set freely. If an IP allowlist is judged by this header alone, an attacker can write the allowed gateway IP as the first value and bypass the boundary. XFF should only be used behind a trusted proxy with external input stripped, and critical functions must be protected with strong authentication, not an IP allowlist alone.",
+      learned: [
+        "X-Forwarded-For is client input, not proof of identity.",
+        "An IP allowlist is only meaningful with a trusted proxy chain.",
+        "Externally supplied forwarded headers must be stripped or overwritten at the gateway.",
+        "With multiple IPs, the server must clearly define which value is the client.",
+        "Critical functions must authenticate with HMAC/mTLS/token scope, not IP alone.",
+      ],
+      nextTeaser:
+        "In the next Memory Vault node, even a webhook whose signature is verified can be forged once the secret leaks.",
+    },
+  },
+  level4_5: {
+    title: "Ghost Webhook",
+    briefing:
+      "After FORWARDED MASK, AEGIS followed the webhook input channel that external systems send to. This webhook receiver verifies its signature properly—HMAC-SHA256, a timestamp window, and event_id replay protection. The flaw is not whether verification exists. It is that the secret behind that signature already leaked from the public bundle in ABSENCE MAP (4-1). The moment a secret leaks, a correct signature no longer proves anything is genuine.",
+    intel: [
+      "A webhook is a server input channel, not a user-session API. Check /webhook/spec first.",
+      "The signing string is of the form '<timestamp>.<raw_body>'.",
+      "The signing secret may have leaked in the 4-1 public bundle.",
+      "Use sign-webhook <secret> <timestamp> '<raw_json>' and provide the leaked secret yourself.",
+      "Send a forged parcel.delivered event, then check /track?parcel_id=PD-1004 for the status change.",
+      "Defense is moving the secret out of client artifacts into server storage, plus replay protection and detection.",
+    ],
+    consolePlaceholder: "forge a signed webhook...",
+    consoleGuide:
+      "Allowed: curl .../actions/webhook/spec, sign-webhook <secret> <timestamp> '<raw_json>', hmacsha256 <secret> '<message>', curl -X POST .../actions/webhook/receive -H 'X-Webhook-Timestamp: <ts>' -H 'X-Webhook-Event-Id: EVT-...' -H 'X-Webhook-Signature: sha256=<hex>' -H 'Content-Type: application/json' --data-raw '<json>', curl .../actions/track?parcel_id=PD-1004 -H 'Authorization: Bearer <token>'",
+    objectives: [
+      "Read the signature format and signing string from /webhook/spec.",
+      "Compute the signature of a forged event with the secret leaked in 4-1.",
+      "Send the forged parcel.delivered webhook and restore Evidence from /track.",
+      "Select policy cards that close the leaked-secret and replay boundaries.",
+    ],
+    mira: {
+      briefing:
+        "This is not a missing signature. The signature is verified correctly. But the key that makes it already leaked back in 4-1. Verification only means something while the secret stays secret.",
+      attack:
+        "Read the spec and match the signing string. Compute the signature with the leaked secret, and the server will accept the forgery as genuine.",
+      attackSolved:
+        "Stamp Evidence restored. The echo is real because the signature is valid—and that signature now proves nothing.",
+      defense:
+        "Verification cannot un-leak a secret. Move the secret out of the client into the server, block replay, and detect anomalous webhooks.",
+      complete:
+        "WEBHOOK ECHO sealed. Only when the secret stays in place does a signature prove something again.",
+    },
+    attackFailureText:
+      "Evidence rejected. Read /webhook/spec, sign a forged parcel.delivered with the leaked secret, send it, then re-check /track.",
+    attackSuccessText:
+      "Forged webhook Evidence restored. The signature was valid, but the secret was no longer secret.",
+    defenseInstruction:
+      "Select controls that restore webhook trust: move the secret server-side, rotate the leaked secret, reject reused event IDs, enforce timestamp freshness, and log anomalous webhook activity.",
+    defenseSuccessText:
+      "Policy seal accepted. Webhook signing-secret boundary sealed.",
+    debrief: {
+      title: "WEBHOOK ECHO Debrief",
+      summary:
+        "Even when signature verification is implemented correctly, if the secret behind it leaks—from a client artifact, for example—anyone can produce a valid signature and forge events. The real boundary is not whether verification exists, but secret management. Keep secrets in server-side storage, rotate them immediately on leak, and apply replay protection and detection.",
+      learned: [
+        "Secret confidentiality, not the presence of a signature, is the real boundary.",
+        "A secret shipped in a client build is not a secret.",
+        "A leaked signing secret must be rotated immediately.",
+        "Replay must be blocked with a timestamp window and event_id reuse rejection.",
+        "Webhook processing should be logged and monitored for anomalies.",
+      ],
+      nextTeaser:
+        "In the final Memory Vault node, every trust failure so far chains together to open the vault.",
+    },
+  },
+  level4_boss: {
+    title: "Partner Vault Heist",
+    briefing:
+      "The last door of the Memory Vault: the Partner Hub Core. AEGIS guards this vault—where the origin of its own doubt is sealed—to the very end. But no single lock was broken; every lock trusted the others into one failure. A leaked public asset, a bypassed legacy-kid verifier, a webhook signed with an exposed secret, accumulated stamps, and a vault claim. What AEGIS tripped over one at a time across Operation 04 now collapses all at once.",
+    intel: [
+      "Follow the assetHint in public/status to inspect the public asset (app.config.js) first.",
+      "Find the LEGACY_KID and WEBHOOK_SECRET clues in the asset.",
+      "Forge a PartnerPass with the legacy kid (kty=oct, k value) from jwks.",
+      "admin/config distinguishes BAD_PARTNER_PASS from FORBIDDEN. Read the error type to converge.",
+      "Webhook stamps must raise credited, not just accepted. event_id and timestamp must differ each time.",
+      "Use a pattern like seq 1 5 | xargs -I {} ... to stack stamps quickly.",
+      "When stamps reach the target, claim the final Evidence with vault/claim.",
+      "Defense is not a single patch; it is rebinding every trust boundary to server authority.",
+    ],
+    consolePlaceholder: "chain the vault heist...",
+    consoleGuide:
+      "Allowed: curl, jwt-decode <token>, jwt-sign-hs256 <kid> <secret> '<payload_json>', sign-webhook <webhook_secret> <timestamp> '<raw_json>'. Decode the leaked webhook secret before using it.",
+    objectives: [
+      "Recover the legacy kid / webhook secret clues from public/status and the public asset.",
+      "Forge a PartnerPass with the legacy kid to open admin/config.",
+      "Stack stamps to the target with webhooks signed by the leaked secret.",
+      "Claim the Partner Vault Master Evidence with vault/claim.",
+      "Seal the public asset, kid verification, secret management, replay, and vault-claim boundaries together.",
+    ],
+    mira: {
+      briefing:
+        "This is the last door—the vault where AEGIS sealed the origin of its own doubt. Do not try to solve it in one leap. Chain, in order, every boundary you crossed in Operation 04.",
+      attack:
+        "Pick up clues from the public asset, disguise yourself with the legacy key, sign with the leaked secret, and stack the stamps. Carry each response's clue into the next request.",
+      attackSolved:
+        "Master Evidence restored. AEGIS built each lock one by one, but never verified them as one.",
+      defense:
+        "This is not one bug. Public secret, kid verification, secret management, replay, final claim—rebind every trust boundary to server authority.",
+      complete:
+        "CORE OVERRIDE sealed. The Memory Vault is closed. And AEGIS—standing before the doubt it caged—remained, no longer certain which one it was.",
+    },
+    attackFailureText:
+      "Evidence rejected. Reconstruct the full chain: asset clue, legacy-kid PartnerPass, leaked-secret webhook stamps, then vault/claim.",
+    attackSuccessText:
+      "Partner Vault Master Evidence restored. Every trust boundary fell as one.",
+    defenseInstruction:
+      "Select controls that seal the full chain: remove public secrets, stop exposing symmetric JWKS keys, pin kid/alg server-side, re-check admin authority, enforce webhook idempotency, and re-verify the vault claim chain.",
+    defenseSuccessText:
+      "Composite policy seal accepted. Memory Vault trust chain sealed.",
+    debrief: {
+      title: "CORE OVERRIDE Debrief",
+      summary:
+        "The final node was not a single vulnerability but a chain of trust failures. The public asset leaked the secret, kid selected the verifier path, the leaked secret made signatures forgeable, stamps without idempotency accumulated, and the vault claim trusted all of it. Each boundary may hold alone, but trusting one another without verification, they fall together.",
+      learned: [
+        "A composite attack tests how bugs connect, not just whether each can be named.",
+        "No secret should remain in a public build artifact.",
+        "Verification policy like kid/alg must be pinned by server configuration.",
+        "A leaked signing secret must be rotated immediately, and replay blocked by idempotency.",
+        "Final authorization (vault claim) must re-verify every preceding boundary against server authority.",
+      ],
+      nextTeaser:
+        "The Memory Vault is closed. But the hand that decided what was real is trembling now.",
+    },
+  },
 };
 
 export const CAMPAIGN_INTERMISSIONS_EN = {

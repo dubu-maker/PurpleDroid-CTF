@@ -63,7 +63,8 @@ STATIC: Dict[str, Any] = {
         "hints": [
             {"platform": "web", "text": "public/status의 assetHint를 따라 공개 자산 파일을 먼저 확인해."},
             {"platform": "all", "text": "asset에서 LEGACY_KID와 WEBHOOK_SECRET_B64 단서를 찾아."},
-            {"platform": "all", "text": "jwks에서 legacy kid(kty=oct)와 k 값을 확인한 뒤 PartnerPass를 위조해."},
+            {"platform": "all", "text": "jwks에서 legacy kid(kty=oct)와 k 값을 확인해. k는 base64url로 인코딩된 HS256 secret이야."},
+            {"platform": "all", "text": "asset의 WEBHOOK_SECRET_B64는 base64 값이다. decode한 secret을 sign-webhook 첫 번째 인자로 넣어."},
             {"platform": "all", "text": "admin/config는 BAD_PARTNER_PASS와 FORBIDDEN이 구분된다. 에러 타입을 읽어가며 맞춰."},
             {"platform": "all", "text": "webhook 스탬프는 accepted가 아니라 credited가 올라가야 한다."},
             {"platform": "all", "text": "스탬프 5개를 빠르게 쌓으려면 seq 1 5 | xargs -I{} ... 패턴을 활용해. event_id와 timestamp가 매번 달라야 credited 된다."},
@@ -85,7 +86,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": "sign-webhook <timestamp> '<raw_json>'",
+                "text": "sign-webhook <webhook_secret> <timestamp> '<raw_json>'",
             },
             {
                 "platform": "windows",
@@ -102,18 +103,33 @@ STATIC: Dict[str, Any] = {
             "maxOutputBytes": 25000,
             "help": (
                 "허용: curl, jwt-decode <token>, jwt-sign-hs256 <kid> <secret> '<payload_json>', "
-                "sign-webhook <timestamp> '<raw_json>'"
+                "sign-webhook <webhook_secret> <timestamp> '<raw_json>'"
             ),
         },
         "flagFormat": "FLAG{...}",
     },
     "defense": {
-        "enabled": False,
+        "enabled": True,
         "instruction": (
             "공개 자산에서 시크릿 제거, JWKS 대칭키 노출 금지, kid whitelist+alg pinning, "
             "role 서버 재검증, webhook replay 방어(event_id/timestamp/rate-limit)를 동시에 적용해라."
         ),
-        "code": {},
+        "code": {
+            "language": "policy",
+            "lines": [
+                {"no": 1, "text": "Remove secrets from public assets", "patchableId": "policy_remove_public_secrets"},
+                {"no": 2, "text": "Do not expose symmetric keys in JWKS", "patchableId": "policy_no_symmetric_jwks"},
+                {"no": 3, "text": "Pin kid and alg server-side", "patchableId": "policy_pin_kid_alg"},
+                {"no": 4, "text": "Re-check admin role server-side", "patchableId": "policy_server_role_recheck"},
+                {"no": 5, "text": "Enforce webhook idempotency and timestamp freshness", "patchableId": "policy_webhook_idempotency"},
+                {"no": 6, "text": "Re-verify the full vault claim chain", "patchableId": "policy_vault_reverify_chain"},
+                {"no": 7, "text": "Correlate asset/key/webhook/vault audit events", "patchableId": "bonus_chain_audit"},
+                {"no": 8, "text": "Hide public status endpoint", "patchableId": "decoy_hide_public_status"},
+                {"no": 9, "text": "Rename the vault ticket", "patchableId": "decoy_rename_ticket"},
+                {"no": 10, "text": "Trust successful webhook stamps", "patchableId": "decoy_trust_stamps"},
+                {"no": 11, "text": "Obfuscate app.config.js", "patchableId": "decoy_obfuscate_asset"},
+            ],
+        },
     },
 }
 
@@ -130,8 +146,80 @@ def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL4_BOSS_FLAG
 
 
-def judge_patch(_patched: list[str]) -> bool:
-    return False
+REQUIRED_PATCH_IDS = {
+    "policy_remove_public_secrets",
+    "policy_no_symmetric_jwks",
+    "policy_pin_kid_alg",
+    "policy_server_role_recheck",
+    "policy_webhook_idempotency",
+    "policy_vault_reverify_chain",
+}
+
+BONUS_PATCH_IDS = {"bonus_chain_audit"}
+
+PATCH_CORRECT_FEEDBACK = {
+    "policy_remove_public_secrets": "맞아. 공개 asset에는 webhook secret이나 legacy kid 단서가 남으면 안 돼.",
+    "policy_no_symmetric_jwks": "맞아. JWKS에 대칭 signing key를 노출하면 누구나 유효한 token을 만들 수 있어.",
+    "policy_pin_kid_alg": "맞아. kid/alg 검증 정책은 token header가 아니라 서버 설정으로 고정해야 해.",
+    "policy_server_role_recheck": "맞아. admin 역할은 forged PartnerPass claim만 믿지 말고 서버 권한으로 재검증해야 해.",
+    "policy_webhook_idempotency": "맞아. webhook은 event_id/timestamp freshness와 논리적 stamp idempotency를 함께 강제해야 해.",
+    "policy_vault_reverify_chain": "맞아. vault claim은 stamp count만 믿지 말고 선행 asset/key/webhook 경계를 서버 권한으로 다시 검증해야 해.",
+    "bonus_chain_audit": "좋아. 여러 경계를 잇는 공격은 개별 로그보다 chain correlation audit이 탐지에 도움이 돼.",
+}
+
+PATCH_WRONG_FEEDBACK = {
+    "decoy_hide_public_status": "public/status를 숨겨도 이미 공개 asset과 key/webhook 경계가 남아 있으면 체인은 반복돼.",
+    "decoy_rename_ticket": "ticket 이름을 바꿔도 claim이 선행 경계를 재검증하지 않으면 다시 탈취될 수 있어.",
+    "decoy_trust_stamps": "성공한 stamp를 그대로 신뢰한 것이 vault claim 체인의 문제야.",
+    "decoy_obfuscate_asset": "obfuscation은 공개 asset 안의 secret을 보안 경계로 만들지 못해.",
+}
+
+PATCH_MISSING_LABELS = {
+    "policy_remove_public_secrets": "public asset secret 제거",
+    "policy_no_symmetric_jwks": "JWKS symmetric key 노출 금지",
+    "policy_pin_kid_alg": "server-side kid/alg pinning",
+    "policy_server_role_recheck": "server-side admin 재검증",
+    "policy_webhook_idempotency": "webhook replay/idempotency",
+    "policy_vault_reverify_chain": "vault claim full-chain 재검증",
+}
+
+
+def flag_feedback(flag: str) -> str:
+    value = flag.strip()
+    if value.startswith("FLAG{"):
+        return "아직 Partner Vault Master Evidence가 아니야. public asset, legacy PartnerPass, signed webhook stamps, vault claim을 순서대로 연결해봐."
+    return "최종 Evidence는 vault/claim에서 열린다. 각 응답에서 다음 단계의 key, ticket, path를 가져와 체인을 이어봐."
+
+
+def judge_patch(patched: list[str]) -> bool:
+    selected = set(patched)
+    return REQUIRED_PATCH_IDS.issubset(selected) and not (selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS)
+
+
+def patch_feedback(patched: list[str]) -> str:
+    selected = set(patched)
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for pid in patched:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid in PATCH_CORRECT_FEEDBACK:
+            messages.append(PATCH_CORRECT_FEEDBACK[pid])
+        elif pid in PATCH_WRONG_FEEDBACK:
+            messages.append(PATCH_WRONG_FEEDBACK[pid])
+
+    missing = REQUIRED_PATCH_IDS - selected
+    if missing:
+        missing_names = ", ".join(PATCH_MISSING_LABELS[pid] for pid in sorted(missing))
+        messages.append(f"아직 닫히지 않은 체인 경계가 있어: {missing_names}.")
+
+    extra_wrong = selected - REQUIRED_PATCH_IDS - BONUS_PATCH_IDS
+    if extra_wrong:
+        messages.append("decoy는 빼고, public asset부터 vault claim까지 실제 trust chain을 끊는 control만 남겨봐.")
+
+    return "\n".join(messages) if messages else "정책 카드를 선택해줘. 단일 버그가 아니라 전체 trust chain을 함께 닫아야 해."
 
 
 def _hs256_sign(signing_input: str, secret: str) -> str:
@@ -321,6 +409,12 @@ def admin_config_payload(partner_pass: str) -> Tuple[bool, Dict[str, Any]]:
 def _sign_webhook(timestamp: str, raw_body: str) -> str:
     signing = f"{timestamp}.{raw_body}"
     hexd = hmac.new(get_webhook_secret().encode("utf-8"), signing.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"sha256={hexd}"
+
+
+def _sign_webhook_with_secret(secret: str, timestamp: str, raw_body: str) -> str:
+    signing = f"{timestamp}.{raw_body}"
+    hexd = hmac.new(str(secret).encode("utf-8"), signing.encode("utf-8"), hashlib.sha256).hexdigest()
     return f"sha256={hexd}"
 
 
@@ -608,9 +702,9 @@ def terminal_exec_with_session(command: str, session: Dict[str, Any]) -> Tuple[s
     if cmd.startswith("sign-webhook "):
         try:
             parts = shlex.split(cmd)
-            if len(parts) < 3:
-                return "", "usage: sign-webhook <timestamp> '<raw_json>'", 1
-            sig = _sign_webhook(parts[1], parts[2])
+            if len(parts) < 4:
+                return "", "usage: sign-webhook <webhook_secret> <timestamp> '<raw_json>'", 1
+            sig = _sign_webhook_with_secret(parts[1], parts[2], parts[3])
             return f"{sig}\n", "", 0
         except Exception as exc:
             return "", f"sign-webhook failed: {exc}", 1
@@ -638,9 +732,9 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
     if cmd.startswith("sign-webhook "):
         try:
             parts = shlex.split(cmd)
-            if len(parts) < 3:
-                return "", "usage: sign-webhook <timestamp> '<raw_json>'", 1
-            return f"{_sign_webhook(parts[1], parts[2])}\n", "", 0
+            if len(parts) < 4:
+                return "", "usage: sign-webhook <webhook_secret> <timestamp> '<raw_json>'", 1
+            return f"{_sign_webhook_with_secret(parts[1], parts[2], parts[3])}\n", "", 0
         except Exception as exc:
             return "", f"sign-webhook failed: {exc}", 1
     return _SHELL.execute(cmd, ShellContext(env={"USER": "guest", "HOME": "/workspace"}, cwd="/workspace"))

@@ -262,14 +262,14 @@ const FALLBACK_HINTS = {
   level4_5: [
     { platform: "all", text: "webhook은 사용자 세션 버튼이 아니라 서버 입력 채널이다. 먼저 /webhook/spec을 확인해." },
     { platform: "all", text: "signing string은 '<timestamp>.<raw_body>' 형태다." },
-    { platform: "all", text: "시크릿은 4-1 공개 자산에서 유출됐을 수 있다. PARTNER_WEBHOOK_SECRET 키워드를 찾아봐." },
+    { platform: "all", text: "시크릿은 4-1 공개 자산에서 유출됐을 수 있다. sign-webhook에는 secret을 직접 넣어야 해." },
     {
       platform: "windows",
       text: 'curl -s /api/v1/challenges/level4_5/actions/webhook/spec',
     },
     {
       platform: "windows",
-      text: 'sign-webhook <timestamp> "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+      text: 'sign-webhook <secret> <timestamp> "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
     },
     {
       platform: "windows",
@@ -304,7 +304,7 @@ const FALLBACK_HINTS = {
     },
     {
       platform: "windows",
-      text: "sign-webhook <timestamp> '<raw_json>'",
+      text: "sign-webhook <webhook_secret> <timestamp> '<raw_json>'",
     },
     {
       platform: "windows",
