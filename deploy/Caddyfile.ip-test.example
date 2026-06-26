@@ -1,0 +1,22 @@
+# Temporary no-domain deployment.
+# Copy this to /etc/caddy/Caddyfile while testing directly by VPS IP:
+#   http://YOUR_SERVER_IP/campaign
+
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8001
+	}
+
+	handle {
+		root * /opt/purpledroid/current/web/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

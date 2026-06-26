@@ -4,18 +4,22 @@ import CampaignMode from "./campaign/CampaignMode";
 import { LESSON_NOTES } from "./content/lessonNotes";
 
 const TOKEN_KEY = "purpledroid_session_token";
+const DEFAULT_API_BASE = import.meta.env.PROD ? "/api/v1" : "http://localhost:8001/api/v1";
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:8001";
+  DEFAULT_API_BASE;
 
 function normalizeApiBase(raw) {
   const trimmed = (raw || "").replace(/\/$/, "");
   if (!trimmed) {
-    return "http://localhost:8001/api/v1";
+    return DEFAULT_API_BASE;
   }
   if (trimmed.endsWith("/api/v1")) {
     return trimmed;
+  }
+  if (trimmed.endsWith("/api")) {
+    return `${trimmed}/v1`;
   }
   return `${trimmed}/api/v1`;
 }

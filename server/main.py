@@ -23,11 +23,18 @@ from levels import LEVELS, LEVEL_ORDER
 # -----------------------------
 app = FastAPI(title="PurpleDroid-CTF API", version="0.1.0")
 
-# 개발 편의: 기본은 전체 허용. 운영 시엔 VITE 도메인만 넣는 걸 추천
+def _env_list(name: str, default: str) -> List[str]:
+    raw = os.getenv(name, default)
+    values = [item.strip() for item in raw.split(",") if item.strip()]
+    return values or [default]
+
+
+cors_origins = _env_list("PURPLEDROID_CORS_ORIGINS", "*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials="*" not in cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

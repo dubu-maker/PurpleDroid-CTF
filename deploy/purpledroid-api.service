@@ -1,0 +1,25 @@
+[Unit]
+Description=PurpleDroid CTF API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=purpledroid
+Group=purpledroid
+WorkingDirectory=/opt/purpledroid/current/server
+EnvironmentFile=/etc/purpledroid/purpledroid.env
+ExecStart=/opt/purpledroid/venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
+Restart=on-failure
+RestartSec=3
+
+# Keep the API mostly read-only except for the persisted session store.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+StateDirectory=purpledroid
+ReadWritePaths=/var/lib/purpledroid
+
+[Install]
+WantedBy=multi-user.target

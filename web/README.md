@@ -7,12 +7,15 @@ npm install
 npm run dev
 ```
 
-Default API base is `http://localhost:8000/api/v1`.
+Default API base:
+
+- development: `http://localhost:8001/api/v1`
+- production build: `/api/v1` on the same origin
 
 To override:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm run dev
+VITE_API_BASE_URL=http://localhost:8001 npm run dev
 ```
 
 You can still use `VITE_API_BASE` for backward compatibility.

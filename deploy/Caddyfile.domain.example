@@ -1,0 +1,26 @@
+# Domain deployment.
+# Replace YOUR_DOMAIN with the final domain or subdomain, then copy to:
+#   /etc/caddy/Caddyfile
+#
+# Caddy will automatically issue and renew HTTPS certificates once DNS points
+# to the VPS and ports 80/443 are reachable.
+
+YOUR_DOMAIN {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8001
+	}
+
+	handle {
+		root * /opt/purpledroid/current/web/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000"
+	}
+}

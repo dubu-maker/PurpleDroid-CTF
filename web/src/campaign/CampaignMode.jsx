@@ -11,18 +11,22 @@ const TOKEN_KEY = "purpledroid_session_token";
 const PROGRESS_KEY_STORAGE_KEY = "purpledroid_progress_key";
 const OPERATION_03_INTERMISSION_KEY = "purpledroid_intermission_operation03_trace_seen";
 const OPERATION_04_INTERMISSION_KEY = "purpledroid_intermission_operation04_descent_seen";
+const DEFAULT_API_BASE = import.meta.env.PROD ? "/api/v1" : "http://localhost:8001/api/v1";
 const API_BASE_RAW =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:8001";
+  DEFAULT_API_BASE;
 
 function normalizeApiBase(raw) {
   const trimmed = (raw || "").replace(/\/$/, "");
   if (!trimmed) {
-    return "http://localhost:8001/api/v1";
+    return DEFAULT_API_BASE;
   }
   if (trimmed.endsWith("/api/v1")) {
     return trimmed;
+  }
+  if (trimmed.endsWith("/api")) {
+    return `${trimmed}/v1`;
   }
   return `${trimmed}/api/v1`;
 }
