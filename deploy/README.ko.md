@@ -105,7 +105,7 @@ sudo systemctl reload caddy
 접속:
 
 ```txt
-http://YOUR_SERVER_IP/campaign
+http://YOUR_SERVER_IP/
 ```
 
 도메인을 정한 뒤:
@@ -119,12 +119,15 @@ sudo systemctl reload caddy
 
 DNS의 A record가 VPS IP를 가리키고 80/443 포트가 열려 있으면 Caddy가 HTTPS 인증서를 자동으로 발급한다.
 
+루트(`/`)는 Caddy에서 `/campaign`으로 리다이렉트한다. SPA 내부에서도 `/campaign`을 기본 홈으로 사용하고, 클래식 보드는 `/classic` 직접 접근으로만 남겨둔다.
+
 ## 9. 운영 전 체크
 
 - `PURPLEDROID_UNLOCK_ALL=0`
 - `PURPLEDROID_UNLOCK_UNTIL=` 비어 있음
 - `/api/v1/health` 정상 응답
+- `/` 접속 시 `/campaign`으로 이동
 - `/campaign` 새로고침 시 404 없이 유지
+- 시작 화면에 `Classic Mission Board` 버튼이 보이지 않음
 - 새 세션 생성 후 진행 키가 발급됨
 - 서버 재시작 후 진행 키 복구가 됨
-

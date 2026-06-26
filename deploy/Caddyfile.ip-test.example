@@ -5,6 +5,8 @@
 :80 {
 	encode zstd gzip
 
+	redir / /campaign 302
+
 	handle /api/* {
 		reverse_proxy 127.0.0.1:8001
 	}
