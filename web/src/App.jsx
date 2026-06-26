@@ -2417,7 +2417,11 @@ function App() {
   if (pathname === "/campaign") {
     return <CampaignMode />;
   }
-  return <ClassicApp />;
+  if (pathname === "/classic") {
+    return <ClassicApp />;
+  }
+  window.history.replaceState(null, "", "/campaign");
+  return <CampaignMode />;
 }
 
 export default App;

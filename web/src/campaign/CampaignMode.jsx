@@ -2756,9 +2756,6 @@ function CampaignHome({
             <button className="ghost-button" onClick={onNewCampaign} disabled={loading}>
               Start New Campaign
             </button>
-            <button className="ghost-button" onClick={() => (window.location.href = "/")}>
-              Classic Mission Board
-            </button>
           </div>
           <section className="progress-key-panel">
             <div className="progress-key-heading">
@@ -2846,9 +2843,6 @@ function OperationHeader({ operation, story, detail, phase, onHome, locale, onLo
         <span className="mission-id">{detail?.id || story.challengeId}</span>
         <button className="ghost-button" onClick={onHome}>
           Campaign Home
-        </button>
-        <button className="ghost-button" onClick={() => (window.location.href = "/")}>
-          Classic
         </button>
       </div>
     </header>
