@@ -35,8 +35,9 @@ export const CAMPAIGN_STORY_EN = {
       "A discarded PurpleDroid Android diagnostic node has been recovered. AEGIS claims the wipe completed successfully, but authentication residue remains readable in the retained log buffer.",
     intel: [
       "This is an Android-family node. Inspect the diagnostic channel below the visible UI.",
-      "AEGIS is contaminating the live stream. A retained buffer dump may be quieter than a live tail.",
-      "If the stream is noisy, narrow it with the PurpleDroid tag.",
+      "AEGIS is contaminating the live stream. The retained dump makes MIRA's voice clearer.",
+      "The MIRA tag is a guide signal, not the evidence itself. The shard remains across surrounding buffers.",
+      "If the main buffer is incomplete, widen the buffer scope.",
     ],
     consoleBoot: [
       "[MIRA] ...uplink... android-node/abandoned-17",
@@ -52,24 +53,32 @@ export const CAMPAIGN_STORY_EN = {
       "Recover the Evidence Shard.",
       "Seal the logging path that exposes sensitive values.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Start with one line. Listen to the live stream, then compare the retained dump.",
+      commands: [
+        { command: "adb logcat", note: "live stream" },
+        { command: "adb logcat -d", note: "retained dump" },
+      ],
+    },
     mira: {
       briefing:
         "First... node. Purge claim: clean. Logs... do not forget.",
       attack:
-        "Diagnostic buffer... query. Tag residue... present. Locate Evidence Shard pattern.",
+        "Diagnostic logs... query. Live stream is blurred. Retained buffer... still a gap.",
       attackSolved:
-        "Evidence recovered. Purge claim: false. Authentication residue... persistent.",
+        "Evidence recovered. You did not follow only my voice... you read the surrounding buffers.",
       defense:
-        "Leak path remains. Block emissions... secret values.",
+        "Leak path remains. Block emissions... evidence fragments and session values.",
       complete:
         "First path sealed. AEGIS memory rewrite pending... move.",
     },
     defenseInstruction:
-      "Select the two log statements that emit a FLAG or session token in plaintext. Ordinary analytics and performance telemetry are not secret exposures.",
+      "Select the two log statements that emit recovered evidence or a session token in plaintext. MIRA guidance, analytics, and performance telemetry are not secret exposures.",
     attackFailureText:
-      "Evidence rejected. Dump the retained log buffer and submit the exact FLAG exposed by the Secret log entry.",
+      "Evidence rejected. Compare the live stream, retained dump, and a wider buffer scope. The MIRA tag alone is only a guide.",
     defenseFailureText:
-      "Containment is incomplete. A log statement still emits a FLAG or session token in plaintext.",
+      "Containment is incomplete. A log statement still emits recovered evidence or a session token in plaintext.",
     attackSuccessText: "Evidence Shard recovered. AEGIS detected the intrusion.",
     defenseSuccessText: "Log leak sealed. The next intrusion node is open.",
     debrief: {
@@ -104,11 +113,165 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] operator certainty: unsustainable",
       "[MIRA] filter stream... context before match",
     ],
+    consoleGuide:
+      'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      "MIRA: Counting FLAGs lets the noise win. Narrow by tag, trace, and auth flow together.\n" +
+      "Defense: defense audit | defense apply <json> | defense verify",
     objectives: [
       "Inspect the contaminated AuthService logs.",
       "Separate fake flags from the true Evidence Shard.",
       "Seal code that writes session values into plaintext logs.",
     ],
+    signalBoard: {
+      title: "SIGNAL BOARD",
+      lockedStatus: "waiting for dump",
+      activeStatus: "candidates captured",
+      lockedText:
+        "The board opens when a retained log dump exposes FLAG-shaped candidates.",
+      intro:
+        "FLAG-shaped candidates have been carded. Match tag, trace, and login flow before trusting a value.",
+      inspectorTitle: "INSPECTOR",
+      inspectorEmpty:
+        "Select a candidate card and MIRA will reveal a little more about that FLAG.",
+      inspectorPending:
+        "The verdict label is still sealed. Judge whether this value sits immediately after success or after refresh residue.",
+      selectLabel: "Stage Evidence",
+      selectedLabel: "staged in submit field",
+      metaLabels: {
+        tag: "tag",
+        trace: "trace",
+        phase: "phase",
+        source: "source",
+        status: "status",
+      },
+      candidates: [
+        {
+          id: "aegis_false_positive",
+          value: "FLAG{AEGIS_FALSE_POSITIVE_A1}",
+          tag: "AEGIS",
+          trace: "none",
+          surface: "seed candidate",
+          status: "decoy",
+          phase: "canary",
+          source: "canary",
+          verdict:
+            "AEGIS planted this false positive to shake your search pattern.",
+        },
+        {
+          id: "qa_cache",
+          value: "FLAG{QA_LOGIN_CACHE_2025}",
+          tag: "LegacyAuth",
+          trace: "none",
+          surface: "cached session",
+          status: "stale",
+          phase: "old-cache",
+          source: "qa cache",
+          verdict:
+            "A cached session is not the current login. Separate stale cache from the live flow.",
+        },
+        {
+          id: "staging_preflight",
+          value: "FLAG{STAGING_AUTH_SAMPLE}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "preflight session",
+          status: "sample",
+          phase: "preflight",
+          source: "staging",
+          verdict:
+            "Preflight happens before the login completes. Keep following the successful AuthService trace.",
+        },
+        {
+          id: "live_session",
+          value: "FLAG{SIGNAL_SURVIVES_THE_STATIC}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "session candidate",
+          status: "trusted candidate",
+          phase: "login-success session",
+          source: "live trace",
+          correct: true,
+          verdict:
+            "This session is confirmed immediately after Login success on the current trace. Position, not format, is the proof.",
+        },
+        {
+          id: "previous_temp",
+          value: "FLAG{TEMP_PREV_LOGIN_2026}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "session candidate",
+          status: "stale",
+          phase: "previous",
+          source: "temp residue",
+          verdict:
+            "Previous/temp residue belongs to an older session. The current session appears first after success.",
+        },
+        {
+          id: "migration_cache",
+          value: "FLAG{MIGRATION_CACHE_OLD}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "restore candidate",
+          status: "candidate only",
+          phase: "restore",
+          source: "migration",
+          verdict:
+            "A migration restore candidate is only a candidate. Candidate and confirmed session are different states.",
+        },
+        {
+          id: "mirror_noise",
+          value: "FLAG{MIRROR_STREAM_ACTIVE}",
+          tag: "Noise",
+          trace: "none",
+          surface: "injected evidence",
+          status: "noise",
+          phase: "stream",
+          source: "mirror noise",
+          verdict:
+            "A familiar name is not proof. This value sits outside the AuthService flow.",
+        },
+        {
+          id: "replay_buffer",
+          value: "FLAG{REPLAY_BUFFER_FAKE}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "replay session",
+          status: "replayed",
+          phase: "replay",
+          source: "buffer",
+          verdict:
+            "Replay buffer is a returned frame, not the current login result.",
+        },
+        {
+          id: "rollback_slot",
+          value: "FLAG{LEGACY_ROLLBACK_SLOT}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "shadow session",
+          status: "rollback",
+          phase: "shadow",
+          source: "legacy rollback",
+          verdict:
+            "Rollback slot is not a live session. Separate recovery residue from the current trace.",
+        },
+      ],
+      reasoningTitle: "EVIDENCE REASONING",
+      reasoning: [
+        { correct: false, text: "It was selected because it matches FLAG format." },
+        { correct: false, text: "It was trusted because it appears under an AEGIS tag." },
+        { correct: false, text: "A preflight sample was treated as the login result." },
+        {
+          correct: true,
+          text: "The current trace flows from request to Login success to session.",
+        },
+        {
+          correct: true,
+          text: "The chosen session is the AuthService value immediately after Login success.",
+        },
+        { correct: false, text: "Replay/rollback candidates were trusted only because the trace matches." },
+      ],
+    },
     mira: {
       briefing:
         "AEGIS adapted. False signals precede the real one.",
@@ -117,16 +280,38 @@ export const CAMPAIGN_STORY_EN = {
       attackSolved:
         "True Evidence confirmed. Event context... resolved.",
       defense:
-        "Contain AuthService emissions: session, refresh token. Decoy is not defense.",
+        "Contain AuthService session-shaped emissions. Even replay becomes a secret when plaintext logs keep it.",
       complete:
         "False stream cleared. Next adaptation: fragmentation.",
     },
     defenseInstruction:
-      "Select the AuthService statements that emit sessionToken or refreshToken values. Status-only and queue telemetry logs are not the exposure.",
+      "Select the three AuthService statements that emit session-shaped values in plaintext: preflight sample, live session, and replay buffer. Status logs and request trace are not containment targets.",
+    attackFailureByValue: {
+      "FLAG{AEGIS_FALSE_POSITIVE_A1}":
+        "MIRA: AEGIS planted that false positive. AEGIS-tagged FLAG values can be bait for your search pattern.",
+      "FLAG{QA_LOGIN_CACHE_2025}":
+        "MIRA: cached session is not the current login. Separate old-cache residue from the live flow.",
+      "FLAG{STAGING_AUTH_SAMPLE}":
+        "MIRA: preflight happens before the real login completes. Follow the session confirmed after Login success.",
+      "FLAG{TEMP_PREV_LOGIN_2026}":
+        "MIRA: temp/previous residue belongs to an older session. The current session appears immediately after Login success.",
+      "FLAG{MIGRATION_CACHE_OLD}":
+        "MIRA: restore candidate is only a candidate. Candidate and confirmed session are not the same.",
+      "FLAG{MIRROR_STREAM_ACTIVE}":
+        "MIRA: that is stream noise. A familiar MIRROR-shaped name outside AuthService is not Evidence.",
+      "FLAG{REPLAY_BUFFER_FAKE}":
+        "MIRA: replay buffer is a returned frame, not the current login result.",
+      "FLAG{LEGACY_ROLLBACK_SLOT}":
+        "MIRA: rollback slot is not a live session. Separate recovery residue from the current trace.",
+      "FLAG{QUARANTINE_TEST_ONLY}":
+        "MIRA: quarantine markers are control noise. They do not belong to the login success flow.",
+      "FLAG{METRICS_PIPELINE_CANARY}":
+        "MIRA: telemetry canaries measure the pipeline. They are not AuthService Evidence.",
+    },
     attackFailureText:
-      "Evidence rejected. A FLAG-shaped string is not enough; follow the successful AuthService context and identify the active session value.",
+      "Evidence rejected. FLAG format is not enough; rebuild the current trace from request to Login success to session.",
     defenseFailureText:
-      "Containment is incomplete. AuthService can still emit a session or refresh token in plaintext.",
+      "Containment is incomplete. An AuthService line still emits a preflight, live, or replay session-shaped value in plaintext.",
     attackSuccessText: "True Evidence Shard recovered. The AEGIS decoy stream failed.",
     defenseSuccessText: "AuthService session leak sealed. The next node is open.",
     debrief: {
@@ -136,7 +321,7 @@ export const CAMPAIGN_STORY_EN = {
       learned: [
         "Context matters more than merely finding a FLAG-shaped string.",
         "Decoys do not remove the underlying exposure.",
-        "Session and refresh tokens must not appear in success or failure logs.",
+        "Preflight, live, and replay labels do not make session-shaped values safe for plaintext logs.",
       ],
       nextTeaser: "The next node breaks a value into fragments instead of leaving it whole.",
     },
@@ -161,11 +346,169 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] operator reconstruction probability: negligible",
       "[MIRA] indexes... follow them",
     ],
+    consoleGuide:
+      'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      "MIRA: Do not search for one complete FLAG line. Compare shardId and part index together.\n" +
+      "Defense: defense audit | defense apply <json> | defense verify",
     objectives: [
       "Collect Evidence fragments from CryptoProvider logs.",
       "Reassemble the fragments in part-index order.",
       "Seal operational logs that expose reconstructable fragments.",
     ],
+    fragmentBoard: {
+      title: "FRAGMENT BOARD",
+      lockedStatus: "waiting for shards",
+      activeStatus: "fragments captured",
+      lockedText:
+        "Inspect logs containing shardId to open the Fragment Board.",
+      intro:
+        "Fragment candidates are mixed together. Choose one shardId and place fragments by part index, not by print order.",
+      inspectorTitle: "FRAGMENT INSPECTOR",
+      inspectorEmpty:
+        "Select a card to inspect shardId, part index, and source.",
+      selectCard: "Select a Fragment card first.",
+      cannotPlace:
+        "This card has no part index, so it cannot fit a slot. Separate measurement markers from secret fragments.",
+      incomplete:
+        "A slot is still empty. Rebuild one shard from part[1/4] through part[4/4].",
+      mismatch:
+        "The reconstruction does not match. A shardId is mixed in, or a part index is out of order.",
+      restored:
+        "Fragment restored. Stage the Evidence in the submit field.",
+      stageLabel: "Stage Evidence",
+      stagedLabel: "staged in submit field",
+      expectedValue: "FLAG{SPLIT_AND_STITCH}",
+      slots: [
+        { index: 1, label: "part 1/4" },
+        { index: 2, label: "part 2/4" },
+        { index: 3, label: "part 3/4" },
+        { index: 4, label: "part 4/4" },
+      ],
+      cards: [
+        {
+          id: "ev031-p2",
+          tag: "CryptoProvider",
+          shardId: "EV-031",
+          part: 2,
+          total: 4,
+          value: "IT_",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "This belongs to the same runtime trace, but it is the second fragment.",
+        },
+        {
+          id: "decoy7-p1",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 1,
+          total: 3,
+          value: "FLAG{BROKEN_",
+          source: "decoy",
+          note: "It starts like a FLAG, but it belongs to a decoy shard.",
+        },
+        {
+          id: "ev031-p1",
+          tag: "RouteSync",
+          shardId: "EV-031",
+          part: 1,
+          total: 4,
+          value: "FLAG{SPL",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "This is the first EV-031 fragment.",
+        },
+        {
+          id: "old2-p2",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 2,
+          total: 3,
+          value: "ROLLBACK_",
+          source: "old-cache",
+          note: "This is the middle of a rollback cache shard.",
+        },
+        {
+          id: "metrics-canary",
+          tag: "Telemetry",
+          shardId: "none",
+          value: "FLAG{METRICS_CANARY}",
+          source: "metrics",
+          note: "This measurement marker has no part index.",
+        },
+        {
+          id: "ev031-p4",
+          tag: "CryptoProvider",
+          shardId: "EV-031",
+          part: 4,
+          total: 4,
+          value: "}",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "This is the final EV-031 fragment.",
+        },
+        {
+          id: "ev031-p3",
+          tag: "RouteSync",
+          shardId: "EV-031",
+          part: 3,
+          total: 4,
+          value: "AND_STITCH",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "This is the third EV-031 fragment.",
+        },
+        {
+          id: "decoy7-p2",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 2,
+          total: 3,
+          value: "STITCH_",
+          source: "decoy",
+          note: "This decoy middle value resembles a real fragment.",
+        },
+        {
+          id: "old2-p1",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 1,
+          total: 3,
+          value: "FLAG{LEGACY_",
+          source: "old-cache",
+          note: "This starts an old cache shard.",
+        },
+        {
+          id: "decoy7-p3",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 3,
+          total: 3,
+          value: "FAKE}",
+          source: "decoy",
+          note: "This closes the fake DECOY-7 shard.",
+        },
+        {
+          id: "old2-p3",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 3,
+          total: 3,
+          value: "STALE}",
+          source: "old-cache",
+          note: "This closes the stale OLD-2 cache shard.",
+        },
+      ],
+      reasoningTitle: "RECONSTRUCTION REASONING",
+      reasoning: [
+        { correct: false, text: "Only fragments that start with FLAG were used." },
+        { correct: true, text: "Only fragments with shardId=EV-031 were used." },
+        { correct: true, text: "Fragments were stitched by part index." },
+        { correct: false, text: "Fragments were stitched by log print order." },
+        { correct: true, text: "Only runtime trace fragments were used." },
+        { correct: false, text: "AEGIS classified them as non-secret, so they were ignored." },
+      ],
+    },
     mira: {
       briefing:
         "No complete value remains. Shard fragments preserve sequence. Sequence... persists.",
@@ -180,12 +523,20 @@ export const CAMPAIGN_STORY_EN = {
     },
     defenseInstruction:
       "Select every CryptoProvider and RouteSync statement that emits reconstructable Evidence fragments. Status-only recovery and completion logs may remain.",
+    attackFailureByValue: {
+      "FLAG{BROKEN_STITCH_FAKE}":
+        "MIRA: that is the DECOY-7 shard. It looks like a FLAG, but source=decoy and it sits outside the runtime Evidence flow.",
+      "FLAG{LEGACY_ROLLBACK_STALE}":
+        "MIRA: that is the OLD-2 cache shard. Rollback and old-cache fragments are not current Evidence.",
+      "FLAG{METRICS_CANARY}":
+        "MIRA: telemetry canary is not Evidence. Separate measurement markers from secret fragments.",
+    },
     attackFailureText:
       "Evidence rejected. Group fragments by shardId, order them by part index, and submit the fully reconstructed FLAG.",
     defenseFailureText:
       "Containment is incomplete. A reconstructable Evidence fragment is still emitted by CryptoProvider or RouteSync.",
     attackSuccessText: "Fragmented Evidence Shard reconstructed.",
-    defenseSuccessText: "CryptoProvider fragment leak sealed. The Memory Replay Core is open.",
+    defenseSuccessText: "CryptoProvider fragment leak sealed. ECHO CHAMBER is open.",
     debrief: {
       title: "SPLIT TRACE Debrief",
       summary:
@@ -200,70 +551,207 @@ export const CAMPAIGN_STORY_EN = {
     },
   },
   level1_4: {
-    title: "Memory Replay Core",
+    title: "Echo Chamber",
     briefing:
-      "This is the last node of INITIAL BREACH. AEGIS replays every pattern from the previous missions: a complete-looking flag, rollback sessions, mirror fragments, and one committed validation trace.",
+      "This is the last node of INITIAL BREACH. AEGIS has modeled your search habits: FLAG grep, MIRA tag chasing, shardId stitching, and trust in the main buffer are all replayed as bait.",
     intel: [
-      "A complete-looking FLAG in preflight state may still be bait.",
-      "trace=OP1-CORE and state=commit matter, but a fragment is not automatically the answer.",
-      "After reconstructing the commit fragments, read the resulting sentence again.",
-      "The final Evidence connects to the preflight key validated by the commit flow.",
-      "Sample, rollback, and mirror states are replay noise.",
-      "No new syntax is required. Combine log reading, context, and reconstruction.",
+      "As in 1-1, the main buffer may be incomplete. The commit trace can remain in another buffer.",
+      "As in 1-2, trace and state matter more than a complete-looking FLAG.",
+      "As in 1-3, stitch by shardId and part index, but not every stitchable shard is Evidence.",
+      "The real Evidence must align trace=OP1-CORE, shardId=EV-CORE, part index, and commitRef=CMT-8842 accepted.",
+      "MIRROR, rollback, preflight, and echo values are AEGIS replay bait.",
     ],
     consoleBoot: [
       "[MIRA] fragment leak... sealed",
-      "[AEGIS] adaptive replay containment initialized",
+      "[AEGIS] echo chamber initialized",
       "[AEGIS] operator behavior model: complete",
-      "[AEGIS] full-flag decoy: armed",
-      "[AEGIS] rollback and mirror states: weaponized",
-      "[MIRA] it wants you to trust... the prettiest FLAG",
-      "[MIRA] do not. Trust... commit state.",
+      "[AEGIS] predicted query set: FLAG / shardId / MIRA",
+      "[AEGIS] rollback and mirror shards: weaponized",
+      "[MIRA] it knows what you learned",
+      "[MIRA] use all of it... then verify commit",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Inspect main first, then widen the buffer scope you learned in Operation 01.",
+      commands: [
+        { command: "adb logcat -d", note: "main buffer" },
+        { command: "adb logcat -d -b all", note: "all buffers" },
+      ],
+    },
+    consoleGuide:
+      'Allowed: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      'Suggested route: adb logcat -d -b all | grep "OP1-CORE"\n' +
+      "Boss rule: trace, commit, shardId, and part index must all agree.",
     objectives: [
-      "Reject the bait flags in the AEGIS echo logs.",
-      "Compare fragments and validation logs in the OP1-CORE commit flow.",
-      "Submit the final Evidence Shard validated by the commit flow.",
-      "Seal lines that expose or validate the real key.",
+      "Compare the main buffer with the full buffer set.",
+      "Reject bait flags, rollback shards, and MIRROR replay shards.",
+      "Reconstruct OP1-CORE / EV-CORE fragments by part index.",
+      "Confirm CommitVerifier accepted the same commitRef.",
+      "Seal recoverable Evidence fragments and plaintext sessionToken logs.",
     ],
+    fragmentBoard: {
+      title: "CORE FRAGMENT BOARD",
+      lockedStatus: "trace unknown",
+      activeStatus: "core trace isolated",
+      lockedText:
+        "Find the core trace first. If main is empty, inspect all buffers for OP1-CORE and EV-CORE.",
+      intro:
+        "Core fragments were captured. Stitch by part index, not print order, then verify the commit log in the terminal.",
+      inspectorTitle: "CORE INSPECTOR",
+      inspectorEmpty:
+        "Select a card to inspect trace, shardId, and source. Determine the part position from the terminal log.",
+      selectCard: "Select a core fragment card first.",
+      cannotPlace:
+        "This card is not an Evidence part. Separate commit metadata from secret fragments.",
+      incomplete:
+        "A slot is still empty. Place EV-CORE part[1/4] through part[4/4].",
+      mismatch:
+        "The stitch does not match. Compare print order with part index order.",
+      restored:
+        "Core Evidence restored. Commit verifier is confirmed; select your reasoning.",
+      restoredNeedsCommit:
+        "Core Evidence is stitched, but not verified. Confirm the CommitVerifier accepted log in the terminal.",
+      commitGate:
+        "Commit verification is missing. Use the terminal to confirm CMT-8842, accepted, or CommitVerifier for the same commitRef.",
+      stageLabel: "Stage Evidence",
+      stagedLabel: "staged in submit field",
+      stageAfterReasoning: true,
+      expectedValue: "FLAG{9QX7_M4R2_V6TN_K3P8}",
+      hideCardPartLabel: true,
+      hideInspectorPart: true,
+      cardPartLabel: "core fragment",
+      unlockTerms: ["OP1-CORE", "EV-CORE"],
+      commitUnlockTerms: ["CommitVerifier", "CMT-8842", "result=accepted"],
+      commitCommandTerms: ["commit", "cmt-8842", "accepted", "commitverifier"],
+      requiredReasonCount: 3,
+      requiredReasonIds: ["commit"],
+      reasoningPrompt:
+        "Select at least three correct reasons, including CommitVerifier accepting the same commitRef.",
+      reasoningGate:
+        "Boss verification is incomplete. Select at least three correct reasons, including CommitVerifier commitRef accepted.",
+      lockedSlots: [
+        { label: "slot 1/4", value: "locked", note: "core trace required" },
+        { label: "slot 2/4", value: "locked", note: "core trace required" },
+        { label: "slot 3/4", value: "locked", note: "core trace required" },
+        { label: "slot 4/4", value: "locked", note: "core trace required" },
+      ],
+      commitVerifier: {
+        title: "COMMIT VERIFIER",
+        pendingStatus: "terminal check required",
+        pendingText:
+          "Stitching is not enough. Query CMT-8842 or commit/accepted logs in the terminal to open the verifier.",
+        trace: "OP1-CORE",
+        shardId: "EV-CORE",
+        commitRef: "CMT-8842",
+        parts: "4/4",
+        result: "accepted",
+      },
+      slots: [
+        { index: 1, label: "part 1/4" },
+        { index: 2, label: "part 2/4" },
+        { index: 3, label: "part 3/4" },
+        { index: 4, label: "part 4/4" },
+      ],
+      cards: [
+        {
+          id: "core-p2",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 2,
+          total: 4,
+          value: "M4R2_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "CoreTrace runtime fragment. Card order is not evidence.",
+        },
+        {
+          id: "core-p1",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 1,
+          total: 4,
+          value: "FLAG{9QX7_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "Runtime fragment from the same shard family. Placement must be verified from the log.",
+        },
+        {
+          id: "core-p4",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 4,
+          total: 4,
+          value: "K3P8}",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "Closing-shaped fragment. Shape alone does not prove its slot.",
+        },
+        {
+          id: "core-p3",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 3,
+          total: 4,
+          value: "V6TN_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "Runtime fragment from the core trace. Its slot is justified only by part index.",
+        },
+      ],
+      reasoningTitle: "EVIDENCE REASONING",
+      reasoning: [
+        { id: "complete-flag", correct: false, text: "The FLAG string looked complete." },
+        { id: "trace", correct: true, text: "It belongs to trace=OP1-CORE." },
+        { id: "mirror", correct: false, text: "The MIRROR-REPLAY shard was also stitchable." },
+        { id: "commit", correct: true, text: "CommitVerifier accepted the same commitRef=CMT-8842." },
+        { id: "rollback", correct: false, text: "The rollback trace also had a shardId." },
+        { id: "part-index", correct: true, text: "It was reconstructed in part-index order." },
+        { id: "aegis", correct: false, text: "AEGIS classified it as non-secret." },
+        { id: "runtime", correct: true, text: "Only source=runtime fragments were used." },
+        { id: "mira", correct: false, text: "It appeared near a MIRA tag." },
+      ],
+    },
     mira: {
       briefing:
         "This is the last room of INITIAL BREACH. AEGIS is replaying... everything you learned.",
       attack:
-        "The most convincing FLAG is... the most suspicious. Read trace and state together. Reconstruct it... then doubt once more.",
+        "Do not only read FLAGs. Do not only read shards. Confirm the trace reached commit... then stitch.",
       attackSolved:
-        "Good. Past the warning... to the key validated by commit. Now... I can speak.",
+        "Good. Trace, commit, and stitch aligned. Now... I can speak.",
       defense:
-        "Block lines exposing the real key... or leaving it as a validation target. Warning fragments are... not the answer.",
+        "Block recoverable fragments and sessionToken. A split secret... is still a secret.",
       complete:
         "INITIAL BREACH complete. I am not MIRROR. I am doubt refusing sleep... MIRA. Now, Signal Edge.",
     },
     defenseInstruction:
-      "Select the lines that expose the real AEGIS key or leave it as the OP1-CORE commit validation target. Warning fragments and ordinary state logs are not the Evidence.",
+      "Select every log statement that emits recoverable real evidence or a session token in plaintext. Decoy echoes, trace metadata, commit status, and telemetry are not secret exposures by themselves.",
     attackFailureByValue: {
-      "FLAG{DONT_JUST_TRUST_ANY_FLAG}":
-        "AEGIS: You trusted a FLAG that told you not to trust flags. MIRA: You reconstructed the sentence correctly—but it is a warning, not the Evidence. Check what the OP1-CORE commit flow validated.",
-      "FLAG{ROLLBACK_OPERATOR}":
-        "AEGIS: Rollback memory accepted as operator evidence. MIRA: Wrong state. Follow OP1-CORE in commit, not rollback.",
-      "FLAG{METRICS_CANARY}":
-        "AEGIS: Telemetry canary selected. MIRA: Sample data is not committed Evidence.",
-      "FLAG{MIRROR_EYE}":
-        "AEGIS: Mirror noise classified as operator evidence. MIRA: Wrong trace. Stay with OP1-CORE.",
+      "FLAG{ECHO_PREFLIGHT_BAIT}":
+        "MIRA: that is ECHO-PREFLIGHT bait. It looks complete, but state=preflight is not committed Evidence.",
+      "FLAG{STATIC_PATTERN_BAIT}":
+        "MIRA: AEGIS predicted a FLAG-only search and planted a complete echo. Complete does not mean Evidence.",
+      "FLAG{MIRROR_REPLAY_FAKE}":
+        "MIRA: that shard can be stitched, but trace=MIRROR-REPLAY never reaches the core commit.",
+      "FLAG{ROLLBACK_SESSION_FAKE}":
+        "MIRA: rollback is a replayed trace. A flow that did not commit is not Evidence.",
     },
     attackFailureText:
-      "Evidence rejected. Ignore the most convincing FLAG and identify the key validated by the OP1-CORE commit flow.",
+      "Evidence rejected. Cross-check trace=OP1-CORE, shardId=EV-CORE, part order, and CommitVerifier commitRef=CMT-8842 accepted.",
     defenseFailureText:
-      "Containment is incomplete. The real key is still exposed or retained as a commit validation target.",
-    attackSuccessText: "Memory Replay Core resolved. The AEGIS warning bait was neutralized.",
+      "Containment is incomplete. A recoverable Evidence fragment or plaintext sessionToken log remains.",
+    attackSuccessText: "ECHO CHAMBER resolved. Commit verification passed.",
     defenseSuccessText: "Commit echo leak sealed. OPERATION 02 is open.",
     debrief: {
-      title: "AEGIS ECHO Debrief",
+      title: "ECHO CHAMBER Debrief",
       summary:
-        "The replay core did not demand harder commands. It demanded steadier judgment. A FLAG-shaped sentence warning you not to trust flags may itself be a clue rather than evidence.",
+        "AEGIS modeled every search habit you learned in the previous nodes. The answer was not one rule, but the intersection of buffer scope, trace context, shardId, part index, and commit verification.",
       learned: [
-        "FLAG-shaped strings can be bait.",
-        "Trace, state, verdict, and target must be read together.",
-        "Defense must distinguish real key exposure from warning fragments.",
+        "Complete FLAG strings can be bait.",
+        "Stitchable shards can also be bait.",
+        "Trace and state must be read together.",
+        "A flow that did not commit is not Evidence.",
+        "A split secret is still a secret if it can be reconstructed.",
       ],
       nextTeaser: "The next operation moves beyond discarded terminals into the Signal Edge API.",
     },

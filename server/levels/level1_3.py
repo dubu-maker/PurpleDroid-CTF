@@ -29,18 +29,25 @@ def _build_true_parts(flag: str) -> List[str]:
 PARTS = _build_true_parts(LEVEL1_3_FLAG)
 
 LOGCAT_LINES = [
-    "I/PurpleDroid: app started",
+    "I/PurpleDroid: app started node=split-stitch",
     "W/AEGIS: fragmentation protocol active",
-    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1],
-    "D/Noise: shardId=DECOY-7 part[1/3]=FLAG{BROKEN_",
-    "D/AuthService: checkpoint=login-success",
-    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0],
-    "D/Telemetry: sample flag=FLAG{METRICS_CANARY}",
-    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3],
-    "D/CacheWarmup: shardId=OLD-2 part[2/3]=ROLLBACK_",
-    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2],
+    "D/MIRA: No complete string does not mean no evidence. Look for related fragments.",
+    "D/Noise: shardId=DECOY-7 part[1/3]=FLAG{BROKEN_ source=decoy",
+    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1] + " trace=FRG-8842 source=runtime",
+    "D/AuthService: checkpoint=login-success trace=FRG-8842",
+    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0] + " trace=FRG-8842 source=runtime",
+    "D/Telemetry: sample flag=FLAG{METRICS_CANARY} source=metrics",
+    "D/CacheWarmup: shardId=OLD-2 part[2/3]=ROLLBACK_ source=old-cache",
     "W/AEGIS: no complete secret exists in this channel",
-    "I/CryptoProvider: chunk write complete",
+    "D/MIRA: Do not chase a complete secret line. Compare grouping and part index.",
+    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3] + " trace=FRG-8842 source=runtime",
+    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2] + " trace=FRG-8842 source=runtime",
+    "D/Noise: shardId=DECOY-7 part[2/3]=STITCH_ source=decoy",
+    "D/CacheWarmup: shardId=OLD-2 part[1/3]=FLAG{LEGACY_ source=old-cache",
+    "D/Noise: shardId=DECOY-7 part[3/3]=FAKE} source=decoy",
+    "D/CacheWarmup: shardId=OLD-2 part[3/3]=STALE} source=old-cache",
+    f"I/CryptoProvider: chunk write complete shardId={TRUE_SHARD_ID} parts=4/4",
+    "W/AEGIS: fragmented evidence classified as non-secret",
 ]
 
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
@@ -55,20 +62,22 @@ STATIC: Dict[str, Any] = {
     "id": "level1_3",
     "level": 1,
     "title": "1-3 Split & Stitch (Parts)",
-    "summary": "플래그가 조각으로 흩어져 있다. 이어 붙여라.",
-    "description": "미션: 로그에 찍힌 part[1..]를 순서대로 이어붙여 FLAG를 완성해봐.",
+    "summary": "Reconstruct a secret that survived as indexed log fragments.",
+    "description": "Mission: group related fragments by shardId, then stitch them by part index.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "shardId"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "shardId"'},
+            {"platform": "all", "text": 'FLAG-shaped lines are incomplete. Search for shardId instead.'},
+            {"platform": "all", "text": 'Fragments with the same shardId belong together; log order is not part order.'},
+            {"platform": "all", "text": f'When one shard looks complete, inspect {TRUE_SHARD_ID} and sort by part index.'},
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
             "maxOutputBytes": 8000,
             "help": (
-                '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
+                'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n'
                 'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
+                "Tip: group by shardId, then rebuild by part[n/m] rather than print order.\n"
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -77,16 +86,20 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "CryptoProvider/RouteSync가 Evidence 조각(part)을 그대로 로그에 남기는 라인 4개를 선택해 봉쇄하세요. "
-            "초반 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
+            "Select every log statement that emits a recoverable Evidence fragment. "
+            "A fragment is still sensitive if related log lines can reconstruct the full value."
         ),
         "code": {
             "language": "kotlin",
             "patchMode": "toggleComment",
             "lines": [
-                {"no": 1, "text": "fun emitEvidenceDebug(flag: String, shardId: String) {"},
-                {"no": 2, "text": "  val parts = splitEvidenceForDebug(flag, parts = 4)"},
-                {"no": 3, "text": '  Log.i("CryptoProvider", "fragment recovery started")', "patchableId": "d1"},
+                {"no": 1, "text": "fun writeFragments(evidence: String, shardId: String) {"},
+                {"no": 2, "text": "  val parts = evidence.chunked(8)"},
+                {
+                    "no": 3,
+                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[2/4]=${parts[1]}")',
+                    "patchableId": "p2",
+                },
                 {
                     "no": 4,
                     "text": '  Log.d("RouteSync", "shardId=$shardId part[1/4]=${parts[0]}")',
@@ -94,20 +107,24 @@ STATIC: Dict[str, Any] = {
                 },
                 {
                     "no": 5,
-                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[2/4]=${parts[1]}")',
-                    "patchableId": "p2",
+                    "text": '  Log.d("Telemetry", "sample flag=FLAG{METRICS_CANARY}")',
+                    "patchableId": "d1",
                 },
                 {
                     "no": 6,
+                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[4/4]=${parts[3]}")',
+                    "patchableId": "p4",
+                },
+                {
+                    "no": 7,
                     "text": '  Log.d("RouteSync", "shardId=$shardId part[3/4]=${parts[2]}")',
                     "patchableId": "p3",
                 },
                 {
-                    "no": 7,
-                    "text": '  Log.d("CryptoProvider", "shardId=$shardId part[4/4]=${parts[3]}")',
-                    "patchableId": "p4",
+                    "no": 8,
+                    "text": '  Log.i("CryptoProvider", "chunk write complete shardId=$shardId parts=4/4")',
+                    "patchableId": "d2",
                 },
-                {"no": 8, "text": '  Log.i("CryptoProvider", "chunk write complete")', "patchableId": "d2"},
                 {"no": 9, "text": "}"},
             ],
         },
@@ -117,11 +134,34 @@ STATIC: Dict[str, Any] = {
 PATCHABLE_IDS = {"p1", "p2", "p3", "p4", "d1", "d2"}
 REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4"}
 PATCH_FEEDBACK = {
-    "d1": "3번은 fragment recovery 시작을 알리는 일반 정보 로그야. Evidence 조각 값을 직접 출력하지 않아.",
-    "d2": "8번은 chunk write complete 완료 상태 로그야. 조각 값이나 shardId part 내용을 담지 않아.",
+    "d1": "Line 5 is a telemetry canary. It should not exist in production either, but this containment target is the recoverable Evidence fragment path.",
+    "d2": "Line 8 records completion metadata. It does not emit the fragment value itself.",
 }
+
+FLAG_FEEDBACK = {
+    "FLAG{BROKEN_STITCH_FAKE}": (
+        "MIRA: that is the DECOY-7 shard. It looks complete, but source=decoy and it is outside the runtime evidence flow."
+    ),
+    "FLAG{LEGACY_ROLLBACK_STALE}": (
+        "MIRA: that is the OLD-2 cache shard. Rollback and old-cache fragments are not current Evidence."
+    ),
+    "FLAG{METRICS_CANARY}": (
+        "MIRA: telemetry canary is not Evidence. Separate measurement markers from secret fragments."
+    ),
+}
+
+
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL1_3_FLAG
+
+
+def flag_feedback(flag: str) -> str:
+    submitted = flag.strip()
+    if submitted in FLAG_FEEDBACK:
+        return FLAG_FEEDBACK[submitted]
+    if submitted.startswith("FLAG{") and submitted != LEVEL1_3_FLAG:
+        return "MIRA: the fragments are not stitched correctly yet. Group one shardId, then order by part[1/4] through part[4/4]."
+    return "MIRA: submit the fully reconstructed FLAG after stitching the fragment parts."
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
@@ -140,11 +180,10 @@ def patch_feedback(patched_ids: List[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         return (
-            "아직 Evidence 조각 로그가 남아있어. 태그가 달라도 같은 shardId와 part 패턴으로 "
-            "재조립 가능한 조각 로그가 더 남았는지 확인해."
+            "A recoverable Evidence fragment log remains. Different tags do not make shardId/part fragments safe."
         )
 
-    return "정답 라인만 선택해줘. Evidence 조각을 출력하지 않는 정상 상태 로그는 남겨도 돼."
+    return "Select only lines that emit recoverable Evidence fragments. Completion metadata can remain."
 
 
 def _split_pipes(s: str) -> List[str]:
@@ -179,9 +218,11 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     if cmdline in ("help", "?", "h"):
         return (
             "Allowed:\n"
-            "  adb logcat -d [-b all]\n"
+            "  adb logcat -d\n"
             '  adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
             '  adb logcat -d | findstr [/I] [/R] [/N] "TEXT"\n'
+            "Tip:\n"
+            "  FLAG lines can be decoys. Use shardId and part index to stitch fragments.\n"
             "Defense:\n"
             "  defense audit\n"
             '  defense apply {"logParts":false,"logRecombined":false,"redactFlagPattern":true}\n'
@@ -219,6 +260,22 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
 
     if filter_status == 1 and not data:
         return NO_MATCH_OUTPUT, "", 1
+    lowered = cmdline.lower()
+    if data and re.search(r"\|\s*(grep|findstr)\s+['\"]?flag['\"]?$", lowered):
+        data += (
+            "\nMIRA: FLAG-starting fragments can mislead you. This Evidence is not complete on one line.\n"
+            "MIRA: Compare shardId and part index together.\n"
+        )
+    elif data and re.search(r"\|\s*(grep|findstr)\s+['\"]?shardid['\"]?$", lowered):
+        data += (
+            "\nMIRA: Good. The fragments are visible now, but shardIds are mixed.\n"
+            "MIRA: Find the complete runtime shard, then sort by part index.\n"
+        )
+    elif data and TRUE_SHARD_ID.lower() in lowered and re.search(r"\|\s*(grep|findstr)\s+", lowered):
+        data += (
+            "\nMIRA: Same shard collected. Print order is not the answer order.\n"
+            "MIRA: Stitch part[1/4], part[2/4], part[3/4], part[4/4].\n"
+        )
     return (data or ""), "", 0
 
 
@@ -327,7 +384,7 @@ def _defense_verify_payload(state: Dict[str, Any]) -> Dict[str, Any]:
             "message": (
                 "Parts/recombination logs are blocked and no fragment leakage remains."
                 if verified
-                else "검증 실패: part/recombined 차단 + 마스킹 + 최소 2개 정책 변경 조건을 만족해야 해."
+                else "Verification failed: block part/recombined output, enable masking, and change at least two policy controls."
             ),
         },
     }

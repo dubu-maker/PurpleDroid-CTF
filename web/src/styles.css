@@ -984,6 +984,8 @@ button:disabled {
 .intel-panel,
 .mission-console,
 .campaign-submit-panel,
+.signal-board-panel,
+.fragment-board-panel,
 .containment-panel,
 .mini-network-map,
 .operation-brief,
@@ -1495,9 +1497,21 @@ button:disabled {
 .aegis-alert,
 .mission-complete-panel {
   display: flex;
-  justify-content: space-between;
   gap: 12px;
   align-items: center;
+}
+
+.aegis-alert,
+.mission-complete-panel {
+  justify-content: space-between;
+}
+
+.briefing-lock {
+  justify-content: flex-start;
+}
+
+.briefing-lock button {
+  flex: 0 0 auto;
 }
 
 .aegis-alert {
@@ -1518,6 +1532,72 @@ button:disabled {
   padding: 12px;
   font-family: "Consolas", "Menlo", monospace;
   font-size: 13px;
+}
+
+.mission-console-starter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(106, 255, 191, 0.24);
+  background: rgba(7, 18, 24, 0.72);
+}
+
+.mission-console-starter > div:first-child {
+  min-width: 0;
+}
+
+.mission-console-starter > div:first-child span {
+  display: block;
+  margin-bottom: 4px;
+  color: #6affbf;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mission-console-starter p {
+  margin: 0;
+  color: #aeb8d8;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.starter-command-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.starter-command-list button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(106, 255, 191, 0.36);
+  border-radius: 4px;
+  background: rgba(106, 255, 191, 0.08);
+  color: #d7ddff;
+}
+
+.starter-command-list button:hover:not(:disabled) {
+  border-color: rgba(106, 255, 191, 0.72);
+  background: rgba(106, 255, 191, 0.14);
+}
+
+.starter-command-list code {
+  color: #6affbf;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+}
+
+.starter-command-list span {
+  color: #8792b3;
+  font-size: 11px;
 }
 
 .mission-console-help {
@@ -1596,6 +1676,519 @@ button:disabled {
 
 .campaign-result.fail {
   color: #ff8fab;
+}
+
+.signal-board-panel {
+  border-color: rgba(106, 255, 191, 0.28);
+  display: grid;
+  gap: 12px;
+}
+
+.signal-board-panel.locked {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.signal-board-intro {
+  margin: 0;
+  color: #b9c4de;
+  line-height: 1.55;
+}
+
+.signal-board-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.34fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.signal-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.signal-card {
+  min-height: 110px;
+  border: 1px solid rgba(157, 78, 221, 0.26);
+  background: rgba(5, 7, 12, 0.72);
+  color: #d7ddff;
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  padding: 10px;
+  text-align: left;
+}
+
+.signal-card:hover,
+.signal-card:focus-visible {
+  border-color: rgba(106, 255, 191, 0.68);
+  box-shadow: 0 0 18px rgba(106, 255, 191, 0.12);
+  outline: none;
+}
+
+.signal-card.selected {
+  border-color: rgba(106, 255, 191, 0.78);
+  background: rgba(106, 255, 191, 0.08);
+}
+
+.signal-card.recovered {
+  border-color: rgba(255, 214, 102, 0.78);
+  background: rgba(255, 214, 102, 0.08);
+}
+
+.signal-card span {
+  color: #8fa0bf;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.signal-card code {
+  color: #edf2ff;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.signal-card small {
+  color: #9aa6c4;
+  line-height: 1.35;
+}
+
+.signal-inspector {
+  border: 1px solid rgba(106, 255, 191, 0.24);
+  background:
+    linear-gradient(180deg, rgba(106, 255, 191, 0.08), rgba(5, 7, 12, 0.76)),
+    rgba(5, 7, 12, 0.76);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 12px;
+  min-width: 0;
+}
+
+.signal-inspector code {
+  color: #6affbf;
+  overflow-wrap: anywhere;
+}
+
+.signal-inspector p {
+  margin: 0;
+  color: #d8fbe9;
+  line-height: 1.5;
+}
+
+.signal-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.signal-inspector dl div {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 8px;
+  min-width: 0;
+}
+
+.signal-inspector dt {
+  color: #8190b3;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.signal-inspector dd {
+  margin: 4px 0 0;
+  color: #edf2ff;
+  overflow-wrap: anywhere;
+}
+
+.signal-staged {
+  color: #ffd166;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+}
+
+.signal-reasoning {
+  border-left: 2px solid rgba(255, 214, 102, 0.42);
+  background: rgba(255, 214, 102, 0.05);
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.signal-reasoning ul {
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.signal-reasoning li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  color: #b9c4de;
+  line-height: 1.45;
+}
+
+.signal-reasoning li span {
+  color: #ff8fab;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.signal-reasoning li.trusted {
+  color: #d8fbe9;
+}
+
+.signal-reasoning li.trusted span {
+  color: #6affbf;
+}
+
+.fragment-board-panel {
+  border-color: rgba(255, 214, 102, 0.26);
+  display: grid;
+  gap: 12px;
+}
+
+.fragment-board-panel.locked {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.fragment-board-intro {
+  margin: 0;
+  color: #c8d2ec;
+  line-height: 1.55;
+}
+
+.fragment-board-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.32fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.fragment-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 8px;
+}
+
+.fragment-card {
+  min-height: 118px;
+  border: 1px solid rgba(157, 78, 221, 0.28);
+  background: rgba(20, 10, 32, 0.64);
+  color: #d7ddff;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 10px;
+  text-align: left;
+  user-select: none;
+}
+
+.fragment-card[draggable="true"] {
+  cursor: grab;
+}
+
+.fragment-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.fragment-card:hover,
+.fragment-card:focus-visible {
+  border-color: rgba(255, 214, 102, 0.7);
+  box-shadow: 0 0 18px rgba(255, 214, 102, 0.12);
+  outline: none;
+}
+
+.fragment-card.selected {
+  border-color: rgba(106, 255, 191, 0.82);
+  background: rgba(106, 255, 191, 0.08);
+}
+
+.fragment-card.placed {
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 102, 0.24);
+}
+
+.fragment-card span {
+  color: #ffd166;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fragment-card strong {
+  color: #edf2ff;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 13px;
+}
+
+.fragment-card code {
+  color: #d8fbe9;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.fragment-card small {
+  color: #9aa6c4;
+}
+
+.fragment-inspector,
+.fragment-stitch-panel,
+.fragment-commit-panel,
+.fragment-reasoning {
+  border: 1px solid rgba(255, 214, 102, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 214, 102, 0.07), rgba(5, 7, 12, 0.76)),
+    rgba(5, 7, 12, 0.76);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 12px;
+  min-width: 0;
+}
+
+.fragment-inspector code {
+  color: #6affbf;
+  overflow-wrap: anywhere;
+}
+
+.fragment-inspector p {
+  margin: 0;
+  color: #e5ebff;
+  line-height: 1.5;
+}
+
+.fragment-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.fragment-inspector dl div {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 8px;
+  min-width: 0;
+}
+
+.fragment-inspector dt {
+  color: #8190b3;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fragment-inspector dd {
+  margin: 4px 0 0;
+  color: #edf2ff;
+  overflow-wrap: anywhere;
+}
+
+.fragment-commit-panel {
+  background:
+    linear-gradient(180deg, rgba(106, 255, 191, 0.06), rgba(5, 7, 12, 0.7)),
+    rgba(5, 7, 12, 0.72);
+  border-color: rgba(106, 255, 191, 0.24);
+}
+
+.fragment-commit-panel.pending {
+  border-color: rgba(255, 214, 102, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 214, 102, 0.06), rgba(5, 7, 12, 0.72)),
+    rgba(5, 7, 12, 0.72);
+}
+
+.fragment-commit-panel.verified {
+  border-color: rgba(106, 255, 191, 0.38);
+}
+
+.fragment-commit-panel p {
+  margin: 0;
+  color: #ffd166;
+  line-height: 1.5;
+}
+
+.fragment-commit-panel dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.fragment-commit-panel dl div {
+  border: 1px solid rgba(106, 255, 191, 0.14);
+  background: rgba(106, 255, 191, 0.04);
+  padding: 8px;
+  min-width: 0;
+}
+
+.fragment-commit-panel dt {
+  color: #8190b3;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fragment-commit-panel dd {
+  margin: 4px 0 0;
+  color: #d8fbe9;
+  overflow-wrap: anywhere;
+}
+
+.fragment-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fragment-slot-grid-locked {
+  margin-top: 4px;
+}
+
+.fragment-slot {
+  min-height: 94px;
+  border: 1px dashed rgba(255, 214, 102, 0.38);
+  background: rgba(255, 214, 102, 0.04);
+  color: #d7ddff;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fragment-slot.filled {
+  border-style: solid;
+  border-color: rgba(255, 214, 102, 0.62);
+  background: rgba(255, 214, 102, 0.08);
+}
+
+.fragment-slot.runtime {
+  border-color: rgba(106, 255, 191, 0.68);
+  background: rgba(106, 255, 191, 0.07);
+}
+
+.fragment-slot.locked-placeholder {
+  border-style: dashed;
+  border-color: rgba(129, 144, 179, 0.3);
+  background: rgba(255, 255, 255, 0.025);
+  opacity: 0.72;
+}
+
+.fragment-slot span {
+  color: #ffd166;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fragment-slot code {
+  color: #edf2ff;
+  min-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.fragment-slot small {
+  color: #9aa6c4;
+  line-height: 1.35;
+}
+
+.fragment-assembled-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.fragment-assembled-row code {
+  border: 1px solid rgba(106, 255, 191, 0.2);
+  background: rgba(5, 7, 12, 0.72);
+  color: #6affbf;
+  min-height: 42px;
+  padding: 11px 12px;
+  overflow-wrap: anywhere;
+}
+
+.fragment-assembled-row-final {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(106, 255, 191, 0.16);
+}
+
+.fragment-reasoning {
+  border-left: 2px solid rgba(106, 255, 191, 0.42);
+}
+
+.fragment-reasoning p {
+  margin: 0;
+  color: #c8d2ec;
+  line-height: 1.5;
+}
+
+.fragment-reasoning ul {
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fragment-reasoning li {
+  color: #b9c4de;
+  line-height: 1.45;
+}
+
+.fragment-reasoning li button {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  text-align: left;
+}
+
+.fragment-reasoning li button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.fragment-reasoning li.selected button {
+  border-color: rgba(106, 255, 191, 0.55);
+  background: rgba(106, 255, 191, 0.08);
+}
+
+.fragment-reasoning li span {
+  color: #ff8fab;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.fragment-reasoning li.trusted {
+  color: #d8fbe9;
+}
+
+.fragment-reasoning li.trusted span {
+  color: #6affbf;
+}
+
+.fragment-reasoning-gate {
+  color: #ffd166 !important;
 }
 
 .memory-vault-panel {
@@ -3379,6 +3972,8 @@ button:disabled {
   .campaign-hero,
   .campaign-grid,
   .mission-scene,
+  .signal-board-layout,
+  .fragment-board-layout,
   .dialogue-panel,
   .campaign-home-strip,
   .campaign-side-rail,
@@ -3406,6 +4001,7 @@ button:disabled {
 
   .campaign-command-row,
   .campaign-submit-row,
+  .mission-console-starter,
   .memory-status-grid,
   .memory-action-row,
   .replay-stage-actions,
@@ -3419,6 +4015,10 @@ button:disabled {
 
   .campaign-terminal-output {
     height: 260px;
+  }
+
+  .starter-command-list {
+    justify-content: flex-start;
   }
 
   .intermission-cinematic .intermission-stage {
@@ -3454,6 +4054,17 @@ button:disabled {
   }
 
   .network-trace-entry-top {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-inspector dl {
+    grid-template-columns: 1fr;
+  }
+
+  .fragment-inspector dl,
+  .fragment-commit-panel dl,
+  .fragment-slot-grid,
+  .fragment-assembled-row {
     grid-template-columns: 1fr;
   }
 }

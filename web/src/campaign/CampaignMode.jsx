@@ -3202,8 +3202,10 @@ function MissionConsole({
   busy,
   helpText,
   helpDefaultOpen = false,
+  starter,
 }) {
   const outputRef = useRef(null);
+  const starterCommands = Array.isArray(starter?.commands) ? starter.commands : [];
 
   useEffect(() => {
     if (outputRef.current) {
@@ -3225,6 +3227,33 @@ function MissionConsole({
         <span>MISSION CONSOLE</span>
         <strong>{busy ? "running" : disabled ? "standby" : "online"}</strong>
       </div>
+      {starterCommands.length > 0 && (
+        <div className="mission-console-starter">
+          <div>
+            <span>{starter?.label || "TRY FIRST"}</span>
+            {starter?.text && <p>{starter.text}</p>}
+          </div>
+          <div className="starter-command-list">
+            {starterCommands.map((item) => {
+              const commandText = typeof item === "string" ? item : item.command;
+              if (!commandText) {
+                return null;
+              }
+              return (
+                <button
+                  key={commandText}
+                  type="button"
+                  disabled={disabled || busy}
+                  onClick={() => setCommand(commandText)}
+                >
+                  <code>{commandText}</code>
+                  {item.note && <span>{item.note}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {helpText && (
         <details className="mission-console-help" open={helpDefaultOpen}>
           <summary>SUPPORTED SYNTAX</summary>
@@ -3276,6 +3305,539 @@ function EvidenceSubmit({ disabled, value, onChange, onSubmit, result, solved })
       </div>
       {result && (
         <p className={`campaign-result ${result.correct ? "ok" : "fail"}`}>{result.message}</p>
+      )}
+    </section>
+  );
+}
+
+function hasLevel12SignalDump(logs) {
+  const output = logs
+    .filter((entry) => entry.type === "output")
+    .map((entry) => entry.text)
+    .join("\n");
+  return /FLAG\{/.test(output) && /AuthService|AEGIS_FALSE_POSITIVE_A1|FLAG-shaped/.test(output);
+}
+
+function Level12SignalBoard({ story, logs, value, onSelectCandidate, solved, result, disabled }) {
+  const board = story.signalBoard;
+  const [selectedId, setSelectedId] = useState("");
+  const [revealedIds, setRevealedIds] = useState([]);
+  const active = Boolean(board) && (hasLevel12SignalDump(logs) || solved || result?.correct);
+  const candidates = board?.candidates || [];
+  const selected = candidates.find((candidate) => candidate.id === selectedId);
+  const staged = selected && !solved;
+  const labels = board?.metaLabels || {};
+  const selectedRevealed = Boolean(
+    selected && (solved || result?.correct || revealedIds.includes(selected.id))
+  );
+
+  useEffect(() => {
+    setSelectedId("");
+    setRevealedIds([]);
+  }, [story.challengeId]);
+
+  useEffect(() => {
+    if (!result || result.correct || !value) {
+      return;
+    }
+    const submitted = candidates.find((candidate) => candidate.value === value.trim());
+    if (!submitted) {
+      return;
+    }
+    setRevealedIds((prev) => (prev.includes(submitted.id) ? prev : [...prev, submitted.id]));
+  }, [candidates, result, value]);
+
+  if (!board) {
+    return null;
+  }
+
+  const handleSelect = (candidate) => {
+    setSelectedId(candidate.id);
+    if (!solved) {
+      onSelectCandidate(candidate.value);
+    }
+  };
+
+  return (
+    <section className={`signal-board-panel ${active ? "active" : "locked"}`}>
+      <div className="section-heading">
+        <span>{board.title}</span>
+        <strong>{active ? board.activeStatus : board.lockedStatus}</strong>
+      </div>
+      {!active ? (
+        <p className="signal-board-intro">{board.lockedText}</p>
+      ) : (
+        <>
+          <p className="signal-board-intro">{board.intro}</p>
+          <div className="signal-board-layout">
+            <div className="signal-card-grid">
+              {candidates.map((candidate) => {
+                const isSelected = selectedId === candidate.id;
+                const isRecovered = solved && candidate.correct;
+                return (
+                  <button
+                    type="button"
+                    key={candidate.id}
+                    className={`signal-card ${isSelected ? "selected" : ""} ${
+                      isRecovered ? "recovered" : ""
+                    }`}
+                    onClick={() => handleSelect(candidate)}
+                    disabled={disabled && !solved}
+                  >
+                    <span>{candidate.tag}</span>
+                    <code>{candidate.value}</code>
+                    <small>{candidate.surface}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <aside className="signal-inspector">
+              <div className="section-heading">
+                <span>{board.inspectorTitle}</span>
+                <strong>{selected ? selected.tag : "standby"}</strong>
+              </div>
+              {selected ? (
+                <>
+                  <code>{selected.value}</code>
+                  <p>{selectedRevealed ? selected.verdict : board.inspectorPending}</p>
+                  <dl>
+                    <div>
+                      <dt>{labels.trace || "trace"}</dt>
+                      <dd>{selected.trace}</dd>
+                    </div>
+                    <div>
+                      <dt>{labels.phase || "phase"}</dt>
+                      <dd>{selected.phase}</dd>
+                    </div>
+                    {selectedRevealed && (
+                      <>
+                        <div>
+                          <dt>{labels.source || "source"}</dt>
+                          <dd>{selected.source}</dd>
+                        </div>
+                        <div>
+                          <dt>{labels.status || "status"}</dt>
+                          <dd>{selected.status}</dd>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+                  {staged && <span className="signal-staged">{board.selectedLabel}</span>}
+                </>
+              ) : (
+                <p>{board.inspectorEmpty}</p>
+              )}
+            </aside>
+          </div>
+          {solved && board.reasoning?.length > 0 && (
+            <div className="signal-reasoning">
+              <div className="section-heading">
+                <span>{board.reasoningTitle}</span>
+                <strong>resolved</strong>
+              </div>
+              <ul>
+                {board.reasoning.map((item) => (
+                  <li key={item.text} className={item.correct ? "trusted" : "decoy"}>
+                    <span>{item.correct ? "OK" : "--"}</span>
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function hasFragmentBoardDump(logs, board) {
+  const output = logs
+    .filter((entry) => entry.type === "output")
+    .map((entry) => entry.text)
+    .join("\n");
+  const unlockTerms = board?.unlockTerms;
+  if (Array.isArray(unlockTerms) && unlockTerms.length > 0) {
+    return unlockTerms.every((term) => output.includes(term));
+  }
+  return /shardId=|part\[\d+\/\d+\]|fragment/i.test(output);
+}
+
+function hasCommitVerifierEvidence(logs, board) {
+  if (!board?.commitVerifier) {
+    return true;
+  }
+  const commandNeedles = board.commitCommandTerms || ["commit", "cmt-", "accepted", "commitverifier"];
+  const outputNeedles = board.commitUnlockTerms || ["CommitVerifier", "result=accepted"];
+  let activeCommandMatches = false;
+  let activeOutput = "";
+
+  for (const entry of logs) {
+    if (entry.type === "command") {
+      const command = entry.text.toLowerCase();
+      activeCommandMatches = commandNeedles.some((term) =>
+        command.includes(String(term).toLowerCase())
+      );
+      activeOutput = "";
+      continue;
+    }
+    if (!activeCommandMatches || entry.type !== "output") {
+      continue;
+    }
+    activeOutput += `\n${entry.text}`;
+    const matched = outputNeedles.every((term) => activeOutput.includes(term));
+    if (matched) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function Level13FragmentBoard({
+  story,
+  logs,
+  onStageEvidence,
+  solved,
+  result,
+  disabled,
+  selectedReasonIds = [],
+  onToggleReason,
+  reasoningReady = true,
+}) {
+  const board = story.fragmentBoard;
+  const [selectedCardId, setSelectedCardId] = useState("");
+  const [slotCards, setSlotCards] = useState({});
+  const [boardResult, setBoardResult] = useState(null);
+  const [staged, setStaged] = useState(false);
+  const active = Boolean(board) && (hasFragmentBoardDump(logs, board) || solved || result?.correct);
+  const commitVerified =
+    Boolean(board) && (!board.commitVerifier || hasCommitVerifierEvidence(logs, board) || solved || result?.correct);
+  const commitGateReady = !board?.commitVerifier || commitVerified;
+  const cards = board?.cards || [];
+  const slots = board?.slots || [];
+  const hideCardPartLabel = Boolean(board?.hideCardPartLabel);
+  const hideInspectorPart = Boolean(board?.hideInspectorPart);
+  const stageAfterReasoning = Boolean(board?.stageAfterReasoning);
+  const requiredReasonCount = board?.requiredReasonCount || 0;
+  const revealReasonVerdicts = !onToggleReason || solved || result?.correct;
+  const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
+  const selectedCard = cardsById.get(selectedCardId);
+  const assembled = slots.map((slot) => cardsById.get(slotCards[slot.index])?.value || "").join("");
+  const allSlotsFilled = slots.length > 0 && slots.every((slot) => slotCards[slot.index]);
+  const restored = allSlotsFilled && assembled === board?.expectedValue;
+
+  useEffect(() => {
+    setSelectedCardId("");
+    setSlotCards({});
+    setBoardResult(null);
+    setStaged(false);
+  }, [story.challengeId]);
+
+  if (!board) {
+    return null;
+  }
+
+  const evaluateSlots = (nextSlots) => {
+    const nextAssembled = slots
+      .map((slot) => cardsById.get(nextSlots[slot.index])?.value || "")
+      .join("");
+    const nextFilled = slots.every((slot) => nextSlots[slot.index]);
+    if (!nextFilled) {
+      setBoardResult({ ok: null, message: board.incomplete });
+      setStaged(false);
+      return;
+    }
+    if (nextAssembled === board.expectedValue) {
+      setBoardResult({
+        ok: true,
+        message: commitGateReady ? board.restored : board.restoredNeedsCommit || board.restored,
+      });
+      return;
+    }
+    setBoardResult({ ok: false, message: board.mismatch });
+    setStaged(false);
+  };
+
+  const placeCard = (slotIndex, cardId = selectedCardId) => {
+    if (disabled || !cardId) {
+      return;
+    }
+    const card = cardsById.get(cardId);
+    if (!card?.part) {
+      setBoardResult({ ok: false, message: board.cannotPlace });
+      return;
+    }
+    setSlotCards((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([, assignedCardId]) => assignedCardId !== cardId)
+      );
+      next[slotIndex] = cardId;
+      evaluateSlots(next);
+      return next;
+    });
+  };
+
+  const clearSlot = (slotIndex) => {
+    if (disabled) {
+      return;
+    }
+    setSlotCards((prev) => {
+      const next = { ...prev };
+      delete next[slotIndex];
+      setBoardResult({ ok: null, message: board.incomplete });
+      setStaged(false);
+      return next;
+    });
+  };
+
+  const handleStageEvidence = () => {
+    if (!restored || solved) {
+      return;
+    }
+    if (!commitGateReady) {
+      setBoardResult({ ok: false, message: board.commitGate || board.restoredNeedsCommit });
+      return;
+    }
+    if (stageAfterReasoning && !reasoningReady) {
+      setBoardResult({ ok: false, message: board.reasoningGate });
+      return;
+    }
+    onStageEvidence(assembled);
+    setStaged(true);
+  };
+
+  return (
+    <section className={`fragment-board-panel ${active ? "active" : "locked"}`}>
+      <div className="section-heading">
+        <span>{board.title}</span>
+        <strong>{active ? board.activeStatus : board.lockedStatus}</strong>
+      </div>
+      {!active ? (
+        <>
+          <p className="fragment-board-intro">{board.lockedText}</p>
+          {board.lockedSlots && (
+            <div className="fragment-slot-grid fragment-slot-grid-locked">
+              {board.lockedSlots.map((slot) => (
+                <div key={slot.label} className="fragment-slot locked-placeholder">
+                  <span>{slot.label}</span>
+                  <code>{slot.value || "locked"}</code>
+                  <small>{slot.note}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="fragment-board-intro">{board.intro}</p>
+          <div className="fragment-board-layout">
+            <div className="fragment-card-grid">
+              {cards.map((card) => {
+                const selected = selectedCardId === card.id;
+                const placed = Object.values(slotCards).includes(card.id);
+                return (
+                  <button
+                    type="button"
+                    key={card.id}
+                    className={`fragment-card ${selected ? "selected" : ""} ${placed ? "placed" : ""}`}
+                    onClick={() => setSelectedCardId(card.id)}
+                    draggable={!disabled}
+                    onDragStart={(event) => {
+                      setSelectedCardId(card.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", card.id);
+                    }}
+                    disabled={disabled && !solved}
+                  >
+                    <span>{card.shardId}</span>
+                    <strong>
+                      {card.part
+                        ? hideCardPartLabel
+                          ? board.cardPartLabel || "fragment"
+                          : `part ${card.part}/${card.total}`
+                        : "marker"}
+                    </strong>
+                    <code>{card.value}</code>
+                    <small>{card.tag}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <aside className="fragment-inspector">
+              <div className="section-heading">
+                <span>{board.inspectorTitle}</span>
+                <strong>{selectedCard ? selectedCard.shardId : "standby"}</strong>
+              </div>
+              {selectedCard ? (
+                <>
+                  <code>{selectedCard.value}</code>
+                  <p>{selectedCard.note}</p>
+                  <dl>
+                    <div>
+                      <dt>tag</dt>
+                      <dd>{selectedCard.tag}</dd>
+                    </div>
+                    {!hideInspectorPart && (
+                      <div>
+                        <dt>part</dt>
+                        <dd>{selectedCard.part ? `${selectedCard.part}/${selectedCard.total}` : "none"}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>trace</dt>
+                      <dd>{selectedCard.trace || "none"}</dd>
+                    </div>
+                    <div>
+                      <dt>source</dt>
+                      <dd>{selectedCard.source}</dd>
+                    </div>
+                  </dl>
+                </>
+              ) : (
+                <p>{board.inspectorEmpty}</p>
+              )}
+            </aside>
+          </div>
+          <div className="fragment-stitch-panel">
+            <div className="section-heading">
+              <span>STITCH SLOTS</span>
+              <strong>{restored ? "restored" : allSlotsFilled ? "mismatch" : "assembling"}</strong>
+            </div>
+            <div className="fragment-slot-grid">
+              {slots.map((slot) => {
+                const card = cardsById.get(slotCards[slot.index]);
+                return (
+                  <button
+                    type="button"
+                    key={slot.index}
+                    className={`fragment-slot ${card ? "filled" : ""} ${
+                      card?.source === "runtime" ? "runtime" : ""
+                    }`}
+                    onClick={() => (card && selectedCardId === card.id ? clearSlot(slot.index) : placeCard(slot.index))}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      placeCard(slot.index, event.dataTransfer.getData("text/plain") || selectedCardId);
+                    }}
+                    disabled={disabled && !solved}
+                  >
+                    <span>{slot.label}</span>
+                    <code>{card?.value || "drop fragment"}</code>
+                    <small>{card ? card.shardId : board.selectCard}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="fragment-assembled-row">
+              <code>{assembled || "FLAG{...}"}</code>
+              {!stageAfterReasoning && (
+                <button type="button" onClick={handleStageEvidence} disabled={!restored || solved || !commitGateReady}>
+                  {staged ? board.stagedLabel : board.stageLabel}
+                </button>
+              )}
+            </div>
+            {board.commitVerifier && (restored || commitVerified || solved || result?.correct) && (
+              <div className={`fragment-commit-panel ${commitVerified ? "verified" : "pending"}`}>
+                <div className="section-heading">
+                  <span>{board.commitVerifier.title || "COMMIT VERIFIER"}</span>
+                  <strong>{commitVerified ? board.commitVerifier.result : board.commitVerifier.pendingStatus || "pending"}</strong>
+                </div>
+                {!commitVerified ? (
+                  <p>{board.commitVerifier.pendingText || board.commitGate}</p>
+                ) : (
+                  <dl>
+                    <div>
+                      <dt>trace</dt>
+                      <dd>{board.commitVerifier.trace}</dd>
+                    </div>
+                    <div>
+                      <dt>shardId</dt>
+                      <dd>{board.commitVerifier.shardId}</dd>
+                    </div>
+                    <div>
+                      <dt>commitRef</dt>
+                      <dd>{board.commitVerifier.commitRef}</dd>
+                    </div>
+                    <div>
+                      <dt>parts</dt>
+                      <dd>{board.commitVerifier.parts}</dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+            )}
+            {boardResult && (
+              <p className={`campaign-result ${boardResult.ok ? "ok" : boardResult.ok === false ? "fail" : ""}`}>
+                {boardResult.message}
+              </p>
+            )}
+          </div>
+          {(solved || (restored && commitGateReady) || result?.correct) && board.reasoning?.length > 0 && (
+            <div className="fragment-reasoning">
+              <div className="section-heading">
+                <span>{board.reasoningTitle}</span>
+                <strong>
+                  {onToggleReason
+                    ? revealReasonVerdicts
+                      ? "resolved"
+                      : `${selectedReasonIds.length}/${requiredReasonCount} selected`
+                    : "resolved"}
+                </strong>
+              </div>
+              {board.reasoningPrompt && <p>{board.reasoningPrompt}</p>}
+              <ul>
+                {board.reasoning.map((item) => (
+                  <li
+                    key={item.id || item.text}
+                    className={`${revealReasonVerdicts ? (item.correct ? "trusted" : "decoy") : ""} ${
+                      selectedReasonIds.includes(item.id) ? "selected" : ""
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      disabled={!onToggleReason || solved}
+                      onClick={() => onToggleReason?.(item.id)}
+                    >
+                      <span>
+                        {revealReasonVerdicts
+                          ? item.correct
+                            ? "OK"
+                            : "--"
+                          : selectedReasonIds.includes(item.id)
+                            ? "ON"
+                            : "--"}
+                      </span>
+                      {item.text}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {onToggleReason && !reasoningReady && (
+                <p className="fragment-reasoning-gate">{board.reasoningGate}</p>
+              )}
+              {stageAfterReasoning && (
+                <div className="fragment-assembled-row fragment-assembled-row-final">
+                  <code>{assembled || "FLAG{...}"}</code>
+                  <button
+                    type="button"
+                    onClick={handleStageEvidence}
+                    disabled={!restored || solved || !commitGateReady || !reasoningReady}
+                  >
+                    {staged ? board.stagedLabel : board.stageLabel}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );
@@ -5161,6 +5723,7 @@ function CampaignMode() {
   const [auditSelectorDraft, setAuditSelectorDraft] = useState({});
   const [expandedTraceById, setExpandedTraceById] = useState({});
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
+  const [level14ReasonIds, setLevel14ReasonIds] = useState([]);
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
   const [attackNotice, setAttackNotice] = useState(false);
   const [showDebrief, setShowDebrief] = useState(false);
@@ -5333,6 +5896,7 @@ function CampaignMode() {
     setAuditSelectorDraft({});
     setExpandedTraceById({});
     setSelectedPatchIds([]);
+    setLevel14ReasonIds([]);
     setAttackNotice(false);
     setShowDebrief(false);
     setNextId(null);
@@ -5362,6 +5926,25 @@ function CampaignMode() {
   const requiresTerminalVerification = Boolean(detail?.defense?.instruction?.includes("defense verify"));
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
   const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2" || currentId === "level4_3";
+  const level14RequiredReasonCount = story.fragmentBoard?.requiredReasonCount || 0;
+  const level14RequiredReasonIds = story.fragmentBoard?.requiredReasonIds || [];
+  const level14CorrectReasonCount = (story.fragmentBoard?.reasoning || []).filter(
+    (item) => level14ReasonIds.includes(item.id) && item.correct
+  ).length;
+  const level14RequiredReasonsSelected = level14RequiredReasonIds.every((id) =>
+    level14ReasonIds.includes(id)
+  );
+  const level14CommitVerified =
+    currentId !== "level1_4" ||
+    hasCommitVerifierEvidence(consoleLogs, story.fragmentBoard) ||
+    evidenceSolved ||
+    evidenceResult?.correct;
+  const level14ReasoningReady =
+    currentId !== "level1_4" ||
+    level14RequiredReasonCount === 0 ||
+    (level14CommitVerified &&
+      level14CorrectReasonCount >= level14RequiredReasonCount &&
+      level14RequiredReasonsSelected);
 
   useEffect(() => {
     if (
@@ -6102,8 +6685,43 @@ function CampaignMode() {
   ]);
 
   const handleSubmitEvidence = useCallback(async () => {
+    const value = flagValue.trim();
+    if (
+      currentId === "level1_4" &&
+      value === story.fragmentBoard?.expectedValue &&
+      !level14ReasoningReady
+    ) {
+      const message = !level14CommitVerified
+        ? story.fragmentBoard?.commitGate
+        : story.fragmentBoard?.reasoningGate;
+      setEvidenceResult({
+        correct: false,
+        message:
+          message ||
+          "Boss verification is incomplete. Select the correct reasoning before submitting.",
+      });
+      return;
+    }
     await submitEvidenceValue(flagValue);
-  }, [flagValue, submitEvidenceValue]);
+  }, [
+    currentId,
+    flagValue,
+    level14CommitVerified,
+    level14ReasoningReady,
+    story.fragmentBoard,
+    submitEvidenceValue,
+  ]);
+
+  const handleToggleLevel14Reason = useCallback((reasonId) => {
+    if (!reasonId) {
+      return;
+    }
+    setLevel14ReasonIds((prev) =>
+      prev.includes(reasonId)
+        ? prev.filter((id) => id !== reasonId)
+        : [...prev, reasonId]
+    );
+  }, []);
 
   const handleTogglePatch = useCallback((patchableId) => {
     if (!patchableId) {
@@ -6430,7 +7048,36 @@ function CampaignMode() {
                     busy={consoleBusy}
                     helpText={story.consoleGuide || detail?.attack?.terminal?.help}
                     helpDefaultOpen={currentId === "level3_boss"}
+                    starter={story.consoleStarter}
                   />
+
+                  {currentId === "level1_2" && (
+                    <Level12SignalBoard
+                      story={story}
+                      logs={consoleLogs}
+                      value={flagValue}
+                      onSelectCandidate={setFlagValue}
+                      solved={evidenceSolved}
+                      result={evidenceResult}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                    />
+                  )}
+
+                  {(currentId === "level1_3" || currentId === "level1_4") && (
+                    <Level13FragmentBoard
+                      story={story}
+                      logs={consoleLogs}
+                      onStageEvidence={setFlagValue}
+                      solved={evidenceSolved}
+                      result={evidenceResult}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                      selectedReasonIds={currentId === "level1_4" ? level14ReasonIds : []}
+                      onToggleReason={
+                        currentId === "level1_4" ? handleToggleLevel14Reason : undefined
+                      }
+                      reasoningReady={currentId !== "level1_4" || level14ReasoningReady}
+                    />
+                  )}
 
                   <EvidenceSubmit
                     disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}

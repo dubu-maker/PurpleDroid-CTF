@@ -28,21 +28,27 @@ const API_BASE = normalizeApiBase(API_BASE_RAW);
 
 const FALLBACK_HINTS = {
   level1: [
-    { platform: "windows", text: 'adb logcat -d | findstr "PurpleDroid_"' },
-    { platform: "unix", text: 'adb logcat -d | grep "PurpleDroid_"' },
+    { platform: "all", text: "adb logcat" },
+    { platform: "all", text: "adb logcat -d" },
+    { platform: "all", text: "adb logcat -d -b all" },
   ],
   level1_2: [
+    { platform: "all", text: 'adb logcat -d | grep "FLAG"' },
     { platform: "windows", text: 'adb logcat -d | findstr "AuthService"' },
     { platform: "unix", text: 'adb logcat -d | grep "AuthService"' },
+    { platform: "all", text: "FLAG 형식만 믿지 말고 Login success 주변의 현재 trace를 같이 봐." },
   ],
   level1_3: [
+    { platform: "all", text: 'adb logcat -d | grep "FLAG"' },
     { platform: "windows", text: 'adb logcat -d | findstr "part["' },
     { platform: "unix", text: 'adb logcat -d | grep "part["' },
+    { platform: "all", text: "같은 shardId를 모은 뒤 로그 순서가 아니라 part index 순서로 이어붙여봐." },
   ],
   level1_4: [
-    { platform: "windows", text: 'adb logcat -d | findstr "OP1-CORE"' },
-    { platform: "unix", text: 'adb logcat -d | grep "OP1-CORE"' },
-    { platform: "all", text: "조각을 맞췄다면 그 문장이 정답인지, commit 흐름이 무엇을 검증했는지 다시 봐." },
+    { platform: "all", text: "adb logcat -d -b all" },
+    { platform: "windows", text: 'adb logcat -d -b all | findstr "OP1-CORE"' },
+    { platform: "unix", text: 'adb logcat -d -b all | grep "OP1-CORE"' },
+    { platform: "all", text: "trace=OP1-CORE와 shardId=EV-CORE를 조립한 뒤, CMT-8842 commitRef를 따로 확인해." },
   ],
   level2_3: [
     {
@@ -319,9 +325,9 @@ const FALLBACK_HINTS = {
 
 const TERMINAL_INTRO_HINTS = {
   level1: "로그를 직접 조회해서 FLAG 패턴을 찾아봐.",
-  level1_2: "로그 안의 여러 후보 중 문맥상 진짜 값을 골라봐.",
-  level1_3: "조각난 문자열을 찾아 순서를 맞춰 이어붙여봐.",
-  level1_4: "조립한 FLAG도 미끼일 수 있어. commit 검증 로그까지 따라가봐.",
+  level1_2: "가짜 FLAG가 섞여 있어. 현재 로그인 흐름에서 살아난 세션을 골라봐.",
+  level1_3: "완성된 FLAG 한 줄이 없어도 shardId와 part index로 조각을 복원할 수 있어.",
+  level1_4: "main buffer를 넘어 OP1-CORE commit 검증과 EV-CORE part index를 함께 확인해봐.",
   level2_1: "curl -i /api/v1/challenges/level2_1/actions/track 로 먼저 Edge의 Method Policy를 확인해.",
   level2_2: "standard 요청의 redacted trust policy를 보고 Signal Priority JSON body의 claim을 바꿔서 다시 보내봐.",
   level2_3: "응답의 dispatch_token segment를 펼쳐서 header가 아니라 payload claim을 확인해.",

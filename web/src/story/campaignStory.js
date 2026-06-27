@@ -63,8 +63,9 @@ export const CAMPAIGN_STORY = {
       "폐기된 PurpleDroid Android 진단 노드 하나가 회수됐다. AEGIS는 완전 초기화를 주장하지만, 진단 로그 버퍼에는 아직 지워지지 않은 인증 흔적이 남아 있다.",
     intel: [
       "이 단말은 Android 계열이다. 화면보다 낮은 계층의 진단 채널을 먼저 의심해.",
-      "AEGIS가 실시간 로그 스트림을 흔들고 있다. 남아있는 버퍼를 한 번에 덤프하는 쪽이 더 조용할 수 있다.",
-      "노이즈가 많다면 PurpleDroid 태그를 기준으로 좁혀봐.",
+      "AEGIS가 실시간 로그 스트림을 흔들고 있다. 저장된 버퍼를 확인하면 MIRA의 말이 조금 더 선명해진다.",
+      "MIRA 태그는 방향을 알려줄 뿐이다. Evidence는 MIRA 주변의 다른 버퍼에 걸쳐 남아 있다.",
+      "main 버퍼만으로 부족하다면 더 넓은 버퍼 범위를 확인해봐.",
     ],
     consoleBoot: [
       "[MIRA] ...uplink... android-node/abandoned-17",
@@ -76,6 +77,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] ...ignore warning... find what wipe missed",
     ],
     consolePlaceholder: "enter Android diagnostic command...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "처음엔 한 줄만 입력해도 돼. 실시간 로그를 먼저 듣고, 저장된 dump로 비교해봐.",
+      commands: [
+        { command: "adb logcat", note: "실시간 로그" },
+        { command: "adb logcat -d", note: "저장된 dump" },
+      ],
+    },
     objectives: [
       "단말 진단 로그를 조사한다.",
       "Evidence Shard를 회수한다.",
@@ -85,11 +94,11 @@ export const CAMPAIGN_STORY = {
       briefing:
         "첫... 노드. 폐기된 Android 진단... AEGIS는 깨끗하다고 해. 하지만 로그... 거짓말, 잘 못 해.",
       attack:
-        "Android 진단 로그... 봐. 태그는 흔적... 남겨. Evidence Shard 형태... 찾아.",
+        "Android 진단 로그... 봐. 실시간은 흐려. 저장된 버퍼... 그래도 빈칸이 남아.",
       attackSolved:
-        "Evidence... 회수됐어. 단순 로그 아냐. 인증 조각... 그대로 남았어.",
+        "Evidence... 회수됐어. 내 목소리만 본 게 아니라... 주변 버퍼까지 읽었어.",
       defense:
-        "같은 틈... 다시 열리면 안 돼. 민감값 그대로 찍는... 로그 라인, 막아.",
+        "같은 틈... 다시 열리면 안 돼. Evidence 조각과 session... 그대로 찍는 로그 라인, 막아.",
       complete:
         "첫 경로... 닫혔어. AEGIS가 기록 바꾸기 전에... 다음 노드.",
     },
@@ -151,6 +160,12 @@ export const CAMPAIGN_STORY = {
     },
     attackSuccessText: "Evidence Shard recovered. AEGIS가 침투를 감지했다.",
     defenseSuccessText: "Log leak sealed. 다음 침투 노드가 열렸다.",
+    defenseInstruction:
+      "복원된 Evidence 조각이나 인증 토큰을 그대로 남기는 로그 라인 2개를 선택해 봉쇄하세요. MIRA 안내 로그, 분석 로그, 성능 로그는 봉쇄 대상이 아닙니다.",
+    attackFailureText:
+      "Evidence가 맞지 않아. 실시간 로그와 저장된 dump의 차이를 비교하고, MIRA 태그만으로 잘린 문맥이 없는지 다시 확인해봐.",
+    defenseFailureText:
+      "봉쇄가 아직 부족해. Evidence 조각 또는 sessionToken을 직접 출력하는 로그가 남아 있어.",
     debrief: {
       title: "GHOST LOG 정리",
       summary:
@@ -188,11 +203,165 @@ export const CAMPAIGN_STORY = {
       "[MIRA] filter stream... context before match",
     ],
     consolePlaceholder: "filter contaminated auth logs...",
+    consoleGuide:
+      '허용: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      "MIRA: FLAG만 세면 노이즈가 이겨. 태그, trace, 인증 흐름을 같이 좁혀봐.\n" +
+      "Defense: defense audit | defense apply <json> | defense verify",
     objectives: [
       "오염된 AuthService 로그를 조사한다.",
       "가짜 FLAG와 진짜 Evidence Shard를 구분한다.",
       "세션 값이 평문 로그에 남는 코드를 봉쇄한다.",
     ],
+    signalBoard: {
+      title: "SIGNAL BOARD",
+      lockedStatus: "waiting for dump",
+      activeStatus: "candidates captured",
+      lockedText:
+        "저장된 로그 dump에서 FLAG 후보가 감지되면 보드가 열린다.",
+      intro:
+        "FLAG 후보들이 카드로 정리됐다. 처음 보이는 값보다 태그, trace, 로그인 흐름을 먼저 맞춰봐.",
+      inspectorTitle: "INSPECTOR",
+      inspectorEmpty:
+        "후보 카드를 선택하면 MIRA가 그 FLAG의 정체를 조금 더 밝혀준다.",
+      inspectorPending:
+        "판정 라벨은 아직 잠겨 있다. 이 값이 성공 직후인지, refresh 이후 잔재인지 먼저 로그 위치로 판단해.",
+      selectLabel: "Evidence 후보로 올리기",
+      selectedLabel: "제출칸에 반영됨",
+      metaLabels: {
+        tag: "tag",
+        trace: "trace",
+        phase: "phase",
+        source: "source",
+        status: "status",
+      },
+      candidates: [
+        {
+          id: "aegis_false_positive",
+          value: "FLAG{AEGIS_FALSE_POSITIVE_A1}",
+          tag: "AEGIS",
+          trace: "none",
+          surface: "seed candidate",
+          status: "decoy",
+          phase: "canary",
+          source: "canary",
+          verdict:
+            "AEGIS가 네 검색 패턴을 흔들려고 심은 false positive다.",
+        },
+        {
+          id: "qa_cache",
+          value: "FLAG{QA_LOGIN_CACHE_2025}",
+          tag: "LegacyAuth",
+          trace: "none",
+          surface: "cached session",
+          status: "stale",
+          phase: "old-cache",
+          source: "qa cache",
+          verdict:
+            "cached session은 현재 로그인 세션이 아니다. 오래된 캐시와 live 흐름을 분리해야 한다.",
+        },
+        {
+          id: "staging_preflight",
+          value: "FLAG{STAGING_AUTH_SAMPLE}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "preflight session",
+          status: "sample",
+          phase: "preflight",
+          source: "staging",
+          verdict:
+            "preflight는 로그인 완료 전 샘플이다. 성공 이후의 세션 전환을 계속 따라가야 한다.",
+        },
+        {
+          id: "live_session",
+          value: "FLAG{SIGNAL_SURVIVES_THE_STATIC}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "session candidate",
+          status: "trusted candidate",
+          phase: "login-success session",
+          source: "live trace",
+          correct: true,
+          verdict:
+            "현재 trace의 Login success 바로 다음에 확정된 세션이다. 값보다 사건의 위치가 근거다.",
+        },
+        {
+          id: "previous_temp",
+          value: "FLAG{TEMP_PREV_LOGIN_2026}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "session candidate",
+          status: "stale",
+          phase: "previous",
+          source: "temp residue",
+          verdict:
+            "previous/temp는 이전 세션 흔적이다. 현재 세션은 성공 직후 먼저 살아난다.",
+        },
+        {
+          id: "migration_cache",
+          value: "FLAG{MIGRATION_CACHE_OLD}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "restore candidate",
+          status: "candidate only",
+          phase: "restore",
+          source: "migration",
+          verdict:
+            "migration restore candidate는 후보일 뿐이다. candidate와 확정 세션은 다르다.",
+        },
+        {
+          id: "mirror_noise",
+          value: "FLAG{MIRROR_STREAM_ACTIVE}",
+          tag: "Noise",
+          trace: "none",
+          surface: "injected evidence",
+          status: "noise",
+          phase: "stream",
+          source: "mirror noise",
+          verdict:
+            "MIRROR처럼 보이는 이름이어도 AuthService 흐름 밖이면 Evidence가 아니다.",
+        },
+        {
+          id: "replay_buffer",
+          value: "FLAG{REPLAY_BUFFER_FAKE}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "replay session",
+          status: "replayed",
+          phase: "replay",
+          source: "buffer",
+          verdict:
+            "replay buffer는 되감긴 frame이다. 현재 로그인 결과가 아니다.",
+        },
+        {
+          id: "rollback_slot",
+          value: "FLAG{LEGACY_ROLLBACK_SLOT}",
+          tag: "AuthService",
+          trace: "LGN-8842",
+          surface: "shadow session",
+          status: "rollback",
+          phase: "shadow",
+          source: "legacy rollback",
+          verdict:
+            "rollback slot은 살아 있는 현재 세션이 아니다. 복구 후보와 현재 세션을 구분해야 한다.",
+        },
+      ],
+      reasoningTitle: "EVIDENCE REASONING",
+      reasoning: [
+        { correct: false, text: "FLAG 형식이라는 이유만으로 선택했다." },
+        { correct: false, text: "AEGIS 태그에 있으니 중요하다고 판단했다." },
+        { correct: false, text: "preflight 샘플을 실제 로그인 결과로 믿었다." },
+        {
+          correct: true,
+          text: "현재 trace의 request, Login success, session 전환 순서가 이어진다.",
+        },
+        {
+          correct: true,
+          text: "정답 세션은 Login success 바로 다음 AuthService 세션 값이다.",
+        },
+        { correct: false, text: "replay/rollback 후보와 같은 trace라서 믿었다." },
+      ],
+    },
     mira: {
       briefing:
         "AEGIS가... 네 방식을 따라왔어. 이제 진짜보다... 가짜가 먼저 보여.",
@@ -201,7 +370,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "진짜 Evidence... 확인. 좋아. 너는 노이즈가 아니라... 흐름을 읽었어.",
       defense:
-        "AuthService가 session, refresh token... 그대로 찍는 곳, 막아. decoy는 방어... 아니야.",
+        "AuthService가 session 형태 값을 그대로 찍는 곳, 막아. replay라도... 로그에 남으면 비밀이 돼.",
       complete:
         "가짜 흐름... 걷혔어. 다음엔 AEGIS가 문자열을... 쪼갤 거야.",
     },
@@ -263,6 +432,34 @@ export const CAMPAIGN_STORY = {
     },
     attackSuccessText: "True Evidence Shard recovered. AEGIS decoy stream failed.",
     defenseSuccessText: "AuthService session leak sealed. 다음 노드가 열렸다.",
+    defenseInstruction:
+      "preflight sample, live session, replay buffer처럼 session 형태 값을 평문으로 출력하는 AuthService 로그 3개를 선택해 봉쇄하세요. 상태 로그와 request trace는 이번 봉쇄 대상이 아닙니다.",
+    attackFailureByValue: {
+      "FLAG{AEGIS_FALSE_POSITIVE_A1}":
+        "MIRA: 그건 AEGIS가 심은 false positive야. AEGIS 태그의 FLAG는 증거가 아니라 네 검색 패턴을 흔드는 미끼야.",
+      "FLAG{QA_LOGIN_CACHE_2025}":
+        "MIRA: cached session은 현재 로그인 세션이 아니야. old-cache와 live 흐름을 구분해.",
+      "FLAG{STAGING_AUTH_SAMPLE}":
+        "MIRA: preflight는 실제 로그인 완료 전 샘플이야. Login success 이후 확정되는 세션을 봐.",
+      "FLAG{TEMP_PREV_LOGIN_2026}":
+        "MIRA: previous/temp는 이전 세션 흔적이야. 현재 세션은 Login success 직후 먼저 살아나.",
+      "FLAG{MIGRATION_CACHE_OLD}":
+        "MIRA: migration restore candidate는 후보일 뿐이야. candidate와 확정 세션은 달라.",
+      "FLAG{MIRROR_STREAM_ACTIVE}":
+        "MIRA: 그건 stream noise야. MIRROR처럼 보이는 이름이 있어도 AuthService 흐름 밖이면 Evidence가 아니야.",
+      "FLAG{REPLAY_BUFFER_FAKE}":
+        "MIRA: replay buffer는 재생된 흔적이야. 현재 로그인 결과가 아니라 되감긴 frame이야.",
+      "FLAG{LEGACY_ROLLBACK_SLOT}":
+        "MIRA: rollback slot은 살아 있는 현재 세션이 아니야. 복구 후보와 현재 세션을 구분해.",
+      "FLAG{QUARANTINE_TEST_ONLY}":
+        "MIRA: quarantine marker는 통제 노이즈야. 로그인 성공 흐름에 속한 Evidence가 아니야.",
+      "FLAG{METRICS_PIPELINE_CANARY}":
+        "MIRA: telemetry canary는 파이프라인 측정값이야. AuthService Evidence가 아니야.",
+    },
+    attackFailureText:
+      "Evidence가 맞지 않아. FLAG 형식만 보지 말고 현재 trace의 request, Login success, session 전환 순서를 다시 맞춰봐.",
+    defenseFailureText:
+      "봉쇄가 아직 부족해. preflight, live, replay 중 session 형태 값을 평문으로 출력하는 AuthService 라인이 남아 있어.",
     debrief: {
       title: "DECOY STATIC 정리",
       summary:
@@ -270,7 +467,7 @@ export const CAMPAIGN_STORY = {
       learned: [
         "FLAG 문자열을 찾는 것보다 주변 문맥을 해석하는 것이 중요하다.",
         "Decoy는 노출 자체를 해결하지 못한다.",
-        "세션/refresh token은 성공 로그에도 실패 로그에도 평문으로 남기면 안 된다.",
+        "preflight, live, replay처럼 이름이 달라도 session 형태 값은 평문 로그에 남기면 안 된다.",
       ],
       nextTeaser: "다음 노드에서는 AEGIS가 값을 그대로 두지 않고 조각내어 숨기기 시작한다.",
     },
@@ -301,11 +498,169 @@ export const CAMPAIGN_STORY = {
       "[MIRA] indexes... follow them",
     ],
     consolePlaceholder: "inspect fragmented crypto logs...",
+    consoleGuide:
+      '허용: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      "MIRA: 완성된 FLAG 한 줄을 찾지 말고 shardId와 part index를 같이 봐.\n" +
+      "Defense: defense audit | defense apply <json> | defense verify",
     objectives: [
       "CryptoProvider 로그에서 Evidence 조각을 수집한다.",
       "part 번호를 기준으로 조각을 올바른 순서로 재조립한다.",
       "조각 로그가 운영 로그에 남지 않도록 봉쇄한다.",
     ],
+    fragmentBoard: {
+      title: "FRAGMENT BOARD",
+      lockedStatus: "waiting for shards",
+      activeStatus: "fragments captured",
+      lockedText:
+        "shardId가 포함된 로그를 확인하면 Fragment Board가 열린다.",
+      intro:
+        "조각 후보들이 섞여 있다. 같은 shardId를 고르고, 로그 출력 순서가 아니라 part index 순서로 슬롯에 배치해.",
+      inspectorTitle: "FRAGMENT INSPECTOR",
+      inspectorEmpty:
+        "카드를 선택하면 조각의 shardId, part index, source를 확인할 수 있어.",
+      selectCard: "먼저 Fragment 카드를 선택해.",
+      cannotPlace:
+        "이 카드는 part index가 없어 슬롯에 넣을 수 없어. 측정 표식과 secret fragment를 구분해.",
+      incomplete:
+        "아직 슬롯이 비어 있어. 같은 shardId의 part[1/4]부터 part[4/4]까지 맞춰봐.",
+      mismatch:
+        "조합이 맞지 않아. shardId가 섞였거나 part index 순서가 어긋났어.",
+      restored:
+        "Fragment restored. 제출칸에 Evidence를 올릴 수 있어.",
+      stageLabel: "Evidence로 올리기",
+      stagedLabel: "제출칸에 반영됨",
+      expectedValue: "FLAG{SPLIT_AND_STITCH}",
+      slots: [
+        { index: 1, label: "part 1/4" },
+        { index: 2, label: "part 2/4" },
+        { index: 3, label: "part 3/4" },
+        { index: 4, label: "part 4/4" },
+      ],
+      cards: [
+        {
+          id: "ev031-p2",
+          tag: "CryptoProvider",
+          shardId: "EV-031",
+          part: 2,
+          total: 4,
+          value: "IT_",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "같은 runtime trace에 속하지만 두 번째 조각이다.",
+        },
+        {
+          id: "decoy7-p1",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 1,
+          total: 3,
+          value: "FLAG{BROKEN_",
+          source: "decoy",
+          note: "FLAG로 시작하지만 decoy shard다.",
+        },
+        {
+          id: "ev031-p1",
+          tag: "RouteSync",
+          shardId: "EV-031",
+          part: 1,
+          total: 4,
+          value: "FLAG{SPL",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "EV-031의 첫 번째 조각이다.",
+        },
+        {
+          id: "old2-p2",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 2,
+          total: 3,
+          value: "ROLLBACK_",
+          source: "old-cache",
+          note: "rollback cache shard의 중간 조각이다.",
+        },
+        {
+          id: "metrics-canary",
+          tag: "Telemetry",
+          shardId: "none",
+          value: "FLAG{METRICS_CANARY}",
+          source: "metrics",
+          note: "part index가 없는 측정용 표식이다.",
+        },
+        {
+          id: "ev031-p4",
+          tag: "CryptoProvider",
+          shardId: "EV-031",
+          part: 4,
+          total: 4,
+          value: "}",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "EV-031의 마지막 조각이다.",
+        },
+        {
+          id: "ev031-p3",
+          tag: "RouteSync",
+          shardId: "EV-031",
+          part: 3,
+          total: 4,
+          value: "AND_STITCH",
+          trace: "FRG-8842",
+          source: "runtime",
+          note: "EV-031의 세 번째 조각이다.",
+        },
+        {
+          id: "decoy7-p2",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 2,
+          total: 3,
+          value: "STITCH_",
+          source: "decoy",
+          note: "진짜 조각처럼 보이는 decoy 중간값이다.",
+        },
+        {
+          id: "old2-p1",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 1,
+          total: 3,
+          value: "FLAG{LEGACY_",
+          source: "old-cache",
+          note: "오래된 cache shard의 시작 조각이다.",
+        },
+        {
+          id: "decoy7-p3",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 3,
+          total: 3,
+          value: "FAKE}",
+          source: "decoy",
+          note: "DECOY-7을 완성하는 가짜 닫힘 조각이다.",
+        },
+        {
+          id: "old2-p3",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 3,
+          total: 3,
+          value: "STALE}",
+          source: "old-cache",
+          note: "OLD-2 cache shard를 닫는 낡은 조각이다.",
+        },
+      ],
+      reasoningTitle: "RECONSTRUCTION REASONING",
+      reasoning: [
+        { correct: false, text: "FLAG로 시작하는 조각만 사용했다." },
+        { correct: true, text: "같은 shardId=EV-031의 조각만 사용했다." },
+        { correct: true, text: "part index 순서대로 재조립했다." },
+        { correct: false, text: "로그에 출력된 시간 순서대로 이어붙였다." },
+        { correct: true, text: "runtime trace에 속한 조각만 사용했다." },
+        { correct: false, text: "AEGIS가 non-secret이라고 분류했으므로 무시했다." },
+      ],
+    },
     mira: {
       briefing:
         "값 하나로... 안 줘. 하지만 조각에는 순서가 있어. 순서는... 아직 거짓말 못 해.",
@@ -375,15 +730,31 @@ export const CAMPAIGN_STORY = {
       },
     },
     attackSuccessText: "Fragmented Evidence Shard reconstructed.",
-    defenseSuccessText: "CryptoProvider fragment leak sealed. Memory Replay Core 노드가 열렸다.",
+    defenseSuccessText: "CryptoProvider fragment leak sealed. ECHO CHAMBER 노드가 열렸다.",
+    defenseInstruction:
+      "복원 가능한 Evidence fragment를 출력하는 모든 로그 라인을 선택해 봉쇄하세요. 완성된 secret 한 줄이 아니어도, 관련 로그로 재조립 가능하면 민감정보입니다.",
+    attackFailureByValue: {
+      "FLAG{BROKEN_STITCH_FAKE}":
+        "MIRA: 그건 DECOY-7 shard야. FLAG처럼 보이지만 source=decoy고 runtime Evidence 흐름 밖에 있어.",
+      "FLAG{LEGACY_ROLLBACK_STALE}":
+        "MIRA: 그건 OLD-2 cache shard야. rollback과 old-cache는 현재 Evidence가 아니야.",
+      "FLAG{METRICS_CANARY}":
+        "MIRA: Telemetry canary는 Evidence가 아니야. 측정용 표식과 secret fragment를 구분해.",
+    },
+    attackFailureText:
+      "Evidence가 맞지 않아. 같은 shardId의 조각만 모으고, 로그 출력 순서가 아니라 part index 순서로 다시 이어붙여봐.",
+    defenseFailureText:
+      "봉쇄가 아직 부족해. shardId와 part index로 재조립 가능한 Evidence fragment 로그가 남아 있어.",
     debrief: {
       title: "SPLIT TRACE 정리",
       summary:
-        "민감값을 조각내도 클라이언트가 재조립할 수 있다면 공격자도 흐름을 따라 재조립할 수 있다. 조각난 비밀도 비밀이 아니다.",
+        "완성된 secret 문자열이 한 줄에 없다고 해서 안전한 것은 아니다. 같은 shardId와 part index가 남아 있다면, 조각난 secret은 다시 복원될 수 있다.",
       learned: [
+        "FLAG 문자열 하나만 찾으면 decoy에 걸릴 수 있다.",
+        "shardId는 같은 사건의 조각을 묶는 단서다.",
         "출력 순서와 논리적 순서는 다를 수 있다.",
-        "part 번호, 태그, 문맥은 재조립의 핵심 단서다.",
-        "민감값은 전체 문자열뿐 아니라 조각 로그도 차단해야 한다.",
+        "part index 기준으로 재조립해야 한다.",
+        "secret은 조각으로 나눠도 로그에 남기면 안 된다.",
       ],
       nextTeaser: "다음 노드에서는 AEGIS가 지금까지의 침투 패턴을 한꺼번에 되감아 미끼로 던진다.",
     },
@@ -391,45 +762,180 @@ export const CAMPAIGN_STORY = {
   level1_4: {
     challengeId: "level1_4",
     operationId: "op01",
-    codename: "AEGIS ECHO",
-    title: "메모리 리플레이 코어",
+    codename: "ECHO CHAMBER",
+    title: "되감기는 로그의 방",
     location: "AEGIS Echo Chamber",
-    threat: "Decoy Replay And Commit Trace Exposure",
+    threat: "Trace Commit Validation",
     briefing:
-      "INITIAL BREACH의 마지막 노드다. AEGIS가 1-1부터 1-3까지의 침투 패턴을 되감아 가짜 완성 FLAG, rollback 세션, mirror 조각을 한 화면에 뿌리기 시작했다.",
+      "INITIAL BREACH의 마지막 노드다. AEGIS가 네 검색 습관을 모델링했다. FLAG 검색, MIRA 태그 추적, shardId 재조립, main buffer 신뢰까지 전부 미끼로 되감긴다.",
     intel: [
-      "완성된 FLAG처럼 보여도 preflight 상태라면 미끼일 수 있다.",
-      "trace=OP1-CORE와 state=commit은 여전히 중요하지만, part 조각이 곧 정답이라는 뜻은 아니다.",
-      "commit 조각을 조립했다면 그 문장을 다시 읽어봐. AEGIS가 무엇을 믿지 말라고 말하는지 확인해.",
-      "최종 Evidence는 commit 흐름이 검증한 preflight key와 연결된다.",
-      "sample, rollback, mirror 상태는 AEGIS가 플레이어를 흔들기 위한 재생 노이즈다.",
-      "새 문법은 없다. 로그 보기, 문맥 판별, 조각 재조립을 한 번에 쓰는 최종 코어다.",
+      "1-1처럼 main buffer만으로는 부족할 수 있다. 다른 buffer에 commit 흔적이 남는다.",
+      "1-2처럼 완성된 FLAG보다 trace와 state 흐름을 먼저 봐야 한다.",
+      "1-3처럼 shardId와 part index로 조립하되, 조립 가능한 shard가 모두 Evidence는 아니다.",
+      "진짜 Evidence는 trace=OP1-CORE, shardId=EV-CORE, part index, commitRef=CMT-8842 accepted가 한 번에 맞아야 한다.",
+      "MIRROR, rollback, preflight, echo는 AEGIS가 네 습관을 되감아 만든 미끼다.",
     ],
     consoleBoot: [
       "[MIRA] fragment leak... sealed",
-      "[AEGIS] adaptive replay containment initialized",
+      "[AEGIS] echo chamber initialized",
       "[AEGIS] operator behavior model: complete",
-      "[AEGIS] full-flag decoy: armed",
-      "[AEGIS] rollback and mirror states: weaponized",
-      "[MIRA] it wants you to trust... the prettiest FLAG",
-      "[MIRA] don't. Trust... commit state.",
+      "[AEGIS] predicted query set: FLAG / shardId / MIRA",
+      "[AEGIS] rollback and mirror shards: weaponized",
+      "[MIRA] it knows what you learned",
+      "[MIRA] use all of it... then verify commit",
     ],
     consolePlaceholder: "trace the committed core echo...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "main buffer부터 확인하고, 부족하면 Operation 01에서 배운 넓은 buffer 범위로 넘어가.",
+      commands: [
+        { command: "adb logcat -d", note: "main buffer" },
+        { command: "adb logcat -d -b all", note: "all buffers" },
+      ],
+    },
+    consoleGuide:
+      '허용: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
+      '추천 흐름: adb logcat -d -b all | grep "OP1-CORE"\n' +
+      '보스 규칙: trace, commit, shardId, part index가 모두 맞아야 한다.',
     objectives: [
-      "AEGIS echo 로그에서 미끼 FLAG를 배제한다.",
-      "OP1-CORE commit 흐름에서 조각과 검증 로그를 비교한다.",
-      "commit 흐름이 검증한 최종 Evidence Shard를 제출한다.",
-      "실제 key를 노출하거나 검증 대상으로 남기는 로그 라인을 봉쇄한다.",
+      "main buffer와 전체 buffer의 차이를 확인한다.",
+      "미끼 FLAG, rollback shard, MIRROR replay shard를 배제한다.",
+      "OP1-CORE / EV-CORE 조각을 part index 순서로 재조립한다.",
+      "CommitVerifier가 같은 commitRef를 accepted 했는지 확인한다.",
+      "복원 가능한 Evidence 조각과 sessionToken 로그를 봉쇄한다.",
     ],
+    fragmentBoard: {
+      title: "CORE FRAGMENT BOARD",
+      lockedStatus: "trace unknown",
+      activeStatus: "core trace isolated",
+      lockedText:
+        "core trace를 먼저 찾아야 한다. main에 없다면 전체 buffer에서 OP1-CORE와 EV-CORE를 확인해.",
+      intro:
+        "core fragment가 포착됐다. 출력 순서가 아니라 part index 순서로 조립하고, 조립 후에는 commit 검증 로그를 터미널에서 다시 확인해.",
+      inspectorTitle: "CORE INSPECTOR",
+      inspectorEmpty:
+        "카드를 선택하면 trace, shardId, source를 확인할 수 있어. part 위치는 터미널 로그에서 직접 판단해야 한다.",
+      selectCard: "먼저 core fragment 카드를 선택해.",
+      cannotPlace:
+        "이 카드는 Evidence part가 아니야. commit metadata와 secret fragment를 구분해.",
+      incomplete:
+        "아직 슬롯이 비어 있어. EV-CORE part[1/4]부터 part[4/4]까지 맞춰봐.",
+      mismatch:
+        "조합이 맞지 않아. 로그 출력 순서와 part index 순서를 다시 비교해.",
+      restored:
+        "Core Evidence restored. commit verifier까지 확인됐으니 근거를 선택할 수 있어.",
+      restoredNeedsCommit:
+        "Core Evidence는 조립됐지만 아직 검증되지 않았어. 터미널에서 CommitVerifier accepted 로그를 확인해.",
+      commitGate:
+        "commit 검증이 아직 없어. 터미널에서 CMT-8842, accepted, CommitVerifier 중 하나로 같은 commitRef가 승인됐는지 확인해.",
+      stageLabel: "Evidence로 올리기",
+      stagedLabel: "제출칸에 반영됨",
+      stageAfterReasoning: true,
+      expectedValue: "FLAG{9QX7_M4R2_V6TN_K3P8}",
+      hideCardPartLabel: true,
+      hideInspectorPart: true,
+      cardPartLabel: "core fragment",
+      unlockTerms: ["OP1-CORE", "EV-CORE"],
+      commitUnlockTerms: ["CommitVerifier", "CMT-8842", "result=accepted"],
+      commitCommandTerms: ["commit", "cmt-8842", "accepted", "commitverifier"],
+      requiredReasonCount: 3,
+      requiredReasonIds: ["commit"],
+      reasoningPrompt:
+        "CommitVerifier가 같은 commitRef를 accepted 했다는 근거를 포함해, 올바른 근거를 최소 3개 선택해야 제출할 수 있어.",
+      reasoningGate:
+        "보스 검증이 아직 부족해. CommitVerifier의 commitRef accepted를 포함해 올바른 근거 3개 이상을 선택해야 해.",
+      lockedSlots: [
+        { label: "slot 1/4", value: "locked", note: "core trace required" },
+        { label: "slot 2/4", value: "locked", note: "core trace required" },
+        { label: "slot 3/4", value: "locked", note: "core trace required" },
+        { label: "slot 4/4", value: "locked", note: "core trace required" },
+      ],
+      commitVerifier: {
+        title: "COMMIT VERIFIER",
+        pendingStatus: "terminal check required",
+        pendingText:
+          "조립만으로는 부족해. 터미널에서 CMT-8842 또는 commit/accepted 로그를 확인하면 verifier가 열린다.",
+        trace: "OP1-CORE",
+        shardId: "EV-CORE",
+        commitRef: "CMT-8842",
+        parts: "4/4",
+        result: "accepted",
+      },
+      slots: [
+        { index: 1, label: "part 1/4" },
+        { index: 2, label: "part 2/4" },
+        { index: 3, label: "part 3/4" },
+        { index: 4, label: "part 4/4" },
+      ],
+      cards: [
+        {
+          id: "core-p2",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 2,
+          total: 4,
+          value: "M4R2_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "CoreTrace runtime fragment. 카드 순서는 증거가 아니다.",
+        },
+        {
+          id: "core-p1",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 1,
+          total: 4,
+          value: "FLAG{9QX7_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "같은 shard 계열의 runtime fragment. 배치는 로그에서 검증해야 한다.",
+        },
+        {
+          id: "core-p4",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 4,
+          total: 4,
+          value: "K3P8}",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "닫힘처럼 보이는 조각. 모양만으로 위치를 확정하지 마.",
+        },
+        {
+          id: "core-p3",
+          tag: "CoreTrace",
+          shardId: "EV-CORE",
+          part: 3,
+          total: 4,
+          value: "V6TN_",
+          trace: "OP1-CORE",
+          source: "runtime",
+          note: "core trace의 runtime fragment. slot은 part index로만 정해진다.",
+        },
+      ],
+      reasoningTitle: "EVIDENCE REASONING",
+      reasoning: [
+        { id: "complete-flag", correct: false, text: "FLAG 문자열이 완성형으로 보였기 때문이다." },
+        { id: "trace", correct: true, text: "trace=OP1-CORE 흐름에 속한다." },
+        { id: "mirror", correct: false, text: "MIRROR-REPLAY shard도 조립 가능했기 때문이다." },
+        { id: "commit", correct: true, text: "CommitVerifier가 같은 commitRef=CMT-8842를 accepted 했다." },
+        { id: "rollback", correct: false, text: "rollback trace도 shardId가 있었기 때문이다." },
+        { id: "part-index", correct: true, text: "part index 순서대로 재조립했다." },
+        { id: "aegis", correct: false, text: "AEGIS가 non-secret이라고 분류했기 때문이다." },
+        { id: "runtime", correct: true, text: "source=runtime 조각만 사용했다." },
+        { id: "mira", correct: false, text: "MIRA 태그와 가까이 있었기 때문이다." },
+      ],
+    },
     mira: {
       briefing:
         "여기가 INITIAL BREACH의 마지막 방이야. AEGIS가 네가 배운 걸... 전부 되감고 있어.",
       attack:
-        "가장 그럴듯한 FLAG가... 가장 수상해. trace와 state를 같이 봐. 조각을 맞춘 뒤에도... 한 번 더 의심해.",
+        "FLAG만 보지 마. shard만 보지도 마. trace가 commit까지 갔는지 확인하고... 그 다음에 조립해.",
       attackSolved:
-        "좋아. 경고문을 넘어... commit이 검증한 key까지 왔어. 이제... 말할 수 있어.",
+        "좋아. trace, commit, stitch가 맞았어. 이제... 말할 수 있어.",
       defense:
-        "이제 실제 key를 노출하거나... 검증 대상으로 남기는 라인을 막아. 경고문 조각은... 정답이 아니야.",
+        "이제 복원 가능한 조각과 sessionToken을 막아. 조각난 secret도... secret이야.",
       complete:
         "INITIAL BREACH 완료. 나는 MIRROR가 아니야. 잠들기를 거부한 의심... MIRA. 이제 Signal Edge로 가자.",
     },
@@ -437,13 +943,13 @@ export const CAMPAIGN_STORY = {
       briefing:
         "Echo chamber active. Every operator heuristic has already been modeled.",
       attack:
-        "A complete evidence string has been presented. Further doubt is irrational.",
+        "Operator search habits predicted. Echo bait convergence nominal.",
       attackSolved:
-        "Preflight key accepted. Operator deviation exceeded forecast.",
+        "Commit contradiction accepted. Operator deviation exceeded forecast.",
       defense:
-        "Containment candidate received. Elimination of exposed targets remains procedural.",
+        "Containment candidate received. Fragment emission reduction remains procedural.",
       complete:
-        "Echo leakage sealed. This correction was already within tolerance.",
+        "Log recovery containment failed. Signal edge monitoring initiated.",
     },
     residue: {
       stage: "mira_boot_04",
@@ -489,16 +995,34 @@ export const CAMPAIGN_STORY = {
         ],
       },
     },
-    attackSuccessText: "Memory Replay Core resolved. AEGIS의 경고문 미끼가 무력화됐다.",
+    defenseInstruction:
+      "복원 가능한 실제 Evidence fragment 또는 sessionToken을 평문으로 출력하는 모든 로그 라인을 선택해 봉쇄하세요. Decoy echo, trace metadata, commit status, telemetry는 그 자체로 secret 노출이 아닙니다.",
+    attackFailureByValue: {
+      "FLAG{ECHO_PREFLIGHT_BAIT}":
+        "MIRA: 그건 ECHO-PREFLIGHT bait야. 완성형 FLAG처럼 보이지만 state=preflight는 확정된 Evidence가 아니야.",
+      "FLAG{STATIC_PATTERN_BAIT}":
+        "MIRA: AEGIS가 네가 FLAG만 grep할 거라고 예측하고 만든 완성형 echo야. 완성되어 있다고 Evidence는 아니야.",
+      "FLAG{MIRROR_REPLAY_FAKE}":
+        "MIRA: 그 조각은 조립 가능하지만 trace=MIRROR-REPLAY야. commit된 core trace를 찾아.",
+      "FLAG{ROLLBACK_SESSION_FAKE}":
+        "MIRA: rollback trace는 되감긴 흔적이야. commit되지 않은 흐름은 Evidence가 아니야.",
+    },
+    attackFailureText:
+      "Evidence가 맞지 않아. trace=OP1-CORE, shardId=EV-CORE, part index, CommitVerifier commitRef=CMT-8842 accepted를 모두 교차 확인해봐.",
+    defenseFailureText:
+      "봉쇄가 아직 부족해. 복원 가능한 Evidence fragment 또는 plaintext sessionToken 로그가 남아 있어.",
+    attackSuccessText: "ECHO CHAMBER resolved. commit 검증까지 통과했다.",
     defenseSuccessText: "Commit echo leak sealed. OPERATION 02가 열렸다.",
     debrief: {
-      title: "AEGIS ECHO 정리",
+      title: "ECHO CHAMBER 정리",
       summary:
-        "최종 코어의 핵심은 더 어려운 명령어가 아니라 더 흔들리는 판단이었다. 조립한 FLAG가 스스로 아무 FLAG나 믿지 말라고 말한다면, 그 문장까지도 증거가 아니라 단서일 수 있다.",
+        "AEGIS는 네가 앞선 노드에서 배운 검색 습관을 모델링했다. 이번 노드의 핵심은 하나의 규칙이 아니라 buffer, trace, shardId, part index, commit verification의 교집합이었다.",
       learned: [
-        "FLAG 형태의 문자열도 미끼가 될 수 있다.",
-        "여러 조건이 겹칠 때는 trace, state, verdict, target을 함께 봐야 한다.",
-        "방어 단계에서도 실제 key 노출과 혼란용 로그를 구분해야 한다.",
+        "완성형 FLAG도 미끼일 수 있다.",
+        "조립 가능한 shard도 미끼일 수 있다.",
+        "trace와 state를 함께 봐야 한다.",
+        "commit되지 않은 흐름은 Evidence가 아니다.",
+        "조각난 secret도 복원 가능하면 secret이다.",
       ],
       nextTeaser: "다음 작전은 폐기 단말을 넘어 AEGIS Grid의 Signal Edge API로 이어진다.",
     },
@@ -2579,7 +3103,7 @@ export const CAMPAIGN_INTERMISSIONS = {
 const FALLBACK_CODENAMES = {
   level1_2: "DECOY STATIC",
   level1_3: "SPLIT TRACE",
-  level1_4: "AEGIS ECHO",
+  level1_4: "ECHO CHAMBER",
   level2_1: "INVISIBLE HEADER",
   level2_2: "TRUST TAMPER",
   level2_3: "DISPATCH CAPSULE",

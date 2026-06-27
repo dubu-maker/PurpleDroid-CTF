@@ -13,21 +13,23 @@ LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{SIGNAL_SURVIVES_THE
 
 LOGCAT_LINES = [
     "I/System: Booting...",
-    "I/PurpleDroid: app started",
+    "I/PurpleDroid: app started node=static-needle",
+    "D/MIRA: Too many FLAG-shaped echoes. Search less by value, more by flow.",
     "D/AEGIS: decoy seed session=FLAG{AEGIS_FALSE_POSITIVE_A1}",
     "W/LegacyAuth: cached session=FLAG{QA_LOGIN_CACHE_2025}",
-    "D/Network: request => /login",
-    "D/AuthService: preflight session=FLAG{STAGING_AUTH_SAMPLE}",
-    "I/AuthService: Login success! session established",
-    "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026}",
-    "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD}",
-    "D/Noise: injected evidence=FLAG{MIRROR_STREAM_ACTIVE}",
-    "D/AuthService: session=" + LEVEL1_2_FLAG,
-    "I/AuthService: refresh queue drained",
-    "D/AuthService: replay decoy session=FLAG{REPLAY_BUFFER_FAKE}",
-    "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT}",
-    "W/AEGIS: quarantine marker=FLAG{QUARANTINE_TEST_ONLY}",
     "D/Telemetry: sample flag=FLAG{METRICS_PIPELINE_CANARY}",
+    "D/Network: request => /login trace=LGN-8842",
+    "D/AuthService: preflight session=FLAG{STAGING_AUTH_SAMPLE} trace=LGN-8842",
+    "I/AuthService: Login success trace=LGN-8842 user=agent-violet",
+    "D/AuthService: session=" + LEVEL1_2_FLAG + " trace=LGN-8842",
+    "I/AuthService: refresh queue drained trace=LGN-8842",
+    "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026} trace=LGN-8842",
+    "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD} trace=LGN-8842",
+    "D/Noise: injected evidence=FLAG{MIRROR_STREAM_ACTIVE}",
+    "D/AuthService: replay session=FLAG{REPLAY_BUFFER_FAKE} trace=LGN-8842",
+    "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT} trace=LGN-8842",
+    "W/AEGIS: quarantine marker=FLAG{QUARANTINE_TEST_ONLY}",
+    "D/MIRA: The current trace has a request, a success, then the session that survives.",
     "I/OtherTag: idle",
     "I/System: idle",
 ]
@@ -43,21 +45,22 @@ STATIC: Dict[str, Any] = {
     "id": "level1_2",
     "level": 1,
     "title": "1-2 Needle in the Haystack (Decoy)",
-    "summary": "로그에 FLAG가 여러 개? 진짜를 골라라.",
-    "description": "미션: 로그에 FLAG가 여러 개 섞여있어. 진짜 FLAG를 찾아 제출해봐.",
+    "summary": "Separate the live login session from decoy FLAG-shaped noise.",
+    "description": "Mission: separate the live login session from decoy FLAG-shaped noise.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "AuthService"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "AuthService"'},
-            {"platform": "all", "text": "힌트: 같은 태그라도 문맥이 다른 session이 섞여 있어."},
+            {"platform": "all", "text": 'Start broad, then compare FLAG-shaped values with the login flow.'},
+            {"platform": "all", "text": 'AuthService keeps the useful trace, but not every AuthService session is current.'},
+            {"platform": "all", "text": 'grep supports -E when one tag is too narrow.'},
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
             "maxOutputBytes": 8000,
             "help": (
-                '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
+                'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n'
                 'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
+                'Tip: compare request trace and AuthService lines; FLAG format alone is not enough.\n'
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -67,8 +70,8 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "AuthService가 session/token 값을 그대로 로그에 남기는 지점을 선택해 봉쇄하세요. "
-            "초반 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
+            "Select every AuthService statement that emits a session-shaped value in plaintext: "
+            "preflight sample, live session, and replay buffer. Status logs and request trace are not containment targets."
         ),
         "code": {
             "language": "kotlin",
@@ -77,58 +80,98 @@ STATIC: Dict[str, Any] = {
                 {"no": 1, "text": "fun login(username: String, password: String) {"},
                 {
                     "no": 2,
-                    "text": '  Log.i("AuthService", "login attempt received")',
+                    "text": '  Log.d("Network", "request => /login trace=$traceId")',
                     "patchableId": "d1",
                 },
-                {"no": 3, "text": "  val authResult = authClient.login(username, password)"},
                 {
-                    "no": 4,
-                    "text": '  Log.i("AuthService", "Login success! session established")',
+                    "no": 3,
+                    "text": '  Log.d("AuthService", "preflight session=$stagingSample")',
+                    "patchableId": "p1",
+                },
+                {"no": 4, "text": "  val session = authClient.login(username, password)"},
+                {
+                    "no": 5,
+                    "text": '  Log.i("AuthService", "Login success trace=$traceId user=$username")',
                     "patchableId": "d2",
                 },
                 {
-                    "no": 5,
-                    "text": '  Log.d("AuthService", "session=${authResult.sessionToken}")',
-                    "patchableId": "p1",
-                },
-                {
                     "no": 6,
-                    "text": '  Log.d("AuthService", "refreshToken=${authResult.refreshToken}")',
+                    "text": '  Log.d("AuthService", "session=$session")',
                     "patchableId": "p2",
                 },
                 {
                     "no": 7,
-                    "text": '  Log.i("AuthService", "refresh queue drained")',
-                    "patchableId": "d3",
+                    "text": '  Log.d("AuthService", "replay session=$replayBuffer")',
+                    "patchableId": "p3",
                 },
                 {
                     "no": 8,
-                    "text": '  Log.d("Telemetry", "event=login_success")',
+                    "text": '  Log.i("AuthService", "refresh queue drained trace=$traceId")',
                     "patchableId": "d4",
                 },
-                {"no": 9, "text": "  sessionStore.save(authResult.sessionToken)"},
+                {"no": 9, "text": "  sessionStore.save(session)"},
                 {"no": 10, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3", "d4"}
-REQUIRED_PATCH_IDS = {"p1", "p2"}
+PATCHABLE_IDS = {"p1", "p2", "p3", "d1", "d2", "d4"}
+REQUIRED_PATCH_IDS = {"p1", "p2", "p3"}
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "5번은 sessionToken을 그대로 로그에 남기는 라인이 맞아. 로그인 세션 값은 직접 출력하면 안 돼.",
-    "p2": "6번은 refreshToken을 그대로 로그에 남기는 라인이 맞아. 재발급 토큰도 탈취되면 세션을 이어갈 수 있어.",
+    "p1": "Line 3 is a containment target: a preflight sample session is still a session-shaped secret in production logs.",
+    "p2": "Line 6 is a containment target: the live login session is emitted in plaintext.",
+    "p3": "Line 7 is a containment target too: replay buffers are decoys for Evidence, not safe values to log in plaintext.",
 }
 PATCH_WRONG_FEEDBACK = {
-    "d1": "2번은 로그인 시도 이벤트만 남겨. 사용자 입력이나 토큰 값이 출력되지 않아서 이번 취약점 지점은 아니야.",
-    "d2": "4번은 성공 상태만 알려주는 일반 정보 로그야. 실제 session 값은 들어있지 않아.",
-    "d3": "7번은 refresh queue 상태 로그야. refreshToken 값 자체를 노출하지는 않아.",
-    "d4": "8번 Telemetry 로그는 이벤트 이름만 남겨. AuthService의 session/token 노출 라인을 찾아야 해.",
+    "d1": "Line 2 records the request trace only. It does not emit a session value.",
+    "d2": "Line 5 records the success state and user context, not the session itself.",
+    "d4": "Line 8 records queue state only. It does not emit a token value.",
+}
+
+FLAG_FEEDBACK = {
+    "FLAG{AEGIS_FALSE_POSITIVE_A1}": (
+        "MIRA: AEGIS planted that false positive. AEGIS-tagged FLAG values can be bait for your search pattern."
+    ),
+    "FLAG{QA_LOGIN_CACHE_2025}": (
+        "MIRA: cached session is not the current login. Separate old-cache residue from the live flow."
+    ),
+    "FLAG{STAGING_AUTH_SAMPLE}": (
+        "MIRA: preflight happens before the real login completes. Follow the successful AuthService trace."
+    ),
+    "FLAG{TEMP_PREV_LOGIN_2026}": (
+        "MIRA: temp/previous residue appears after the live session. Current does not mean every later session line."
+    ),
+    "FLAG{MIGRATION_CACHE_OLD}": (
+        "MIRA: restore candidate is only a candidate. Candidate and established session are not the same."
+    ),
+    "FLAG{MIRROR_STREAM_ACTIVE}": (
+        "MIRA: that is stream noise outside AuthService. A familiar name is not proof of Evidence."
+    ),
+    "FLAG{REPLAY_BUFFER_FAKE}": (
+        "MIRA: replay buffer is a returned frame, not the current login result."
+    ),
+    "FLAG{LEGACY_ROLLBACK_SLOT}": (
+        "MIRA: rollback slot is not a live session. Separate rollback residue from the current trace."
+    ),
+    "FLAG{QUARANTINE_TEST_ONLY}": (
+        "MIRA: quarantine markers are control noise. They do not belong to the login success flow."
+    ),
+    "FLAG{METRICS_PIPELINE_CANARY}": (
+        "MIRA: telemetry canaries measure the pipeline. They are not AuthService Evidence."
+    ),
 }
 
 
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL1_2_FLAG
+
+
+def flag_feedback(flag: str) -> str:
+    submitted = flag.strip()
+    if submitted in FLAG_FEEDBACK:
+        return FLAG_FEEDBACK[submitted]
+    return "MIRA: FLAG format is not enough. Rebuild the current login flow and choose the session born from success."
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
@@ -155,10 +198,10 @@ def patch_feedback(patched_ids: List[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "아직 AuthService의 민감 토큰 로그가 남아있어. 성공했다는 상태 로그와 실제 session/refreshToken 값 출력은 구분해야 해."
+            "A sensitive AuthService session-shaped log remains. Evidence decoys and replay buffers still must not be logged in plaintext."
         )
 
-    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. AuthService가 실제 토큰 값을 출력하는 지점을 찾아야 해."
+    return " ".join(messages) if messages else "Select the AuthService lines that emit session-shaped secrets."
 
 
 def patch_feedback_with_session(patched_ids: List[str], session: Dict[str, Any]) -> str:
@@ -342,7 +385,7 @@ def _defense_verify_payload(state: Dict[str, Any]) -> Dict[str, Any]:
             "message": (
                 "Auth logging policy hardened. Sensitive sessions are redacted and noise reduced."
                 if verified
-                else "검증 실패: 세션 마스킹 + 정책 2개 이상 변경 + 노이즈 감소 조건을 만족해야 해."
+                else "Verification failed: enable session masking, change at least two policy controls, and reduce decoy noise."
             ),
         },
     }

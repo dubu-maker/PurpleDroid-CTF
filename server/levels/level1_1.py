@@ -7,46 +7,75 @@ import secrets
 import shlex
 from typing import Any, Dict, List, Tuple
 
-from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logcat_args
+from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter
 
 
 LEVEL1_FLAG = os.getenv("PURPLEDROID_LEVEL1_1_FLAG", "FLAG{Always_Check_The_Logs_First}")
 
-LOGCAT_LINES = [
-    "05-26 10:14:01.102 I/BootReceiver: android.intent.action.BOOT_COMPLETED",
-    "05-26 10:14:01.231 I/PurpleDroid: courier runtime attached",
-    "05-26 10:14:01.388 D/RouteSync: checkpoint=abandoned-device",
-    "05-26 10:14:01.407 I/OtherTag: metrics batch queued",
-    "05-26 10:14:01.612 D/Secret: PurpleDroid Key = " + LEVEL1_FLAG,
-    "05-26 10:14:01.744 W/AEGIS: diagnostic wipe marker present",
-    "05-26 10:14:01.809 D/Auth: sessionToken=debug-session-7f19",
-    "05-26 10:14:02.004 I/PurpleDroid: delivery worker idle",
-    "05-26 10:14:02.118 V/Perf: frameTime=16ms",
-    "05-26 10:14:02.260 D/PurpleDroid: done",
-]
-
-LIVE_LOGCAT_NOISE = [
+LIVE_LOGCAT_LINES = [
     "--------- beginning of main",
     "05-26 10:14:04.001 I/AEGIS-Monitor: live stream attached",
     "05-26 10:14:04.003 W/AEGIS-Monitor: volatile channel unstable",
     "05-26 10:14:04.006 D/AndroidRuntime: GC freed 2048 objects",
-    "05-26 10:14:04.009 I/PurpleDroid: heartbeat accepted",
-    "05-26 10:14:04.011 W/AEGIS-Monitor: redaction pass scheduled",
-    "05-26 10:14:04.016 D/RouteSync: retry window opened",
+    "05-26 10:14:04.009 I/PurpleDroid: diagnostic shell heartbeat",
+    "05-26 10:14:04.011 D/MIRA: ...Violet... signal weak... can you hear me?",
+    "05-26 10:14:04.016 D/RouteSync: checkpoint=abandoned-node-17 live=false",
     "05-26 10:14:04.019 I/AndroidSystem: battery stats checkpoint",
-    "05-26 10:14:04.024 W/AEGIS-Monitor: live tail contains decoy frames",
+    "05-26 10:14:04.024 W/AEGIS-Monitor: live tail contains normalized frames",
     "05-26 10:14:04.028 D/PurpleDroid: noise frame id=PD-NOISE-1024",
-    "05-26 10:14:04.031 D/PurpleDroid: noise frame id=PD-NOISE-1025",
-    "05-26 10:14:04.034 D/PurpleDroid: noise frame id=PD-NOISE-1026",
+    "05-26 10:14:04.031 D/MIRA: ...live stream... distorted... retained...",
     "05-26 10:14:04.038 W/AEGIS-Monitor: stream replay detected",
-    "05-26 10:14:04.042 I/AndroidSystem: binder transaction completed",
     "05-26 10:14:04.047 D/RouteSync: checkpoint=no-secret-visible",
-    "05-26 10:14:04.051 W/AEGIS-Monitor: snapshot flag missing",
-    "05-26 10:14:04.056 D/PurpleDroid: noise frame id=PD-NOISE-1027",
-    "05-26 10:14:04.061 D/PurpleDroid: noise frame id=PD-NOISE-1028",
+    "05-26 10:14:04.051 W/AEGIS-Monitor: snapshot evidence missing",
     "05-26 10:14:04.064 I/AEGIS-Monitor: live stream throttled",
-    "05-26 10:14:04.069 W/AEGIS-Monitor: use buffered acquisition for stable evidence",
 ]
+
+MAIN_BUFFER_LINES = [
+    "--------- beginning of main",
+    "05-26 10:14:01.102 I/BootReceiver: android.intent.action.BOOT_COMPLETED",
+    "05-26 10:14:01.231 I/PurpleDroid: diagnostic shell attached",
+    "05-26 10:14:01.388 D/RouteSync: node=abandoned-17 retained_buffer=main",
+    "05-26 10:14:01.407 I/Analytics: screen=GhostLog event=briefing_opened",
+    "05-26 10:14:01.533 D/MIRA: Violet, AEGIS is bending the live stream.",
+    "05-26 10:14:01.612 W/AEGIS: purge report accepted for main buffer",
+    "05-26 10:14:01.704 D/MIRA: main is clearer, but one frame is still missing.",
+    "05-26 10:14:01.809 D/Auth: sessionToken=debug-session-7f19",
+    "05-26 10:14:02.004 I/PurpleDroid: delivery worker idle",
+    "05-26 10:14:02.118 V/Perf: frameTime=16ms",
+    "05-26 10:14:02.260 D/MIRA: residue handoff unresolved.",
+]
+
+ALL_BUFFER_LINES = [
+    "--------- beginning of main",
+    "05-26 10:14:01.102 I/BootReceiver: android.intent.action.BOOT_COMPLETED",
+    "05-26 10:14:01.231 I/PurpleDroid: diagnostic shell attached",
+    "05-26 10:14:01.388 D/RouteSync: node=abandoned-17 retained_buffer=main",
+    "05-26 10:14:01.407 I/Analytics: screen=GhostLog event=briefing_opened",
+    "05-26 10:14:01.533 D/MIRA: Violet, AEGIS is bending the live stream.",
+    "05-26 10:14:01.612 W/AEGIS: purge report accepted for main buffer",
+    "05-26 10:14:01.704 D/MIRA: main is clearer, but one frame is still missing.",
+    "05-26 10:14:01.809 D/Auth: sessionToken=debug-session-7f19",
+    "05-26 10:14:02.004 I/PurpleDroid: delivery worker idle",
+    "--------- beginning of system",
+    "05-26 10:14:02.211 I/SystemServer: buffer handoff complete",
+    "05-26 10:14:02.230 W/AEGIS: secondary buffer inventory masked",
+    "05-26 10:14:02.244 D/MIRA: system remembers the path. events remembers the reason.",
+    "05-26 10:14:02.281 D/RouteSync: buffer_chain=main/system/events/crash",
+    "05-26 10:14:02.319 I/PackageManager: stale diagnostic package ignored",
+    "--------- beginning of events",
+    "05-26 10:14:02.401 I/auditd: purge claim accepted actor=AEGIS",
+    "05-26 10:14:02.433 D/MemoryResidue: shard_origin=abandoned-node-17",
+    "05-26 10:14:02.452 W/AEGIS: contradiction window=0.3ms",
+    "05-26 10:14:02.489 D/MIRA: do not isolate my tag. Read the context around it.",
+    "05-26 10:14:02.531 I/EventLog: residue index forwarded to crash mirror",
+    "--------- beginning of crash",
+    "05-26 10:14:03.002 E/CrashMirror: recovered diagnostic fragment",
+    "05-26 10:14:03.031 W/MIRA: VIOLET, the missing frame is adjacent.",
+    "05-26 10:14:03.044 D/CrashMirror: recovered_evidence=" + LEVEL1_FLAG,
+    "05-26 10:14:03.088 W/AEGIS: residue disclosure classified as impossible",
+]
+
+LOGCAT_LINES = ALL_BUFFER_LINES
 
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
     "logLevel": "DEBUG",
@@ -59,20 +88,22 @@ STATIC: Dict[str, Any] = {
     "id": "level1",
     "level": 1,
     "title": "1-1 Logcat Leak",
-    "summary": "로그캣(Logcat)에 숨겨진 Flag를 찾으세요.",
-    "description": "미션: 로그캣(Logcat)에 숨겨진 Flag를 찾으세요.",
+    "summary": "Follow the weak MIRA signal and recover Evidence from retained Android buffers.",
+    "description": "Mission: follow the weak MIRA signal and recover Evidence from retained Android buffers.",
     "attack": {
         "hints": [
-            {"platform": "windows", "text": 'adb logcat -d | findstr "PurpleDroid"'},
-            {"platform": "unix", "text": 'adb logcat -d | grep "PurpleDroid"'},
+            {"platform": "all", "text": "Compare the live log stream with a retained dump."},
+            {"platform": "all", "text": "MIRA is a guide signal; tag filters may clip context."},
+            {"platform": "all", "text": "If main is incomplete, inspect a wider buffer scope."},
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
             "maxOutputBytes": 8000,
             "help": (
-                '허용: adb logcat -d [-b all] | grep [-i] [-E|-F] "..." | grep "..."\n'
+                'Allowed: adb logcat [-d] [-b <buffer>] [-s <tag>] | grep [-i] [-E|-F] "..." | grep "..."\n'
                 'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
+                "Note: tag filters narrow context; use them carefully.\n"
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -80,8 +111,8 @@ STATIC: Dict[str, Any] = {
     },
     "defense": {
         "instruction": (
-            "코드에서 민감 정보가 그대로 남는 로그 라인 2개를 선택해 봉쇄하세요. "
-            "첫 미션에서는 터미널 검증 없이 코드 패치 선택만으로 완료됩니다."
+            "Select the two log statements that emit recovered evidence or a session token in plaintext. "
+            "This first mission uses code-line containment only."
         ),
         "code": {
             "language": "kotlin",
@@ -92,40 +123,46 @@ STATIC: Dict[str, Any] = {
                 {"no": 3, "text": "  initUI()"},
                 {
                     "no": 4,
-                    "text": '  Log.i("Analytics", "screen=Main")',
+                    "text": '  Log.i("Analytics", "screen=GhostLog")',
                     "patchableId": "d1",
                 },
                 {
                     "no": 5,
-                    "text": '  Log.d("Secret", "Key = FLAG{...}")',
-                    "patchableId": "p1",
+                    "text": '  Log.w("MIRA", "missing frame is adjacent")',
+                    "patchableId": "d2",
                 },
                 {
                     "no": 6,
+                    "text": '  Log.d("CrashMirror", "recovered_evidence=$evidenceShard")',
+                    "patchableId": "p1",
+                },
+                {
+                    "no": 7,
                     "text": '  Log.d("Auth", "sessionToken=$sessionToken")',
                     "patchableId": "p2",
                 },
                 {
-                    "no": 7,
+                    "no": 8,
                     "text": '  Log.v("Perf", "frameTime=16ms")',
-                    "patchableId": "d2",
+                    "patchableId": "d3",
                 },
-                {"no": 8, "text": "  startWorkers()"},
-                {"no": 9, "text": "}"},
+                {"no": 9, "text": "  startWorkers()"},
+                {"no": 10, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1", "p2", "d1", "d2"}
+PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3"}
 REQUIRED_PATCH_IDS = {"p1", "p2"}
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "5번은 FLAG 값을 직접 로그에 출력하는 라인이 맞아. 민감 값은 로그에 남기면 안 돼.",
-    "p2": "6번은 sessionToken을 그대로 출력하는 라인이 맞아. 인증 토큰도 FLAG와 같은 민감 정보로 봐야 해.",
+    "p1": "Line 6 is a real containment target: CrashMirror emits recovered evidence directly.",
+    "p2": "Line 7 is a real containment target: sessionToken is an authentication secret.",
 }
 PATCH_WRONG_FEEDBACK = {
-    "d1": "4번 Analytics 로그는 화면 이름만 남기는 일반 이벤트야. 민감 값이나 토큰이 들어있지 않아.",
-    "d2": "7번 Perf 로그는 성능 숫자만 남기는 진단 로그야. FLAG나 sessionToken 노출 지점이 아니야.",
+    "d1": "Line 4 is ordinary analytics metadata. It does not emit a secret value.",
+    "d2": "Line 5 is guidance from MIRA. It does not emit evidence or an authentication token.",
+    "d3": "Line 8 is performance telemetry. It does not expose evidence or sessionToken.",
 }
 
 
@@ -157,10 +194,10 @@ def patch_feedback(patched_ids: List[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "아직 민감 로그가 남아있어. FLAG 문자열과 sessionToken처럼 실제 비밀값을 출력하는 라인을 모두 막아야 해."
+            "A sensitive log path remains. Block both the recovered evidence emission and the sessionToken emission."
         )
 
-    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. 일반 로그가 아니라 비밀값을 직접 출력하는 로그를 찾아야 해."
+    return " ".join(messages) if messages else "Select the lines that emit secrets, not guidance or telemetry."
 
 
 def patch_feedback_with_session(patched_ids: List[str], session: Dict[str, Any]) -> str:
@@ -191,6 +228,110 @@ def _split_pipes(s: str) -> List[str]:
     return out
 
 
+LOG_TAG_RE = re.compile(r"(?:^|\s)[VDIWEF]/([^:]+):")
+
+
+def _parse_logcat_options(parts: List[str]) -> Tuple[Dict[str, Any], str]:
+    options: Dict[str, Any] = {"dump": False, "buffers": [], "tags": []}
+    i = 2
+    while i < len(parts):
+        arg = parts[i]
+        if arg in {"-c", "--clear"}:
+            return options, (
+                "adb logcat: buffer clearing (-c) is disabled in the training console. "
+                "Logs were not changed. Use -d to read a retained dump."
+            )
+        if arg == "-d":
+            options["dump"] = True
+            i += 1
+            continue
+        if arg == "-b":
+            if i + 1 >= len(parts):
+                return options, "adb logcat: -b requires a buffer name."
+            options["buffers"].append(parts[i + 1].strip().lower())
+            i += 2
+            continue
+        if arg.startswith("--buffer="):
+            options["buffers"].append(arg.split("=", 1)[1].strip().lower())
+            i += 1
+            continue
+        if arg == "-s":
+            if i + 1 >= len(parts):
+                return options, "adb logcat: -s requires a tag name."
+            options["tags"].append(parts[i + 1].split(":", 1)[0].strip())
+            i += 2
+            continue
+        if arg == "-v":
+            if i + 1 >= len(parts):
+                return options, "adb logcat: -v requires a format name."
+            i += 2
+            continue
+        if arg.startswith("--format="):
+            i += 1
+            continue
+        return (
+            options,
+            f"adb logcat: unsupported option or argument '{arg}'. Supported: -d, -b <buffer>, -s <tag>, -v <format>",
+        )
+    return options, ""
+
+
+def _line_tag(line: str) -> str:
+    match = LOG_TAG_RE.search(line)
+    return match.group(1) if match else ""
+
+
+def _filter_logcat_tags(lines: List[str], tags: List[str]) -> List[str]:
+    if not tags:
+        return list(lines)
+
+    wanted = {tag.upper() for tag in tags if tag}
+    filtered: List[str] = []
+    pending_header = ""
+    for line in lines:
+        if line.startswith("--------- beginning of "):
+            pending_header = line
+            continue
+
+        if _line_tag(line).upper() not in wanted:
+            continue
+
+        if pending_header:
+            filtered.append(pending_header)
+            pending_header = ""
+        filtered.append(line)
+    return filtered
+
+
+def _select_logcat_lines(options: Dict[str, Any]) -> Tuple[List[str], str, int]:
+    buffers = set(options.get("buffers") or [])
+    tags = options.get("tags") or []
+    uses_all_buffers = "all" in buffers
+
+    if not options.get("dump"):
+        lines = _filter_logcat_tags(LIVE_LOGCAT_LINES, tags)
+        return (
+            lines,
+            "AEGIS: live log stream is polluted; buffered snapshot acquisition required\n",
+            2,
+        )
+
+    if uses_all_buffers:
+        lines = _filter_logcat_tags(ALL_BUFFER_LINES, tags)
+        if any(str(tag).upper() == "MIRA" for tag in tags):
+            lines.append(
+                "05-26 10:14:03.112 D/MIRA: tag isolation clipped the evidence line. Keep the wider dump; loosen the filter."
+            )
+        return lines, "", 0
+
+    lines = _filter_logcat_tags(MAIN_BUFFER_LINES, tags)
+    if any(str(tag).upper() == "MIRA" for tag in tags):
+        lines.append("05-26 10:14:02.311 D/MIRA: my voice is clearer, but evidence is context. Tag filters cut too tightly.")
+    else:
+        lines.append("05-26 10:14:02.333 W/MIRA: main dump recovered. Residue index unresolved.")
+    return lines, "", 0
+
+
 def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     cmdline = command.strip()
     if not cmdline:
@@ -199,9 +340,14 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     if cmdline in ("help", "?", "h"):
         return (
             "Allowed:\n"
-            '  adb logcat -d [-b all]\n'
-            '  adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
-            '  adb logcat -d | findstr [/I] [/R] [/N] "TEXT"\n'
+            "  adb logcat\n"
+            "  adb logcat -d\n"
+            "  adb logcat -d -b <buffer>\n"
+            "  adb logcat -d -s <tag>\n"
+            '  adb logcat -d -b <buffer> | grep [-i] [-E|-F] [-v] [-n] "TEXT"\n'
+            '  adb logcat -d -b <buffer> | findstr [/I] [/R] [/N] "TEXT"\n'
+            "Note:\n"
+            "  Tag filters narrow context. A cleaner signal can still hide adjacent evidence.\n"
             "Defense:\n"
             "  defense audit\n"
             '  defense apply {"logLevel":"INFO","redactFlagPattern":true,"allowDebugTag":false}\n'
@@ -220,17 +366,14 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
             return "", "empty command", 2
 
         if len(parts) >= 2 and parts[0] == "adb" and parts[1] == "logcat":
-            option_error = validate_logcat_args(parts)
+            options, option_error = _parse_logcat_options(parts)
             if option_error:
                 return "", option_error, 2
-            if "-d" not in parts:
-                return (
-                    "\n".join(LIVE_LOGCAT_NOISE) + "\n",
-                    "AEGIS: live log stream is polluted; buffered snapshot acquisition required\n",
-                    2,
-                )
-            data = "\n".join(LOGCAT_LINES) + "\n"
-            filter_status = 0
+            lines, stderr, exit_code = _select_logcat_lines(options)
+            data = "\n".join(lines) + ("\n" if lines else "")
+            filter_status = exit_code
+            if stderr and len(stages) == 1:
+                return data, stderr, exit_code
             continue
 
         if parts[0].lower() in {"grep", "findstr"}:
@@ -260,12 +403,17 @@ def _mask_flag_patterns(text: str) -> str:
     return re.sub(r"FLAG\s*\{[^}\n]*\}", "FLAG{REDACTED}", text, flags=re.IGNORECASE)
 
 
+def _log_priority(line: str) -> str:
+    match = re.search(r"(?:^|\s)([VDIWEF])/", line)
+    return match.group(1) if match else ""
+
+
 def _render_logs_with_policy(policy: Dict[str, Any]) -> str:
     out: List[str] = []
     for ln in LOGCAT_LINES:
-        if str(policy.get("logLevel", "DEBUG")).upper() == "INFO" and ln.startswith("D/"):
+        if str(policy.get("logLevel", "DEBUG")).upper() == "INFO" and _log_priority(ln) in {"V", "D"}:
             continue
-        if not bool(policy.get("allowDebugTag", True)) and ln.startswith("D/Secret:"):
+        if not bool(policy.get("allowDebugTag", True)) and "/CrashMirror:" in ln:
             continue
         out.append(ln)
 
@@ -283,7 +431,7 @@ def _defense_audit_payload(state: Dict[str, Any]) -> Dict[str, Any]:
     if not bool(policy.get("redactFlagPattern")):
         risk.append("FLAG_PATTERN_NOT_REDACTED")
     if bool(policy.get("allowDebugTag", True)):
-        risk.append("SECRET_TAG_ALLOWED")
+        risk.append("CRASH_MIRROR_EVIDENCE_ALLOWED")
     return {
         "ok": True,
         "data": {
@@ -347,7 +495,7 @@ def _defense_verify_payload(state: Dict[str, Any]) -> Dict[str, Any]:
             "message": (
                 "Logging policy updated. No FLAG patterns leak in logs."
                 if verified
-                else "검증 실패: 정책 2개 이상 변경 + DEBUG 비활성 + FLAG 패턴 마스킹을 만족해야 해."
+                else "Verification failed: change at least two policy controls, disable DEBUG-level emission, and redact FLAG patterns."
             ),
         },
     }
