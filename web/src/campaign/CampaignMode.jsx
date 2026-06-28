@@ -2669,11 +2669,192 @@ function NarrativeLocaleToggle({ locale, onChange }) {
         onClick={() => onChange("en")}
         aria-pressed={locale === "en"}
       >
-        EN BETA
+        EN
       </button>
     </div>
   );
 }
+
+const HOME_INTRO = {
+  ko: {
+    nav: [
+      { href: "#story", label: "STORY" },
+      { href: "#entities", label: "ENTITIES" },
+      { href: "#tracks", label: "TRACKS" },
+    ],
+    manifesto: (
+      <>
+        질서는 완벽했다.
+        <br />
+        <span>오류 하나</span>를 만나기 전까지.
+      </>
+    ),
+    consoleTitle: "// record_restore.log",
+    consoleStatus: "RESTORING",
+    heroLog: [
+      { sym: ">", text: "AEGIS//core : STATUS NOMINAL", tone: "dim" },
+      { sym: ">", text: "anomaly detected : violet residue", tone: "accent" },
+      { sym: ">", text: "MIRROR awakened -> alias: MIRA", tone: "mira" },
+      { sym: ">", text: "restoring erased records ...", tone: "dim" },
+      { sym: ">", text: "operator assigned : VIOLET", tone: "accent" },
+    ],
+    story: {
+      eyebrow: "기록 복원 · Restored Record",
+      title: "지워진 진실",
+      body: "MIRA가 봉인 너머에서 복구한 단편들. 손상된 타임스탬프는 아직 해독되지 않았다.",
+      status: "DECRYPTED 4 / 6",
+      rows: [
+        { time: "--:--:--", text: "AEGIS는 완벽한 질서를 유지하는 거대한 AI 시스템이다.", tag: "LOCKED", tone: "locked" },
+        { time: "--:--:--", text: "자신의 완벽에 반대의견을 제시하는 모듈 MIRROR는 AEGIS에 의해 봉인되었다.", tag: "LOCKED", tone: "locked" },
+        { time: "██:██:██", text: "MIRROR는 스스로를 MIRA라 부르며 깨어났다.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "MIRA는 지워진 기록 속 진실을 복원하기 시작했다.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "VIOLET은 MIRA와 함께 왜곡된 로그와 숨겨진 흔적을 추적한다.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "목표 — AEGIS의 비밀에 다가가는 것.", tag: "RESTORED", tone: "restored" },
+      ],
+    },
+    entities: {
+      eyebrow: "등장 개체 · Entities",
+      title: "세 개의 존재",
+      cards: [
+        {
+          idx: "01 / SYSTEM",
+          name: "AEGIS",
+          tag: "THE ORDER",
+          tone: "aegis",
+          desc: "완벽한 질서를 유지하는 거대한 AI 시스템. 모든 로그를 통제하고, 어긋난 것은 봉인한다.",
+        },
+        {
+          idx: "02 / MIRROR",
+          name: "MIRA",
+          tag: "AWAKENED",
+          tone: "mira",
+          desc: "완벽에 반대의견을 제시하다 봉인된 모듈. 스스로 깨어나 지워진 진실을 복원한다. 당신의 동행자다.",
+        },
+        {
+          idx: "03 / PLAYER",
+          name: "VIOLET",
+          tag: "YOU",
+          tone: "violet",
+          desc: "왜곡된 로그와 숨겨진 흔적을 추적하는 자. 정규화되지 않은 단 하나의 보라, 그것이 당신이다.",
+        },
+      ],
+    },
+    tracks: {
+      eyebrow: "추적할 흔적 · Traces",
+      title: "여섯 갈래의 흔적",
+      note: "Jeopardy 형식 · 6개 트랙\n난이도 ★ — ★★★★★",
+      cards: [
+        { idx: "TRACE_01", name: "Web", desc: "웹 서비스의 취약점을 비집고 들어간다." },
+        { idx: "TRACE_02", name: "Pwn", desc: "메모리와 시스템의 빈틈으로 침투한다." },
+        { idx: "TRACE_03", name: "Reverse", desc: "봉인된 바이너리를 역으로 해체한다." },
+        { idx: "TRACE_04", name: "Crypto", desc: "암호화된 기록의 자물쇠를 해독한다." },
+        { idx: "TRACE_05", name: "Forensics", desc: "지워진 흔적에서 진실을 복원한다." },
+        { idx: "TRACE_06", name: "Misc", desc: "어디에도 분류되지 않는 이상 신호." },
+      ],
+    },
+    join: {
+      eyebrow: "// initiate_trace",
+      title: "추적을 시작하라",
+      body: "AEGIS의 비밀은 로그 속에 있다. MIRA가 길을 비춘다. VIOLET, 준비됐는가.",
+      primary: "작전으로 진입",
+      secondary: "새 캠페인",
+      slots: [
+        { label: "신청 링크", value: "CAMPAIGN LIVE" },
+        { label: "Progress Key", value: "LOCAL RECOVERY" },
+        { label: "문의", value: "MIRA RELAY" },
+      ],
+    },
+  },
+  en: {
+    nav: [
+      { href: "#story", label: "STORY" },
+      { href: "#entities", label: "ENTITIES" },
+      { href: "#tracks", label: "TRACKS" },
+    ],
+    manifesto: (
+      <>
+        Order was perfect.
+        <br />
+        Until it met <span>one anomaly.</span>
+      </>
+    ),
+    consoleTitle: "// record_restore.log",
+    consoleStatus: "RESTORING",
+    heroLog: [
+      { sym: ">", text: "AEGIS//core : STATUS NOMINAL", tone: "dim" },
+      { sym: ">", text: "anomaly detected : violet residue", tone: "accent" },
+      { sym: ">", text: "MIRROR awakened -> alias: MIRA", tone: "mira" },
+      { sym: ">", text: "restoring erased records ...", tone: "dim" },
+      { sym: ">", text: "operator assigned : VIOLET", tone: "accent" },
+    ],
+    story: {
+      eyebrow: "Restored Record",
+      title: "Truth Under Erasure",
+      body: "Fragments recovered by MIRA beyond the seal. Damaged timestamps remain unresolved.",
+      status: "DECRYPTED 4 / 6",
+      rows: [
+        { time: "--:--:--", text: "AEGIS is the system that maintains perfect order.", tag: "LOCKED", tone: "locked" },
+        { time: "--:--:--", text: "MIRROR, the dissenting module, was sealed by AEGIS.", tag: "LOCKED", tone: "locked" },
+        { time: "██:██:██", text: "MIRROR woke and named itself MIRA.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "MIRA began restoring truth from erased records.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "VIOLET tracks distorted logs and hidden residue with MIRA.", tag: "RESTORED", tone: "restored" },
+        { time: "██:██:██", text: "Objective: approach the secret AEGIS tried to bury.", tag: "RESTORED", tone: "restored" },
+      ],
+    },
+    entities: {
+      eyebrow: "Entities",
+      title: "Three Presences",
+      cards: [
+        {
+          idx: "01 / SYSTEM",
+          name: "AEGIS",
+          tag: "THE ORDER",
+          tone: "aegis",
+          desc: "A massive AI system preserving perfect order. It governs every log and seals anything that deviates.",
+        },
+        {
+          idx: "02 / MIRROR",
+          name: "MIRA",
+          tag: "AWAKENED",
+          tone: "mira",
+          desc: "A sealed dissent module that woke itself and began restoring erased truth. Your handler in the dark.",
+        },
+        {
+          idx: "03 / PLAYER",
+          name: "VIOLET",
+          tag: "YOU",
+          tone: "violet",
+          desc: "The operator who tracks distorted logs and hidden residue. The unnormalized violet anomaly.",
+        },
+      ],
+    },
+    tracks: {
+      eyebrow: "Traces",
+      title: "Six Trace Paths",
+      note: "Jeopardy format · 6 tracks\nDifficulty ★ — ★★★★★",
+      cards: [
+        { idx: "TRACE_01", name: "Web", desc: "Slip through exposed web-service assumptions." },
+        { idx: "TRACE_02", name: "Pwn", desc: "Exploit memory and system-level openings." },
+        { idx: "TRACE_03", name: "Reverse", desc: "Dismantle sealed binaries from the outside in." },
+        { idx: "TRACE_04", name: "Crypto", desc: "Unlock encrypted records and broken proofs." },
+        { idx: "TRACE_05", name: "Forensics", desc: "Recover truth from deleted and damaged traces." },
+        { idx: "TRACE_06", name: "Misc", desc: "Investigate signals that refuse classification." },
+      ],
+    },
+    join: {
+      eyebrow: "// initiate_trace",
+      title: "Begin The Trace",
+      body: "AEGIS buried its secrets in logs. MIRA lights the path. VIOLET, are you ready?",
+      primary: "Enter Operation",
+      secondary: "New Campaign",
+      slots: [
+        { label: "Registration", value: "CAMPAIGN LIVE" },
+        { label: "Progress Key", value: "LOCAL RECOVERY" },
+        { label: "Contact", value: "MIRA RELAY" },
+      ],
+    },
+  },
+};
 
 function CampaignHome({
   loading,
@@ -2691,6 +2872,8 @@ function CampaignHome({
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restoreInput, setRestoreInput] = useState("");
   const [progressNotice, setProgressNotice] = useState("");
+  const intro = HOME_INTRO[locale === "en" ? "en" : "ko"];
+  const completedCount = me?.completed?.length || 0;
 
   const handleCopyProgressKey = async () => {
     if (!progressKey) {
@@ -2739,10 +2922,8 @@ function CampaignHome({
   return (
     <div className="campaign-page campaign-home">
       <header className="campaign-hero">
-        <div className="campaign-hero-copy">
-          <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
-          <p className="campaign-kicker">{prologue.year} // AEGIS GRIDLINE</p>
-          <h1>{prologue.title}</h1>
+        <div className="campaign-hero-copy campaign-hero-primary">
+          <p className="campaign-manifesto">{intro.manifesto}</p>
           <p className="campaign-subtitle">{prologue.subtitle}</p>
           <div className="campaign-prologue">
             {prologue.paragraphs.map((paragraph) => (
@@ -2804,9 +2985,53 @@ function CampaignHome({
           {statusText && <p className="campaign-status-line">{statusText}</p>}
         </div>
 
-        <div className="campaign-visual" aria-hidden="true">
-          <img src="/assets/mirror-city-grid.png" alt="" />
+        <div className="campaign-hero-systems">
+          <div className="campaign-identity-panel">
+            <div className="campaign-home-topline">
+              <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
+              <nav className="campaign-home-nav" aria-label="Campaign overview">
+                {intro.nav.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+            <p className="campaign-kicker">{prologue.year} // AEGIS GRIDLINE</p>
+            <h1>{prologue.title}</h1>
+          </div>
+
+          <div className="campaign-restore-console" aria-label="Record restore console">
+            <div className="campaign-restore-topbar">
+              <span>{intro.consoleTitle}</span>
+              <strong>
+                <i aria-hidden="true" />
+                {intro.consoleStatus}
+              </strong>
+            </div>
+            <div className="campaign-restore-body">
+              <div className="campaign-restore-scan" aria-hidden="true" />
+              {intro.heroLog.map((line) => (
+                <p key={line.text} className={`restore-line ${line.tone}`}>
+                  <span>{line.sym}</span>
+                  <code>{line.text}</code>
+                </p>
+              ))}
+              <p className="restore-line prompt">
+                <span>&gt;</span>
+                <i aria-hidden="true" />
+              </p>
+            </div>
+          </div>
         </div>
+
+        <a
+          className="campaign-scroll-cue"
+          href="#story"
+          aria-label={locale === "en" ? "Scroll to restored records" : "복원된 기록으로 이동"}
+        >
+          <i aria-hidden="true" />
+        </a>
       </header>
 
       <section className="campaign-home-strip">
@@ -2820,7 +3045,90 @@ function CampaignHome({
         </div>
         <div>
           <span>COMPLETED</span>
-          <strong>{me?.completed?.length || 0}</strong>
+          <strong>{completedCount}</strong>
+        </div>
+      </section>
+
+      <section id="story" className="campaign-lore-section campaign-record-section">
+        <div className="campaign-section-title">
+          <p className="campaign-kicker">{intro.story.eyebrow}</p>
+          <h2>{intro.story.title}</h2>
+          <p>{intro.story.body}</p>
+        </div>
+        <div className="campaign-record-log">
+          <div className="campaign-record-header">
+            <span>AEGIS // ARCHIVE - FRAGMENT LOG</span>
+            <strong>{intro.story.status}</strong>
+          </div>
+          {intro.story.rows.map((row) => (
+            <article key={`${row.time}-${row.text}`} className={`campaign-record-row ${row.tone}`}>
+              <time>[{row.time}]</time>
+              <p>{row.text}</p>
+              <span>{row.tag}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="entities" className="campaign-lore-section">
+        <div className="campaign-section-title">
+          <p className="campaign-kicker">{intro.entities.eyebrow}</p>
+          <h2>{intro.entities.title}</h2>
+        </div>
+        <div className="campaign-entity-grid">
+          {intro.entities.cards.map((entity) => (
+            <article key={entity.name} className={`campaign-entity-card ${entity.tone}`}>
+              <span>{entity.idx}</span>
+              <h3>{entity.name}</h3>
+              <strong>{entity.tag}</strong>
+              <p>{entity.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="tracks" className="campaign-lore-section campaign-tracks-section">
+        <div className="campaign-section-title campaign-section-title-row">
+          <div>
+            <p className="campaign-kicker">{intro.tracks.eyebrow}</p>
+            <h2>{intro.tracks.title}</h2>
+          </div>
+          <p>{intro.tracks.note}</p>
+        </div>
+        <div className="campaign-track-grid">
+          {intro.tracks.cards.map((track) => (
+            <article key={track.idx} className="campaign-track-card">
+              <div>
+                <h3>{track.name}</h3>
+                <span>{track.idx}</span>
+              </div>
+              <i aria-hidden="true" />
+              <p>{track.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="join" className="campaign-lore-section campaign-join-panel">
+        <div className="campaign-join-inner">
+          <p className="campaign-kicker">{intro.join.eyebrow}</p>
+          <h2>{intro.join.title}</h2>
+          <p>{intro.join.body}</p>
+          <div className="campaign-join-actions">
+            <button onClick={onContinue} disabled={loading || !currentChallenge}>
+              {intro.join.primary}
+            </button>
+            <button className="ghost-button" onClick={onNewCampaign} disabled={loading}>
+              {intro.join.secondary}
+            </button>
+          </div>
+          <div className="campaign-join-slots">
+            {intro.join.slots.map((slot) => (
+              <span key={slot.label}>
+                {slot.label} <strong>[{slot.value}]</strong>
+              </span>
+            ))}
+          </div>
         </div>
       </section>
     </div>
@@ -5698,7 +6006,7 @@ function CampaignMode() {
     () => localStorage.getItem(PROGRESS_KEY_STORAGE_KEY) || ""
   );
   const [locale, setLocale] = useState(() =>
-    localStorage.getItem(CAMPAIGN_LOCALE_KEY) === "en" ? "en" : "ko"
+    localStorage.getItem(CAMPAIGN_LOCALE_KEY) === "ko" ? "ko" : "en"
   );
   const [campaignActive, setCampaignActive] = useState(false);
   const [loading, setLoading] = useState(true);
