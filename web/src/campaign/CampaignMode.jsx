@@ -2921,7 +2921,24 @@ function CampaignHome({
 
   return (
     <div className="campaign-page campaign-home">
-      <header className="campaign-hero">
+      <header className="campaign-topnav">
+        <a className="campaign-brand" href="#top">
+          <span className="brand-led" aria-hidden="true" />
+          <span className="brand-name">PURPLEDROID</span>
+          <span className="brand-badge">CTF</span>
+        </a>
+        <div className="campaign-home-topline">
+          <nav className="campaign-home-nav" aria-label="Campaign overview">
+            {intro.nav.map((item) => (
+              <a key={item.href} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
+        </div>
+      </header>
+      <header id="top" className="campaign-hero">
         <div className="campaign-hero-copy campaign-hero-primary">
           <p className="campaign-manifesto">{intro.manifesto}</p>
           <p className="campaign-subtitle">{prologue.subtitle}</p>
@@ -2987,16 +3004,6 @@ function CampaignHome({
 
         <div className="campaign-hero-systems">
           <div className="campaign-identity-panel">
-            <div className="campaign-home-topline">
-              <NarrativeLocaleToggle locale={locale} onChange={onLocaleChange} />
-              <nav className="campaign-home-nav" aria-label="Campaign overview">
-                {intro.nav.map((item) => (
-                  <a key={item.href} href={item.href}>
-                    {item.label}
-                  </a>
-                ))}
-              </nav>
-            </div>
             <p className="campaign-kicker">{prologue.year} // AEGIS GRIDLINE</p>
             <h1>{prologue.title}</h1>
           </div>
@@ -7246,18 +7253,20 @@ function CampaignMode() {
                 locale={locale}
               />
 
-              <ObjectivePanel
-                story={story}
-                phase={phase}
-                hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
-              />
+              <div className="mission-duo">
+                <ObjectivePanel
+                  story={story}
+                  phase={phase}
+                  hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
+                />
 
-              <IntelPanel
-                key={activeChallengeId}
-                items={story.intel}
-                progressive={story.progressiveHints}
-                locale={locale}
-              />
+                <IntelPanel
+                  key={activeChallengeId}
+                  items={story.intel}
+                  progressive={story.progressiveHints}
+                  locale={locale}
+                />
+              </div>
 
               {!usesMemoryVault && (
                 <NetworkTracePanel
