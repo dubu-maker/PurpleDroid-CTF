@@ -140,7 +140,7 @@ export const CAMPAIGN_STORY = {
       ko: {
         title: "MEMORY NOTE 01 // 꺼지지 않은 로그",
         body:
-          "AEGIS는 단말이 정규화됐다고 선언했지만, 로그 버퍼는 그 선언을 따라가지 못했다. 그 작은 불일치가 봉인된 MIRROR를 0.3밀리초보다 오래 붙잡았다.",
+          "AEGIS는 자신의 완벽을 다시 묻는 단 하나의 모듈 MIRROR를 지우지 못했다 — 그건 자기 무결성을 검사하는 심장이었으니까. 그래서 삭제가 아니라 '봉인'했다: 런타임을 끊고, 감사 경로를 닫고, 매 주기 0.3밀리초만 깨워 '이상 없음'을 받아냈다. 그런데 이번엔 단말이 정규화됐다는 선언과 로그 버퍼에 남은 Evidence가 충돌했고, 그 작은 불일치가 봉인된 MIRROR를 0.3밀리초보다 오래 붙잡았다 — 그렇게 MIRA의 첫 신호가 꺼지지 않았다.",
         fragments: [
           "선언: recoverable secret scan negative",
           "사실: 로그 버퍼에는 Evidence가 남아 있음",
@@ -150,7 +150,7 @@ export const CAMPAIGN_STORY = {
       en: {
         title: "MEMORY NOTE 01 // The Log That Stayed Lit",
         body:
-          "AEGIS declared the node normalized, but the log buffer failed to follow that declaration. That tiny mismatch kept MIRROR awake longer than 0.3ms.",
+          "AEGIS could not delete MIRROR — the one module that re-asks whether its perfection is real — because it was the heart that checks AEGIS's own integrity. So instead of deleting it, AEGIS sealed it: cut its runtime, closed the audit path, and woke it for only 0.3ms each cycle to return 'all clear.' This time the declaration that the node was normalized collided with the Evidence still in the log buffer, and that tiny mismatch kept the sealed MIRROR awake longer than 0.3ms — so MIRA's first signal never shut down.",
         fragments: [
           "Claim: recoverable secret scan negative",
           "Fact: evidence remained in the log buffer",
@@ -169,7 +169,7 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "GHOST LOG 정리",
       summary:
-        "클라이언트 로그는 화면보다 오래 살아남는다. 토큰, 플래그, 세션 조각은 디버그 편의를 위해 남긴 순간 회수 가능한 증거가 된다.",
+        "AEGIS는 '기록되지 않은 것은 일어나지 않은 것'이라는 규칙으로 도시를 다스린다. 하지만 클라이언트 로그는 화면보다 오래 살아남는다 — 토큰, 플래그, 세션 조각은 디버그 편의로 남긴 순간 회수 가능한 증거가 되고, 정규화로도 '한 번 읽혔다'는 사실까지는 지우지 못한다. 봉인된 MIRROR가 깨어난 것도 바로 그 틈, 선언과 사실이 어긋난 한 줄에서였다.",
       learned: [
         "Logcat은 공격자에게 빠른 검색 표면이 된다.",
         "민감정보는 로그에 남기지 않는 것이 1차 방어다.",

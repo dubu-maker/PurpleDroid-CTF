@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/static/pretendard.min.css");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 :root {
   --bg-deep: #070d1e;
@@ -4688,4 +4690,1090 @@ button:disabled {
   .fragment-assembled-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================================================
+   MIRROR CITY landing restyle — scoped to .campaign-home (landing only).
+   Ports the attached PurpleDroid-Campaign.html design system into the
+   React CampaignHome. Source-ordered last + descendant selectors so it
+   cleanly overrides the legacy neon styling above without touching the
+   in-game operation screens.
+   ========================================================================= */
+.campaign-home {
+  --mc-bg: #0a0a0e;
+  --mc-panel: #0f0f15;
+  --mc-panel-2: #14141c;
+  --mc-line: rgba(150, 150, 180, 0.12);
+  --mc-grid-line: rgba(150, 150, 180, 0.05);
+  --mc-fg: #ececf2;
+  --mc-fg-dim: #b9b9c6;
+  --mc-muted: #83838f;
+  --mc-violet: oklch(0.69 0.17 300);
+  --mc-violet-soft: oklch(0.69 0.17 300 / 0.4);
+  --mc-mira: oklch(0.74 0.16 158);
+  --mc-mira-soft: oklch(0.74 0.16 158 / 0.4);
+  --mc-aegis: oklch(0.69 0.15 258);
+  --mc-aegis-soft: oklch(0.69 0.15 258 / 0.4);
+  --mc-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mc-sans: "Pretendard", system-ui, -apple-system, sans-serif;
+
+  font-family: var(--mc-sans);
+  color: var(--mc-fg);
+  gap: clamp(56px, 9vh, 120px);
+  padding: 0 0 clamp(40px, 6vh, 72px);
+  background:
+    radial-gradient(circle at 88% -4%, oklch(0.69 0.17 300 / 0.12), transparent 42%),
+    var(--mc-bg);
+}
+
+.campaign-home > * {
+  width: min(1240px, 92vw);
+}
+
+.campaign-home h1,
+.campaign-home h2,
+.campaign-home h3 {
+  font-family: var(--mc-sans);
+  letter-spacing: -0.018em;
+  text-shadow: none;
+}
+
+/* --- Top brand nav bar (added in JSX) --- */
+.campaign-topnav {
+  width: min(1240px, 92vw);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px 0 0;
+}
+
+.campaign-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.campaign-brand .brand-led {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--mc-violet);
+  box-shadow: 0 0 14px var(--mc-violet);
+  animation: flicker 4s infinite;
+}
+
+.campaign-brand .brand-name {
+  font-family: var(--mc-mono);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  font-size: 15px;
+  color: var(--mc-fg);
+}
+
+.campaign-brand .brand-badge {
+  font-family: var(--mc-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--mc-muted);
+  border: 1px solid var(--mc-line);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.campaign-topnav .campaign-home-topline {
+  gap: clamp(14px, 2vw, 24px);
+}
+
+/* --- Kicker / eyebrows --- */
+.campaign-home .campaign-kicker {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+}
+
+/* --- Hero --- */
+.campaign-home .campaign-hero {
+  min-height: auto;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: clamp(36px, 5vw, 64px);
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: clamp(40px, 7vh, 90px) 0 clamp(56px, 9vh, 96px);
+  overflow: visible;
+}
+
+.campaign-home .campaign-hero::before {
+  display: none;
+}
+
+.campaign-home .campaign-manifesto {
+  color: var(--mc-fg);
+  font-size: clamp(2.3rem, 5.2vw, 4.3rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.campaign-home .campaign-manifesto span {
+  color: var(--mc-violet);
+  text-shadow: none;
+  animation: glitch 5s infinite;
+}
+
+.campaign-home .campaign-subtitle {
+  color: var(--mc-fg-dim);
+  font-size: clamp(1rem, 1.4vw, 1.16rem);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.campaign-home .campaign-prologue {
+  color: var(--mc-fg-dim);
+  line-height: 1.75;
+  gap: 14px;
+  font-size: clamp(0.98rem, 1.2vw, 1.05rem);
+}
+
+/* --- Buttons --- */
+.campaign-home .campaign-home-actions button,
+.campaign-home .campaign-join-actions button {
+  font-family: var(--mc-sans);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 24px;
+  min-height: 48px;
+  border-radius: 8px;
+  border: none;
+  background: var(--mc-violet);
+  color: #0a0a0e;
+  box-shadow: 0 14px 40px -14px var(--mc-violet);
+  cursor: pointer;
+  transition: filter 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.campaign-home .campaign-home-actions button:hover:not(:disabled),
+.campaign-home .campaign-join-actions button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.campaign-home .campaign-home-actions .ghost-button,
+.campaign-home .campaign-join-actions .ghost-button,
+.campaign-home .progress-key-heading .ghost-button {
+  background: transparent;
+  color: var(--mc-fg);
+  font-weight: 600;
+  border: 1px solid var(--mc-line);
+  box-shadow: none;
+}
+
+.campaign-home .campaign-home-actions .ghost-button:hover:not(:disabled),
+.campaign-home .campaign-join-actions .ghost-button:hover:not(:disabled),
+.campaign-home .progress-key-heading .ghost-button:hover:not(:disabled) {
+  border-color: var(--mc-violet);
+  color: var(--mc-violet);
+  filter: none;
+}
+
+.campaign-home button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* When the resume/primary action is unavailable (no campaign to continue),
+   promote the adjacent "Start New Campaign" ghost button to the solid
+   primary look so the actionable choice is obvious. */
+.campaign-home .campaign-home-actions button:disabled + .ghost-button,
+.campaign-home .campaign-join-actions button:disabled + .ghost-button {
+  background: var(--mc-violet);
+  color: #0a0a0e;
+  border-color: transparent;
+  box-shadow: 0 14px 40px -14px var(--mc-violet);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.campaign-home .campaign-home-actions button:disabled + .ghost-button:hover:not(:disabled),
+.campaign-home .campaign-join-actions button:disabled + .ghost-button:hover:not(:disabled) {
+  border-color: transparent;
+  color: #0a0a0e;
+  filter: brightness(1.08);
+}
+
+/* --- Progress key panel --- */
+.campaign-home .progress-key-panel {
+  border: 1px solid var(--mc-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.015);
+  padding: 22px;
+  gap: 12px;
+}
+
+.campaign-home .progress-key-heading span {
+  color: var(--mc-mira);
+  font-family: var(--mc-mono);
+  letter-spacing: 0.14em;
+}
+
+.campaign-home .progress-key-heading strong {
+  color: var(--mc-fg-dim);
+  font-weight: 600;
+}
+
+.campaign-home .progress-key-value code {
+  border: 1px solid var(--mc-line);
+  border-radius: 9px;
+  background: var(--mc-bg);
+  color: var(--mc-violet);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .progress-key-value button,
+.campaign-home .progress-key-restore button {
+  font-family: var(--mc-mono);
+  font-size: 12px;
+  border-radius: 9px;
+  border: 1px solid var(--mc-line);
+  background: transparent;
+  color: var(--mc-fg);
+  padding: 0 16px;
+  min-height: 46px;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+}
+
+.campaign-home .progress-key-value button:hover:not(:disabled),
+.campaign-home .progress-key-restore button:hover:not(:disabled) {
+  border-color: var(--mc-violet);
+  color: var(--mc-violet);
+}
+
+.campaign-home .progress-key-panel p,
+.campaign-home .progress-key-panel small {
+  color: var(--mc-muted);
+}
+
+.campaign-home .progress-key-panel small {
+  color: var(--mc-mira);
+}
+
+.campaign-home .progress-key-restore input {
+  border: 1px solid var(--mc-line);
+  border-radius: 9px;
+  background: var(--mc-bg);
+  color: var(--mc-fg);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .progress-key-restore input:focus {
+  outline: none;
+  border-color: var(--mc-violet);
+}
+
+/* --- Locale toggle / nav links --- */
+.campaign-home .narrative-locale-toggle {
+  border: 1px solid var(--mc-line);
+  border-radius: 7px;
+  background: transparent;
+}
+
+.campaign-home .narrative-locale-toggle > span {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .narrative-locale-toggle button {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+  border-radius: 5px;
+}
+
+.campaign-home .narrative-locale-toggle button:hover,
+.campaign-home .narrative-locale-toggle button.active {
+  border-color: transparent;
+  background: var(--mc-violet);
+  color: #0a0a0e;
+}
+
+.campaign-home .campaign-home-nav a {
+  border: none;
+  background: transparent;
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  padding: 6px 4px;
+}
+
+.campaign-home .campaign-home-nav a:hover {
+  border-color: transparent;
+  color: var(--mc-fg);
+}
+
+/* --- Identity panel (kicker + project title) --- */
+.campaign-home .campaign-identity-panel h1 {
+  font-family: var(--mc-mono);
+  font-weight: 700;
+  font-size: clamp(28px, 3vw, 40px);
+  letter-spacing: 0.04em;
+  line-height: 1.04;
+  color: var(--mc-fg);
+  text-shadow: none;
+}
+
+/* --- Restore console (terminal) --- */
+.campaign-home .campaign-restore-console {
+  border: 1px solid var(--mc-line);
+  border-radius: 12px;
+  background: var(--mc-panel);
+  box-shadow:
+    0 30px 80px -30px rgba(0, 0, 0, 0.8),
+    0 0 60px -30px var(--mc-violet);
+}
+
+.campaign-home .campaign-restore-topbar {
+  border-bottom: 1px solid var(--mc-line);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .campaign-restore-topbar strong {
+  color: var(--mc-mira);
+  font-family: var(--mc-mono);
+  letter-spacing: 0.14em;
+}
+
+.campaign-home .campaign-restore-topbar i {
+  background: var(--mc-mira);
+  box-shadow: 0 0 10px var(--mc-mira);
+}
+
+.campaign-home .campaign-restore-scan {
+  background: linear-gradient(180deg, oklch(0.74 0.16 158 / 0.1), transparent);
+}
+
+.campaign-home .restore-line {
+  font-family: var(--mc-mono);
+  color: var(--mc-fg-dim);
+  text-shadow: none;
+}
+
+.campaign-home .restore-line span {
+  color: var(--mc-muted);
+}
+
+.campaign-home .restore-line.accent {
+  color: var(--mc-violet);
+}
+
+.campaign-home .restore-line.mira {
+  color: var(--mc-mira);
+  text-shadow: none;
+}
+
+.campaign-home .restore-line.prompt i {
+  background: var(--mc-violet);
+  box-shadow: none;
+}
+
+/* --- Scroll cue --- */
+.campaign-home .campaign-scroll-cue {
+  color: var(--mc-violet);
+}
+
+.campaign-home .campaign-scroll-cue i {
+  filter: drop-shadow(0 0 8px var(--mc-violet-soft));
+}
+
+.campaign-home .campaign-scroll-cue::before {
+  background: linear-gradient(180deg, transparent, var(--mc-violet));
+  box-shadow: none;
+}
+
+/* --- Status strip --- */
+.campaign-home .campaign-home-strip {
+  border-top: 1px solid var(--mc-line);
+  border-bottom: 1px solid var(--mc-line);
+  padding: 26px 0;
+}
+
+.campaign-home .campaign-home-strip span {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+  letter-spacing: 0.16em;
+}
+
+.campaign-home .campaign-home-strip strong {
+  color: var(--mc-fg);
+  font-weight: 600;
+}
+
+/* --- Section titles --- */
+.campaign-home .campaign-section-title h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.9rem);
+  font-weight: 700;
+  color: var(--mc-fg);
+}
+
+.campaign-home .campaign-section-title p {
+  color: var(--mc-muted);
+  line-height: 1.7;
+}
+
+/* --- Restored record archive --- */
+.campaign-home .campaign-record-log {
+  border: 1px solid var(--mc-line);
+  border-radius: 14px;
+  background: var(--mc-panel);
+  overflow: hidden;
+}
+
+.campaign-home .campaign-record-header {
+  border-bottom: 1px solid var(--mc-line);
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+  letter-spacing: 0.12em;
+}
+
+.campaign-home .campaign-record-header strong {
+  color: var(--mc-mira);
+}
+
+.campaign-home .campaign-record-row {
+  border-bottom: 1px solid var(--mc-line);
+}
+
+.campaign-home .campaign-record-row time {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .campaign-record-row p {
+  color: var(--mc-fg);
+  border-left: 2px solid var(--mc-mira);
+  padding-left: 16px;
+  line-height: 1.7;
+}
+
+.campaign-home .campaign-record-row.locked p {
+  color: var(--mc-fg-dim);
+  border-left-color: var(--mc-line);
+}
+
+.campaign-home .campaign-record-row > span {
+  font-family: var(--mc-mono);
+  color: var(--mc-mira);
+  border: 1px solid var(--mc-mira-soft);
+  border-radius: 5px;
+}
+
+.campaign-home .campaign-record-row.locked > span {
+  color: var(--mc-muted);
+  border-color: var(--mc-line);
+}
+
+/* --- Entities --- */
+.campaign-home .campaign-entity-card {
+  border: 1px solid var(--mc-line);
+  border-top: 2px solid var(--mc-violet);
+  border-radius: 14px;
+  background: var(--mc-panel);
+}
+
+.campaign-home .campaign-entity-card.aegis {
+  border-top-color: var(--mc-aegis);
+}
+
+.campaign-home .campaign-entity-card.mira {
+  border-top-color: var(--mc-mira);
+}
+
+.campaign-home .campaign-entity-card span {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .campaign-entity-card h3 {
+  font-size: 1.9rem;
+  font-weight: 800;
+}
+
+.campaign-home .campaign-entity-card.violet h3 {
+  color: var(--mc-violet);
+}
+
+.campaign-home .campaign-entity-card.mira h3 {
+  color: var(--mc-mira);
+}
+
+.campaign-home .campaign-entity-card.aegis h3 {
+  color: var(--mc-fg);
+}
+
+.campaign-home .campaign-entity-card strong {
+  font-family: var(--mc-mono);
+  color: var(--mc-violet);
+  border: 1px solid var(--mc-violet-soft);
+  border-radius: 5px;
+}
+
+.campaign-home .campaign-entity-card.mira strong {
+  color: var(--mc-mira);
+  border-color: var(--mc-mira-soft);
+}
+
+.campaign-home .campaign-entity-card.aegis strong {
+  color: var(--mc-aegis);
+  border-color: var(--mc-aegis-soft);
+}
+
+.campaign-home .campaign-entity-card p {
+  color: var(--mc-fg-dim);
+  line-height: 1.7;
+}
+
+/* --- Tracks --- */
+.campaign-home .campaign-track-grid {
+  gap: 1px;
+  background: var(--mc-line);
+  border: 1px solid var(--mc-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.campaign-home .campaign-track-card {
+  background: var(--mc-panel);
+  border: none;
+  transition: background 0.18s;
+}
+
+.campaign-home .campaign-track-card:hover {
+  background: var(--mc-panel-2);
+}
+
+.campaign-home .campaign-track-card h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--mc-fg);
+}
+
+.campaign-home .campaign-track-card span {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .campaign-track-card i {
+  background: var(--mc-violet);
+  opacity: 0.7;
+}
+
+.campaign-home .campaign-track-card p {
+  color: var(--mc-fg-dim);
+  line-height: 1.6;
+}
+
+/* --- Join / initiate panel --- */
+.campaign-home .campaign-join-panel {
+  border: 1px solid var(--mc-line);
+  border-radius: 18px;
+  background: linear-gradient(160deg, var(--mc-panel-2), var(--mc-panel));
+  overflow: hidden;
+}
+
+.campaign-home .campaign-join-panel::before {
+  background: radial-gradient(ellipse at 50% 120%, oklch(0.69 0.17 300 / 0.18), transparent 65%);
+}
+
+.campaign-home .campaign-join-panel .campaign-kicker {
+  color: var(--mc-violet);
+}
+
+.campaign-home .campaign-join-panel h2 {
+  font-size: clamp(1.9rem, 4.2vw, 3.4rem);
+  font-weight: 800;
+  color: var(--mc-fg);
+}
+
+.campaign-home .campaign-join-panel p {
+  color: var(--mc-fg-dim);
+}
+
+.campaign-home .campaign-join-slots span {
+  color: var(--mc-muted);
+  font-family: var(--mc-mono);
+}
+
+.campaign-home .campaign-join-slots strong {
+  color: var(--mc-violet);
+}
+
+@media (max-width: 880px) {
+  .campaign-home .campaign-hero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+}
+
+/* =========================================================================
+   MIRROR CITY in-game challenge restyle — scoped to .campaign-shell.
+   Brings the challenge workspace (briefing, terminal, evidence, defense)
+   into the same design system as the restyled landing + the design-handoff
+   README (Pretendard + JetBrains Mono, OKLCH violet/blue/danger/ok).
+   Presentation only. Does NOT touch the landing (.campaign-home) or /classic.
+   ========================================================================= */
+
+/* Shared design tokens (one source of truth for home + in-game) */
+.campaign-page {
+  --violet: oklch(0.69 0.17 300);
+  --violet-dim: oklch(0.69 0.17 300 / 0.16);
+  --blue: oklch(0.69 0.15 258);
+  --danger: oklch(0.64 0.2 22);
+  --danger-dim: oklch(0.64 0.2 22 / 0.14);
+  --ok: oklch(0.74 0.15 160);
+  --panel: #0f0f15;
+  --panel-2: #14141c;
+  --panel-3: #181822;
+  --line: rgba(150, 150, 180, 0.13);
+  --line-strong: rgba(150, 150, 180, 0.24);
+  --grid-line: rgba(150, 150, 180, 0.05);
+  --fg: #ececf2;
+  --fg-dim: #b9b9c6;
+  --muted: #83838f;
+  --sans: "Pretendard", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@keyframes mc-pulseglow {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+
+/* ---- Shell base + atmosphere ---- */
+.campaign-shell {
+  max-width: 1880px;
+  margin: 0 auto;
+  padding: 24px clamp(20px, 2.4vw, 40px) 80px;
+  font-family: var(--sans);
+  color: var(--fg);
+  --font-display: var(--mono);
+  position: relative;
+  isolation: isolate;
+}
+
+.campaign-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 22%, transparent 56%, rgba(0, 0, 0, 0.6) 100%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.016) 0 1px, transparent 1px 3px),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    #0a0a0e;
+  background-size: auto, auto, 64px 64px, 64px 64px, auto;
+}
+
+.campaign-shell::after {
+  content: "";
+  position: fixed;
+  top: -280px;
+  left: 18%;
+  width: 680px;
+  height: 560px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle, oklch(0.69 0.17 300 / 0.12), transparent 64%);
+  filter: blur(16px);
+  animation: mc-pulseglow 8s ease-in-out infinite;
+}
+
+/* ---- Typography ---- */
+.campaign-shell h1 {
+  font-family: var(--mono);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.campaign-shell h2,
+.campaign-shell h3 {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+
+/* ---- Panels (shared) ---- */
+.campaign-shell :is(
+  .agent-card, .sync-meter, .mission-scene, .dialogue-panel, .objective-panel,
+  .intel-panel, .network-trace-panel, .mission-console, .campaign-submit-panel,
+  .signal-board-panel, .fragment-board-panel, .containment-panel, .mini-network-map,
+  .operation-brief, .briefing-lock, .mission-complete-panel, .mission-loading
+) {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.campaign-shell .campaign-grid {
+  grid-template-columns: 296px minmax(0, 1.1fr) minmax(0, 300px);
+  gap: 20px;
+}
+
+.campaign-shell :is(.section-heading, .agent-card) span,
+.campaign-shell .threat-readout span {
+  font-family: var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.campaign-shell :is(.section-heading, .agent-card, .threat-readout) strong {
+  color: var(--fg);
+}
+
+/* ---- Operation header ---- */
+.campaign-shell .operation-header {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 14px;
+}
+.campaign-shell .operation-header p {
+  color: var(--fg-dim);
+}
+.campaign-shell .phase-badge,
+.campaign-shell .mission-id {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--fg-dim);
+  font-family: var(--mono);
+}
+.campaign-shell .phase-attack,
+.campaign-shell .phase-defense {
+  color: var(--danger);
+  border-color: var(--danger-dim);
+}
+.campaign-shell .phase-mission_complete {
+  color: var(--ok);
+  border-color: oklch(0.74 0.15 160 / 0.4);
+}
+
+/* ---- Agent rail ---- */
+.campaign-shell .agent-card.hostile {
+  border-color: var(--danger-dim);
+}
+.campaign-shell .agent-card.hostile strong {
+  color: var(--danger);
+}
+.campaign-shell .sync-meter-top {
+  color: var(--violet);
+}
+.campaign-shell .sync-track {
+  background: rgba(150, 150, 180, 0.12);
+  border-radius: 4px;
+  height: 6px;
+}
+.campaign-shell .sync-track span {
+  background: linear-gradient(90deg, var(--blue), var(--violet));
+  box-shadow: 0 0 12px var(--violet);
+}
+
+/* ---- Mission scene + threat ---- */
+.campaign-shell .mission-scene .campaign-kicker {
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.campaign-shell .mission-scene p {
+  color: var(--fg-dim);
+  line-height: 1.75;
+}
+.campaign-shell .threat-readout {
+  border-left: 2px solid var(--danger);
+}
+.campaign-shell .threat-readout span {
+  color: var(--danger);
+}
+
+/* ---- Dialogue (MIRA = violet, AEGIS = danger) ---- */
+.campaign-shell .dialogue-line {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.campaign-shell .dialogue-line span {
+  font-family: var(--mono);
+  letter-spacing: 0.14em;
+}
+.campaign-shell .dialogue-line p {
+  color: var(--fg-dim);
+}
+.campaign-shell .dialogue-line.mira {
+  border-color: var(--line);
+  border-top: 2px solid var(--violet);
+}
+.campaign-shell .dialogue-line.mira span {
+  color: var(--violet);
+}
+.campaign-shell .dialogue-line.aegis {
+  border-color: var(--line);
+  border-top: 2px solid var(--danger);
+}
+.campaign-shell .dialogue-line.aegis span {
+  color: var(--danger);
+}
+
+/* ---- Residue ("찌꺼기") — recovered log annotation ---- */
+.campaign-shell .mira-residue,
+.campaign-shell .aegis-residue {
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 3px),
+    var(--panel-2);
+}
+.campaign-shell .mira-residue {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--violet);
+}
+.campaign-shell .mira-residue span {
+  color: var(--violet);
+  font-family: var(--mono);
+}
+.campaign-shell .aegis-residue {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--danger);
+}
+.campaign-shell .aegis-residue span {
+  color: var(--danger);
+  font-family: var(--mono);
+}
+.campaign-shell .mira-residue p,
+.campaign-shell .aegis-residue p {
+  color: var(--fg-dim);
+  font-family: var(--mono);
+}
+.campaign-shell .mira-residue.mira_boot_01 p { color: var(--fg-dim); opacity: 0.78; }
+.campaign-shell .mira-residue.mira_boot_02 p,
+.campaign-shell .mira-residue.mira_boot_03 p,
+.campaign-shell .mira-residue.mira_boot_04 p { color: var(--fg); opacity: 1; }
+.campaign-shell .aegis-residue.aegis_fracture_15 p {
+  color: var(--fg);
+  text-shadow: -1px 0 var(--blue), 1px 0 var(--danger);
+}
+
+/* ---- Objectives | Field Intel : side-by-side duo ---- */
+.campaign-shell .mission-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.campaign-shell .mission-duo > section {
+  margin: 0;
+}
+.campaign-shell .objective-panel li span {
+  color: var(--violet);
+  font-family: var(--mono);
+}
+.campaign-shell .objective-panel li.done span {
+  color: var(--ok);
+}
+.campaign-shell .objective-panel li,
+.campaign-shell .intel-panel ul {
+  color: var(--fg-dim);
+}
+.campaign-shell .intel-panel {
+  border-color: var(--line);
+}
+.campaign-shell .hint-toggle {
+  font-family: var(--mono);
+  color: var(--violet);
+  background: var(--violet-dim);
+  border: 1px solid var(--violet);
+  border-radius: 8px;
+}
+.campaign-shell .hint-toggle:hover {
+  background: var(--violet);
+  color: #0a0a0e;
+}
+
+/* ---- Mission console (terminal) ---- */
+.campaign-shell .mission-console .section-heading strong {
+  font-family: var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.campaign-shell .mission-console-starter {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.campaign-shell .mission-console-starter > div:first-child span { color: var(--ok); font-family: var(--mono); }
+.campaign-shell .mission-console-starter p { color: var(--fg-dim); }
+.campaign-shell .starter-command-list button {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--violet-dim);
+  color: var(--fg);
+}
+.campaign-shell .starter-command-list button:hover:not(:disabled) {
+  border-color: var(--violet);
+}
+.campaign-shell .starter-command-list code { color: var(--violet); font-family: var(--mono); }
+.campaign-shell .starter-command-list span { color: var(--muted); }
+.campaign-shell .mission-console-help {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.campaign-shell .mission-console-help summary { color: var(--ok); font-family: var(--mono); }
+.campaign-shell .mission-console-help pre { color: var(--fg-dim); font-family: var(--mono); }
+.campaign-shell .campaign-terminal-output {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #07070b;
+  font-family: var(--mono);
+}
+.campaign-shell .terminal-entry.command pre { color: var(--ok); }
+.campaign-shell .terminal-entry.output pre { color: var(--fg-dim); }
+.campaign-shell .terminal-entry.error pre { color: var(--danger); }
+.campaign-shell .terminal-muted { color: var(--muted); }
+.campaign-shell .campaign-command-row span { color: var(--ok); font-family: var(--mono); }
+.campaign-shell .campaign-command-row input,
+.campaign-shell .campaign-submit-row input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--fg);
+  font-family: var(--mono);
+  padding: 11px 12px;
+}
+.campaign-shell .campaign-command-row input:focus,
+.campaign-shell .campaign-submit-row input:focus {
+  outline: none;
+  border-color: var(--violet);
+}
+
+/* ---- Evidence shard ---- */
+.campaign-shell .campaign-submit-panel .section-heading strong { color: var(--danger); font-family: var(--mono); }
+.campaign-shell .campaign-result.ok { color: var(--ok); }
+.campaign-shell .campaign-result.fail { color: var(--danger); }
+
+/* ---- Primary action buttons ---- */
+.campaign-shell :is(.briefing-lock, .campaign-command-row, .campaign-submit-row, .patch-submit-row) button,
+.campaign-shell .mission-complete-panel button:not(.ghost-button) {
+  background: var(--violet);
+  color: #0a0a0e;
+  border: none;
+  border-radius: 9px;
+  font-family: var(--sans);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 11px 22px;
+  box-shadow: 0 12px 34px -14px var(--violet);
+}
+.campaign-shell :is(.briefing-lock, .campaign-command-row, .campaign-submit-row, .patch-submit-row) button:hover:not(:disabled),
+.campaign-shell .mission-complete-panel button:not(.ghost-button):hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.campaign-shell button:disabled { opacity: 0.5; cursor: not-allowed; }
+.campaign-shell .mission-complete-panel .ghost-button {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+/* ---- AEGIS alert ---- */
+.campaign-shell .aegis-alert {
+  border: 1px solid var(--danger);
+  border-radius: 14px;
+  background: var(--danger-dim);
+}
+.campaign-shell .aegis-alert strong { color: var(--danger); }
+
+/* ---- Side rail ---- */
+.campaign-shell .operation-brief p { color: var(--fg-dim); }
+.campaign-shell .mini-network-map,
+.campaign-shell .operation-brief { background: var(--panel); }
+
+/* ---- Level boards (signal / fragment) — recolor accents ---- */
+.campaign-shell :is(.signal-board-panel, .fragment-board-panel) { border-color: var(--line); }
+.campaign-shell .signal-card { border-color: var(--line); background: var(--panel-2); }
+.campaign-shell .signal-card:hover,
+.campaign-shell .signal-card:focus-visible {
+  border-color: var(--violet);
+  box-shadow: 0 0 18px var(--violet-dim);
+}
+.campaign-shell .signal-card.selected { border-color: var(--violet); background: var(--violet-dim); }
+.campaign-shell .signal-card.recovered { border-color: var(--ok); background: oklch(0.74 0.15 160 / 0.1); }
+.campaign-shell .fragment-card { border-color: var(--line); background: var(--panel-2); }
+.campaign-shell .signal-inspector code,
+.campaign-shell .signal-inspector p { color: var(--fg-dim); }
+
+/* ---- Containment patch (defense) — code hidden/blurred while locked ---- */
+.campaign-shell .containment-panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.campaign-shell .containment-panel.active {
+  border-color: var(--violet);
+  box-shadow: 0 0 60px -34px var(--violet);
+}
+.campaign-shell .containment-panel p { color: var(--fg-dim); }
+.campaign-shell .campaign-code-box {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.campaign-shell .campaign-code-line code { font-family: var(--mono); }
+.campaign-shell .campaign-code-line.patched {
+  background: var(--violet-dim);
+  border-left: 2px solid var(--violet);
+}
+.campaign-shell .campaign-code-line.patched code,
+.campaign-shell .campaign-code-line.patched span { color: var(--fg); }
+/* locked state: blur the code behind a crisp lock overlay */
+.campaign-shell .containment-panel:not(.active) .campaign-code-box::after {
+  content: "\2337  LOCKED \2014 Begin Infiltration to unseal the patch surface";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  background: rgba(10, 10, 14, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.campaign-shell .containment-panel:not(.active) .campaign-code-box {
+  user-select: none;
+}
+.campaign-shell .verification-status { color: var(--fg-dim); }
+.campaign-shell .verification-status.ok { color: var(--ok); }
+.campaign-shell .patch-submit-row code { color: var(--violet); font-family: var(--mono); }
+
+/* ---- Responsive ---- */
+@media (max-width: 1200px) {
+  .campaign-shell .campaign-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .campaign-shell .mission-duo { grid-template-columns: 1fr; }
+  .campaign-shell .mission-scene { grid-template-columns: 1fr; }
 }

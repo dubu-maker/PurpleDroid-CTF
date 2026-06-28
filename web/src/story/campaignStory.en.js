@@ -84,7 +84,7 @@ export const CAMPAIGN_STORY_EN = {
     debrief: {
       title: "GHOST LOG Debrief",
       summary:
-        "Client logs can outlive the screen that produced them. Tokens, flags, and session fragments become recoverable evidence the moment they are written for debugging convenience.",
+        "AEGIS rules the city by one rule: what isn't recorded never happened. But client logs outlive the screen that produced them — tokens, flags, and session fragments become recoverable evidence the moment they are written for debugging convenience, and normalization still cannot erase the fact that a line was once read. That same gap, one line where the declaration and the fact disagreed, is where the sealed MIRROR woke.",
       learned: [
         "Logcat is a fast search surface for an attacker.",
         "The first defense is to keep sensitive values out of logs.",
