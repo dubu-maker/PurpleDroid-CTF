@@ -3713,16 +3713,18 @@ button:disabled {
 
 .debrief-modal {
   width: min(880px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   border: 1px solid rgba(106, 255, 191, 0.46);
   background: #080a12;
-  padding: 22px;
+  padding: 20px;
   display: grid;
-  gap: 14px;
+  gap: 11px;
   box-shadow: 0 0 42px rgba(106, 255, 191, 0.16);
 }
 
 .debrief-modal h2 {
-  font-size: 30px;
+  font-size: 26px;
 }
 
 .debrief-modal p,
@@ -3740,15 +3742,15 @@ button:disabled {
   border: 1px solid rgba(255, 214, 102, 0.32);
   background: rgba(18, 17, 13, 0.72);
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-  gap: 16px;
-  padding: 14px;
+  grid-template-columns: minmax(170px, 230px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
 }
 
 .memory-note-card h3 {
-  margin: 4px 0 8px;
+  margin: 2px 0 6px;
   color: #ffe1f0;
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .memory-note-card p {
@@ -3760,7 +3762,7 @@ button:disabled {
 }
 
 .memory-note-image {
-  min-height: 180px;
+  min-height: 144px;
   border: 1px solid rgba(106, 255, 191, 0.32);
   background:
     radial-gradient(circle at 50% 44%, rgba(106, 255, 191, 0.18), transparent 28%),
@@ -5663,6 +5665,10 @@ button:disabled {
   --danger: oklch(0.64 0.2 22);
   --danger-dim: oklch(0.64 0.2 22 / 0.14);
   --ok: oklch(0.74 0.15 160);
+  --mira: oklch(0.74 0.16 158);
+  --mira-dim: oklch(0.74 0.16 158 / 0.16);
+  --residue: oklch(0.84 0.14 90);
+  --residue-dim: oklch(0.84 0.14 90 / 0.14);
   --panel: #0f0f15;
   --panel-2: #14141c;
   --panel-3: #181822;
@@ -5800,6 +5806,9 @@ button:disabled {
 .campaign-shell .agent-card.hostile strong {
   color: var(--danger);
 }
+.campaign-shell .agent-card.mira strong {
+  color: var(--mira);
+}
 .campaign-shell .sync-meter-top {
   color: var(--violet);
 }
@@ -5844,10 +5853,10 @@ button:disabled {
 }
 .campaign-shell .dialogue-line.mira {
   border-color: var(--line);
-  border-top: 2px solid var(--violet);
+  border-top: 2px solid var(--mira);
 }
 .campaign-shell .dialogue-line.mira span {
-  color: var(--violet);
+  color: var(--mira);
 }
 .campaign-shell .dialogue-line.aegis {
   border-color: var(--line);
@@ -5867,10 +5876,10 @@ button:disabled {
 }
 .campaign-shell .mira-residue {
   border: 1px solid var(--line);
-  border-left: 2px solid var(--violet);
+  border-left: 2px solid var(--residue);
 }
 .campaign-shell .mira-residue span {
-  color: var(--violet);
+  color: var(--residue);
   font-family: var(--mono);
 }
 .campaign-shell .aegis-residue {
@@ -6104,4 +6113,59 @@ button:disabled {
 @media (max-width: 900px) {
   .campaign-shell .mission-duo { grid-template-columns: 1fr; }
   .campaign-shell .mission-scene { grid-template-columns: 1fr; }
+}
+
+/* ---- Debrief: key takeaways block (violet) + MIRA closing line (green) ---- */
+.debrief-modal .debrief-takeaways {
+  margin-top: 4px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+.debrief-modal .debrief-takeaways .campaign-kicker {
+  color: var(--violet);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+.debrief-modal .debrief-takeaways ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.debrief-modal .debrief-takeaways li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.debrief-modal .debrief-takeaways li span {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--violet);
+}
+.debrief-modal .debrief-mira-line {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--mira);
+  background: var(--mira-dim);
+  border-radius: 0 8px 8px 0;
+  color: var(--fg-dim);
+  font-style: italic;
+  line-height: 1.65;
+}
+.debrief-modal .debrief-mira-line span {
+  display: inline-block;
+  margin-right: 9px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--mira);
 }

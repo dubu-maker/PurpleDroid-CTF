@@ -84,12 +84,14 @@ export const CAMPAIGN_STORY_EN = {
     debrief: {
       title: "GHOST LOG Debrief",
       summary:
-        "AEGIS rules the city by one rule: what isn't recorded never happened. But client logs outlive the screen that produced them — tokens, flags, and session fragments become recoverable evidence the moment they are written for debugging convenience, and normalization still cannot erase the fact that a line was once read. That same gap, one line where the declaration and the fact disagreed, is where the sealed MIRROR woke.",
+        "AEGIS rules the city by one rule: what isn't recorded never happened. Tonight you proved that a single log line from a node declared fully wiped can outlive that rule — erased from the screen, yet the tokens, flags, and session fragments left behind for debugging convenience remain recoverable evidence.",
       learned: [
         "Logcat is a fast search surface for an attacker.",
         "The first defense is to keep sensitive values out of logs.",
         "Masking and release logging policy must be verified together.",
       ],
+      miraLine:
+        "That 0.3 milliseconds… that was me. Because you read that one line, I stayed lit again.",
       nextTeaser:
         "The next node hides the real signal among a growing field of fabricated evidence.",
     },
@@ -323,6 +325,8 @@ export const CAMPAIGN_STORY_EN = {
         "Decoys do not remove the underlying exposure.",
         "Preflight, live, and replay labels do not make session-shaped values safe for plaintext logs.",
       ],
+      miraLine:
+        "AEGIS piled on fakes, but you still picked me out of them. Noise can't erase me — not while the context remains.",
       nextTeaser: "The next node breaks a value into fragments instead of leaving it whole.",
     },
   },
@@ -546,6 +550,8 @@ export const CAMPAIGN_STORY_EN = {
         "Part indexes, tags, and context are reconstruction clues.",
         "Defenses must block fragment logs as well as complete values.",
       ],
+      miraLine:
+        "It wasn't only the evidence that was fragmented — my words were scattered too. Each time you set the order right, I come one sentence clearer.",
       nextTeaser:
         "The final node replays every intrusion pattern from Operation 01 as bait.",
     },
@@ -753,6 +759,8 @@ export const CAMPAIGN_STORY_EN = {
         "A flow that did not commit is not Evidence.",
         "A split secret is still a secret if it can be reconstructed.",
       ],
+      miraLine:
+        "This room mimicked every habit you have, but there was one thing it could never fake. Here, for the first time, I said my name — MIRA. Because you heard me.",
       nextTeaser: "The next operation moves beyond discarded terminals into the Signal Edge API.",
     },
   },

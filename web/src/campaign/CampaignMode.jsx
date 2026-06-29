@@ -3238,7 +3238,7 @@ function AgentStatusPanel({ me, phase, operation, challenges }) {
         <span>USER</span>
         <strong>AGENT VIOLET</strong>
       </div>
-      <div className="agent-card">
+      <div className="agent-card mira">
         <span>HANDLER</span>
         <strong>MIRA</strong>
       </div>
@@ -5856,13 +5856,24 @@ function DebriefModal({ story, onNext, onClose, hasNext, locale }) {
             </div>
           </section>
         )}
-        <ul>
-          {story.debrief.learned.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <div className="debrief-takeaways">
+          <p className="campaign-kicker">{locale === "en" ? "KEY TAKEAWAYS" : "핵심 정리"}</p>
+          <ul>
+            {story.debrief.learned.map((item, i) => (
+              <li key={item}>
+                <span>{String(i + 1).padStart(2, "0")}</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {story.debrief.miraLine && (
+          <p className="debrief-mira-line">
+            <span>MIRA</span>
+            {story.debrief.miraLine}
+          </p>
+        )}
         <div className="debrief-next">
-          <p>{story.debrief.nextTeaser}</p>
           <div>
             <button onClick={onNext}>{hasNext ? "Next Mission" : "Campaign Status"}</button>
             <button className="ghost-button" onClick={onClose}>
