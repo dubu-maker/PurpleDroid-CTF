@@ -2698,6 +2698,16 @@ const HOME_INTRO = {
       { sym: ">", text: "restoring erased records ...", tone: "dim" },
       { sym: ">", text: "operator assigned : VIOLET", tone: "accent" },
     ],
+    mira: {
+      channel: "Incoming // MIRA",
+      secure: "secure channel",
+      message:
+        "VIOLET, 채널이 오래 버티지 못해. 첫 번째 잔류는 끌어올렸어 — 나머지는 아직 AEGIS 아래 묻혀 있어. 다시 봉인되기 전에 추적을 시작해.",
+      signoff: "— MIRA · 핸들러 온라인",
+      vectorsLabel: "침투 벡터",
+      vectorCount: "0 / 6 침투",
+      vectors: ["Web", "Pwn", "Reverse", "Crypto", "Forensics", "Misc"],
+    },
     story: {
       eyebrow: "기록 복원 · Restored Record",
       title: "지워진 진실",
@@ -2787,6 +2797,16 @@ const HOME_INTRO = {
       { sym: ">", text: "restoring erased records ...", tone: "dim" },
       { sym: ">", text: "operator assigned : VIOLET", tone: "accent" },
     ],
+    mira: {
+      channel: "Incoming // MIRA",
+      secure: "secure channel",
+      message:
+        "VIOLET, the channel won't hold long. I've surfaced the first residue — the rest is still buried under AEGIS. Begin the trace before it re-seals.",
+      signoff: "— MIRA · handler online",
+      vectorsLabel: "Intrusion Vectors",
+      vectorCount: "0 / 6 breached",
+      vectors: ["Web", "Pwn", "Reverse", "Crypto", "Forensics", "Misc"],
+    },
     story: {
       eyebrow: "Restored Record",
       title: "Truth Under Erasure",
@@ -2955,50 +2975,6 @@ function CampaignHome({
               Start New Campaign
             </button>
           </div>
-          <section className="progress-key-panel">
-            <div className="progress-key-heading">
-              <div>
-                <span>PROGRESS KEY</span>
-                <strong>{locale === "en" ? "Anonymous campaign recovery" : "익명 캠페인 복구"}</strong>
-              </div>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => setRestoreOpen((open) => !open)}
-                disabled={loading}
-              >
-                {restoreOpen
-                  ? locale === "en" ? "Cancel Restore" : "복구 취소"
-                  : locale === "en" ? "Restore Progress" : "진행 복구"}
-              </button>
-            </div>
-            <div className="progress-key-value">
-              <code>{progressKey || (locale === "en" ? "Synchronizing..." : "동기화 중...")}</code>
-              <button type="button" onClick={handleCopyProgressKey} disabled={loading || !progressKey}>
-                {locale === "en" ? "Copy Key" : "키 복사"}
-              </button>
-            </div>
-            <p>
-              {locale === "en"
-                ? "Keep this key somewhere safe. It restores this campaign from another browser or address."
-                : "이 키를 안전한 곳에 보관해줘. 다른 브라우저나 주소에서도 현재 캠페인을 복구할 수 있어."}
-            </p>
-            {restoreOpen && (
-              <form className="progress-key-restore" onSubmit={handleRestoreSubmit}>
-                <input
-                  value={restoreInput}
-                  onChange={(event) => setRestoreInput(event.target.value)}
-                  placeholder="PD-SAVE-XXXXX-XXXXX-XXXXX-XXXXX"
-                  aria-label={locale === "en" ? "Progress Key" : "진행 키"}
-                  autoComplete="off"
-                />
-                <button type="submit" disabled={loading || !restoreInput.trim()}>
-                  {locale === "en" ? "Restore" : "복구하기"}
-                </button>
-              </form>
-            )}
-            {progressNotice && <small>{progressNotice}</small>}
-          </section>
           {statusText && <p className="campaign-status-line">{statusText}</p>}
         </div>
 
@@ -3030,31 +3006,115 @@ function CampaignHome({
               </p>
             </div>
           </div>
+
+          <div className="campaign-mira-channel" aria-label="MIRA secure channel">
+            <div className="campaign-mira-head">
+              <span className="campaign-mira-id">
+                <i aria-hidden="true">◈</i>
+                {intro.mira.channel}
+              </span>
+              <span className="campaign-mira-secure">
+                <span>{intro.mira.secure}</span>
+                <span className="campaign-mira-bars" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </span>
+            </div>
+            <p className="campaign-mira-message">{intro.mira.message}</p>
+            <div className="campaign-mira-signoff">{intro.mira.signoff}</div>
+            <div className="campaign-mira-divider" aria-hidden="true" />
+            <div className="campaign-mira-vechead">
+              <span>{intro.mira.vectorsLabel}</span>
+              <span>{intro.mira.vectorCount}</span>
+            </div>
+            <div className="campaign-mira-vectors">
+              {intro.mira.vectors.map((vector) => (
+                <span key={vector} className="campaign-mira-vector">
+                  <i aria-hidden="true" />
+                  {vector}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <a
-          className="campaign-scroll-cue"
-          href="#story"
-          aria-label={locale === "en" ? "Scroll to restored records" : "복원된 기록으로 이동"}
-        >
-          <i aria-hidden="true" />
-        </a>
       </header>
 
-      <section className="campaign-home-strip">
-        <div>
-          <span>ACTIVE NODE</span>
-          <strong>{currentChallenge?.title || "Syncing..."}</strong>
+      <section className="campaign-session-strip" aria-label="Session status and progress key">
+        <div className="campaign-session-stats">
+          <div>
+            <span>ACTIVE NODE</span>
+            <strong>{currentChallenge?.title || "Syncing..."}</strong>
+          </div>
+          <div>
+            <span>AGENT</span>
+            <strong className="is-violet">VIOLET</strong>
+          </div>
+          <div>
+            <span>COMPLETED</span>
+            <strong>{completedCount}</strong>
+          </div>
         </div>
-        <div>
-          <span>AGENT</span>
-          <strong>VIOLET</strong>
-        </div>
-        <div>
-          <span>COMPLETED</span>
-          <strong>{completedCount}</strong>
+
+        <div className="campaign-session-divider" aria-hidden="true" />
+
+        <div className="campaign-session-key">
+          <div className="campaign-session-key-head">
+            <span>PROGRESS KEY</span>
+            <small>{locale === "en" ? "Anonymous campaign recovery" : "익명 캠페인 복구"}</small>
+          </div>
+          <div className="campaign-session-key-row">
+            <div className="campaign-session-key-field">
+              <span aria-hidden="true">$</span>
+              <code>{progressKey || (locale === "en" ? "Synchronizing..." : "동기화 중...")}</code>
+            </div>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleCopyProgressKey}
+              disabled={loading || !progressKey}
+            >
+              {locale === "en" ? "Copy Key" : "키 복사"}
+            </button>
+            <button
+              type="button"
+              className="campaign-session-primary"
+              onClick={() => setRestoreOpen((open) => !open)}
+              disabled={loading}
+            >
+              {restoreOpen
+                ? locale === "en" ? "Cancel Restore" : "복구 취소"
+                : locale === "en" ? "Restore Progress" : "진행 복구"}
+            </button>
+          </div>
+          {restoreOpen && (
+            <form className="progress-key-restore" onSubmit={handleRestoreSubmit}>
+              <input
+                value={restoreInput}
+                onChange={(event) => setRestoreInput(event.target.value)}
+                placeholder="PD-SAVE-XXXXX-XXXXX-XXXXX-XXXXX"
+                aria-label={locale === "en" ? "Progress Key" : "진행 키"}
+                autoComplete="off"
+              />
+              <button type="submit" disabled={loading || !restoreInput.trim()}>
+                {locale === "en" ? "Restore" : "복구하기"}
+              </button>
+            </form>
+          )}
+          {progressNotice && <small className="campaign-session-notice">{progressNotice}</small>}
         </div>
       </section>
+
+      <a
+        className="campaign-scroll-cue"
+        href="#story"
+        aria-label={locale === "en" ? "Scroll to restored records" : "복원된 기록으로 이동"}
+      >
+        <i aria-hidden="true" />
+      </a>
 
       <section id="story" className="campaign-lore-section campaign-record-section">
         <div className="campaign-section-title">
