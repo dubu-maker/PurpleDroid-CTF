@@ -21,7 +21,7 @@ def _split_flag(flag: str, n: int = 4) -> List[str]:
 
 def _build_true_parts(flag: str) -> List[str]:
     if flag == DEFAULT_LEVEL1_3_FLAG:
-        return ["FLAG{SPL", "IT_", "AND_STITCH", "}"]
+        return ["FLAG{SP", "LIT_AN", "D_STIT", "CH}"]
     parts = _split_flag(flag, 4)
     return parts + [""] * (4 - len(parts))
 
@@ -32,20 +32,22 @@ LOGCAT_LINES = [
     "I/PurpleDroid: app started node=split-stitch",
     "W/AEGIS: fragmentation protocol active",
     "D/MIRA: No complete string does not mean no evidence. Look for related fragments.",
-    "D/Noise: shardId=DECOY-7 part[1/3]=FLAG{BROKEN_ source=decoy",
+    "D/Noise: shardId=DECOY-7 part[1/4]=FLAG{BR source=decoy",
     f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1] + " trace=FRG-8842 source=runtime",
     "D/AuthService: checkpoint=login-success trace=FRG-8842",
+    "D/CacheWarmup: shardId=OLD-2 part[3/4]=OLLBAC source=old-cache",
     f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0] + " trace=FRG-8842 source=runtime",
     "D/Telemetry: sample flag=FLAG{METRICS_CANARY} source=metrics",
-    "D/CacheWarmup: shardId=OLD-2 part[2/3]=ROLLBACK_ source=old-cache",
+    "D/CacheWarmup: shardId=OLD-2 part[2/4]=GACY_R source=old-cache",
+    "D/Noise: shardId=DECOY-7 part[3/4]=TITCH_ source=decoy",
     "W/AEGIS: no complete secret exists in this channel",
     "D/MIRA: Do not chase a complete secret line. Compare grouping and part index.",
     f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3] + " trace=FRG-8842 source=runtime",
     f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2] + " trace=FRG-8842 source=runtime",
-    "D/Noise: shardId=DECOY-7 part[2/3]=STITCH_ source=decoy",
-    "D/CacheWarmup: shardId=OLD-2 part[1/3]=FLAG{LEGACY_ source=old-cache",
-    "D/Noise: shardId=DECOY-7 part[3/3]=FAKE} source=decoy",
-    "D/CacheWarmup: shardId=OLD-2 part[3/3]=STALE} source=old-cache",
+    "D/Noise: shardId=DECOY-7 part[2/4]=OKEN_S source=decoy",
+    "D/CacheWarmup: shardId=OLD-2 part[1/4]=FLAG{LE source=old-cache",
+    "D/Noise: shardId=DECOY-7 part[4/4]=FAKE} source=decoy",
+    "D/CacheWarmup: shardId=OLD-2 part[4/4]=K_STALE} source=old-cache",
     f"I/CryptoProvider: chunk write complete shardId={TRUE_SHARD_ID} parts=4/4",
     "W/AEGIS: fragmented evidence classified as non-secret",
 ]

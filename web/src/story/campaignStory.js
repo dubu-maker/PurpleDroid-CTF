@@ -205,7 +205,7 @@ export const CAMPAIGN_STORY = {
     ],
     consolePlaceholder: "filter contaminated auth logs...",
     consoleGuide:
-      '허용: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      '허용: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       "MIRA: FLAG만 세면 노이즈가 이겨. 태그, trace, 인증 흐름을 같이 좁혀봐.\n" +
       "Defense: defense audit | defense apply <json> | defense verify",
@@ -219,7 +219,7 @@ export const CAMPAIGN_STORY = {
       lockedStatus: "waiting for dump",
       activeStatus: "candidates captured",
       lockedText:
-        "저장된 로그 dump에서 FLAG 후보가 감지되면 보드가 열린다.",
+        "저장된 로그 dump에서 FLAG 후보가 감지되면 보드가 열린다. 카드를 고른 뒤 Evidence Reasoning에서 근거를 통과해야 클리어된다.",
       intro:
         "FLAG 후보들이 카드로 정리됐다. 처음 보이는 값보다 태그, trace, 로그인 흐름을 먼저 맞춰봐.",
       inspectorTitle: "INSPECTOR",
@@ -280,7 +280,7 @@ export const CAMPAIGN_STORY = {
           trace: "LGN-8842",
           surface: "session candidate",
           status: "trusted candidate",
-          phase: "login-success session",
+          phase: "session",
           source: "live trace",
           correct: true,
           verdict:
@@ -293,7 +293,7 @@ export const CAMPAIGN_STORY = {
           trace: "LGN-8842",
           surface: "session candidate",
           status: "stale",
-          phase: "previous",
+          phase: "session",
           source: "temp residue",
           verdict:
             "previous/temp는 이전 세션 흔적이다. 현재 세션은 성공 직후 먼저 살아난다.",
@@ -349,19 +349,24 @@ export const CAMPAIGN_STORY = {
       ],
       reasoningTitle: "EVIDENCE REASONING",
       reasoning: [
-        { correct: false, text: "FLAG 형식이라는 이유만으로 선택했다." },
-        { correct: false, text: "AEGIS 태그에 있으니 중요하다고 판단했다." },
-        { correct: false, text: "preflight 샘플을 실제 로그인 결과로 믿었다." },
+        { id: "r1", correct: false, text: "FLAG 형식이라는 이유만으로 선택했다." },
+        { id: "r2", correct: false, text: "AEGIS 태그에 있으니 중요하다고 판단했다." },
+        { id: "r3", correct: false, text: "preflight 샘플을 실제 로그인 결과로 믿었다." },
         {
+          id: "r4",
           correct: true,
           text: "현재 trace의 request, Login success, session 전환 순서가 이어진다.",
         },
         {
+          id: "r5",
           correct: true,
           text: "정답 세션은 Login success 바로 다음 AuthService 세션 값이다.",
         },
-        { correct: false, text: "replay/rollback 후보와 같은 trace라서 믿었다." },
+        { id: "r6", correct: false, text: "replay/rollback 후보와 같은 trace라서 믿었다." },
       ],
+      requiredReasonIds: ["r4", "r5"],
+      reasoningGate:
+        "정답이라 판단했어도, 왜 진짜인지 근거를 골라야 제출돼. 값(FLAG)이 아니라 인증 흐름의 근거를 — 디코이 근거가 섞이면 통과 못 해.",
     },
     mira: {
       briefing:
@@ -393,7 +398,7 @@ export const CAMPAIGN_STORY = {
         briefing: "가짜... 많아. 그래도 진짜는 흐름 옆에 있어.",
         attack: "문맥... 앞뒤를 봐. 같은 session도 같은 뜻은 아니야.",
         attackSolved: "좋아. 너는 문자열이 아니라 사건을 읽었어.",
-        defense: "decoy는 안개야. 새는 값은 그대로야.",
+        defense: "decoy는 연막일 뿐이야. 유출은 그대로 유출이야.",
         complete: "말이... 조금 더 이어져.",
       },
       en: {
@@ -501,7 +506,7 @@ export const CAMPAIGN_STORY = {
     ],
     consolePlaceholder: "inspect fragmented crypto logs...",
     consoleGuide:
-      '허용: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      '허용: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       "MIRA: 완성된 FLAG 한 줄을 찾지 말고 shardId와 part index를 같이 봐.\n" +
       "Defense: defense audit | defense apply <json> | defense verify",
@@ -546,7 +551,7 @@ export const CAMPAIGN_STORY = {
           shardId: "EV-031",
           part: 2,
           total: 4,
-          value: "IT_",
+          value: "LIT_AN",
           trace: "FRG-8842",
           source: "runtime",
           note: "같은 runtime trace에 속하지만 두 번째 조각이다.",
@@ -556,8 +561,8 @@ export const CAMPAIGN_STORY = {
           tag: "Noise",
           shardId: "DECOY-7",
           part: 1,
-          total: 3,
-          value: "FLAG{BROKEN_",
+          total: 4,
+          value: "FLAG{BR",
           source: "decoy",
           note: "FLAG로 시작하지만 decoy shard다.",
         },
@@ -567,7 +572,7 @@ export const CAMPAIGN_STORY = {
           shardId: "EV-031",
           part: 1,
           total: 4,
-          value: "FLAG{SPL",
+          value: "FLAG{SP",
           trace: "FRG-8842",
           source: "runtime",
           note: "EV-031의 첫 번째 조각이다.",
@@ -577,8 +582,8 @@ export const CAMPAIGN_STORY = {
           tag: "CacheWarmup",
           shardId: "OLD-2",
           part: 2,
-          total: 3,
-          value: "ROLLBACK_",
+          total: 4,
+          value: "GACY_R",
           source: "old-cache",
           note: "rollback cache shard의 중간 조각이다.",
         },
@@ -596,7 +601,7 @@ export const CAMPAIGN_STORY = {
           shardId: "EV-031",
           part: 4,
           total: 4,
-          value: "}",
+          value: "CH}",
           trace: "FRG-8842",
           source: "runtime",
           note: "EV-031의 마지막 조각이다.",
@@ -607,7 +612,7 @@ export const CAMPAIGN_STORY = {
           shardId: "EV-031",
           part: 3,
           total: 4,
-          value: "AND_STITCH",
+          value: "D_STIT",
           trace: "FRG-8842",
           source: "runtime",
           note: "EV-031의 세 번째 조각이다.",
@@ -617,38 +622,58 @@ export const CAMPAIGN_STORY = {
           tag: "Noise",
           shardId: "DECOY-7",
           part: 2,
-          total: 3,
-          value: "STITCH_",
+          total: 4,
+          value: "OKEN_S",
           source: "decoy",
           note: "진짜 조각처럼 보이는 decoy 중간값이다.",
-        },
-        {
-          id: "old2-p1",
-          tag: "CacheWarmup",
-          shardId: "OLD-2",
-          part: 1,
-          total: 3,
-          value: "FLAG{LEGACY_",
-          source: "old-cache",
-          note: "오래된 cache shard의 시작 조각이다.",
         },
         {
           id: "decoy7-p3",
           tag: "Noise",
           shardId: "DECOY-7",
           part: 3,
-          total: 3,
-          value: "FAKE}",
+          total: 4,
+          value: "TITCH_",
           source: "decoy",
-          note: "DECOY-7을 완성하는 가짜 닫힘 조각이다.",
+          note: "decoy shard의 세 번째 조각이다.",
+        },
+        {
+          id: "old2-p1",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 1,
+          total: 4,
+          value: "FLAG{LE",
+          source: "old-cache",
+          note: "오래된 cache shard의 시작 조각이다.",
         },
         {
           id: "old2-p3",
           tag: "CacheWarmup",
           shardId: "OLD-2",
           part: 3,
-          total: 3,
-          value: "STALE}",
+          total: 4,
+          value: "OLLBAC",
+          source: "old-cache",
+          note: "OLD-2 cache shard의 세 번째 조각이다.",
+        },
+        {
+          id: "decoy7-p4",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 4,
+          total: 4,
+          value: "FAKE}",
+          source: "decoy",
+          note: "DECOY-7을 완성하는 가짜 닫힘 조각이다.",
+        },
+        {
+          id: "old2-p4",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 4,
+          total: 4,
+          value: "K_STALE}",
           source: "old-cache",
           note: "OLD-2 cache shard를 닫는 낡은 조각이다.",
         },
@@ -797,7 +822,7 @@ export const CAMPAIGN_STORY = {
       ],
     },
     consoleGuide:
-      '허용: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      '허용: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       '추천 흐름: adb logcat -d -b all | grep "OP1-CORE"\n' +
       '보스 규칙: trace, commit, shardId, part index가 모두 맞아야 한다.',

@@ -6169,3 +6169,58 @@ button:disabled {
   letter-spacing: 0.16em;
   color: var(--mira);
 }
+
+/* ---- 1-2 Signal Board: Evidence Reasoning gate (selectable, pre-submit) ---- */
+.campaign-shell .signal-reasoning-gate .section-heading strong {
+  color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.campaign-shell .signal-reasoning-gate .section-heading strong.ready {
+  color: var(--ok);
+}
+.campaign-shell .signal-reasoning-gate ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.campaign-shell .signal-reasoning-gate li {
+  display: block;
+}
+.campaign-shell .signal-reasoning-gate .reason-toggle {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--fg-dim);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.campaign-shell .signal-reasoning-gate .reason-toggle > span {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.campaign-shell .signal-reasoning-gate .reason-toggle:hover:not(:disabled) {
+  border-color: var(--violet);
+  background: rgba(150, 150, 180, 0.05);
+}
+.campaign-shell .signal-reasoning-gate li.picked .reason-toggle {
+  border-color: var(--violet);
+  background: var(--violet-dim);
+  color: var(--fg);
+}
+.campaign-shell .signal-reasoning-gate li.picked .reason-toggle > span {
+  color: var(--violet);
+}

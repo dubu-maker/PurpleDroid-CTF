@@ -116,7 +116,7 @@ export const CAMPAIGN_STORY_EN = {
       "[MIRA] filter stream... context before match",
     ],
     consoleGuide:
-      'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Allowed: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       "MIRA: Counting FLAGs lets the noise win. Narrow by tag, trace, and auth flow together.\n" +
       "Defense: defense audit | defense apply <json> | defense verify",
@@ -130,7 +130,7 @@ export const CAMPAIGN_STORY_EN = {
       lockedStatus: "waiting for dump",
       activeStatus: "candidates captured",
       lockedText:
-        "The board opens when a retained log dump exposes FLAG-shaped candidates.",
+        "The board opens when a retained log dump exposes FLAG-shaped candidates. Pick a card, then clear the Evidence Reasoning gate to solve.",
       intro:
         "FLAG-shaped candidates have been carded. Match tag, trace, and login flow before trusting a value.",
       inspectorTitle: "INSPECTOR",
@@ -191,7 +191,7 @@ export const CAMPAIGN_STORY_EN = {
           trace: "LGN-8842",
           surface: "session candidate",
           status: "trusted candidate",
-          phase: "login-success session",
+          phase: "session",
           source: "live trace",
           correct: true,
           verdict:
@@ -204,7 +204,7 @@ export const CAMPAIGN_STORY_EN = {
           trace: "LGN-8842",
           surface: "session candidate",
           status: "stale",
-          phase: "previous",
+          phase: "session",
           source: "temp residue",
           verdict:
             "Previous/temp residue belongs to an older session. The current session appears first after success.",
@@ -260,19 +260,24 @@ export const CAMPAIGN_STORY_EN = {
       ],
       reasoningTitle: "EVIDENCE REASONING",
       reasoning: [
-        { correct: false, text: "It was selected because it matches FLAG format." },
-        { correct: false, text: "It was trusted because it appears under an AEGIS tag." },
-        { correct: false, text: "A preflight sample was treated as the login result." },
+        { id: "r1", correct: false, text: "It was selected because it matches FLAG format." },
+        { id: "r2", correct: false, text: "It was trusted because it appears under an AEGIS tag." },
+        { id: "r3", correct: false, text: "A preflight sample was treated as the login result." },
         {
+          id: "r4",
           correct: true,
           text: "The current trace flows from request to Login success to session.",
         },
         {
+          id: "r5",
           correct: true,
           text: "The chosen session is the AuthService value immediately after Login success.",
         },
-        { correct: false, text: "Replay/rollback candidates were trusted only because the trace matches." },
+        { id: "r6", correct: false, text: "Replay/rollback candidates were trusted only because the trace matches." },
       ],
+      requiredReasonIds: ["r4", "r5"],
+      reasoningGate:
+        "Even if the value is right, name why it is real before submitting — reasons from the auth flow, not the FLAG shape. Any decoy reason mixed in blocks the clear.",
     },
     mira: {
       briefing:
@@ -351,7 +356,7 @@ export const CAMPAIGN_STORY_EN = {
       "[MIRA] indexes... follow them",
     ],
     consoleGuide:
-      'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Allowed: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       "MIRA: Do not search for one complete FLAG line. Compare shardId and part index together.\n" +
       "Defense: defense audit | defense apply <json> | defense verify",
@@ -396,7 +401,7 @@ export const CAMPAIGN_STORY_EN = {
           shardId: "EV-031",
           part: 2,
           total: 4,
-          value: "IT_",
+          value: "LIT_AN",
           trace: "FRG-8842",
           source: "runtime",
           note: "This belongs to the same runtime trace, but it is the second fragment.",
@@ -406,8 +411,8 @@ export const CAMPAIGN_STORY_EN = {
           tag: "Noise",
           shardId: "DECOY-7",
           part: 1,
-          total: 3,
-          value: "FLAG{BROKEN_",
+          total: 4,
+          value: "FLAG{BR",
           source: "decoy",
           note: "It starts like a FLAG, but it belongs to a decoy shard.",
         },
@@ -417,7 +422,7 @@ export const CAMPAIGN_STORY_EN = {
           shardId: "EV-031",
           part: 1,
           total: 4,
-          value: "FLAG{SPL",
+          value: "FLAG{SP",
           trace: "FRG-8842",
           source: "runtime",
           note: "This is the first EV-031 fragment.",
@@ -427,8 +432,8 @@ export const CAMPAIGN_STORY_EN = {
           tag: "CacheWarmup",
           shardId: "OLD-2",
           part: 2,
-          total: 3,
-          value: "ROLLBACK_",
+          total: 4,
+          value: "GACY_R",
           source: "old-cache",
           note: "This is the middle of a rollback cache shard.",
         },
@@ -446,7 +451,7 @@ export const CAMPAIGN_STORY_EN = {
           shardId: "EV-031",
           part: 4,
           total: 4,
-          value: "}",
+          value: "CH}",
           trace: "FRG-8842",
           source: "runtime",
           note: "This is the final EV-031 fragment.",
@@ -457,7 +462,7 @@ export const CAMPAIGN_STORY_EN = {
           shardId: "EV-031",
           part: 3,
           total: 4,
-          value: "AND_STITCH",
+          value: "D_STIT",
           trace: "FRG-8842",
           source: "runtime",
           note: "This is the third EV-031 fragment.",
@@ -467,38 +472,58 @@ export const CAMPAIGN_STORY_EN = {
           tag: "Noise",
           shardId: "DECOY-7",
           part: 2,
-          total: 3,
-          value: "STITCH_",
+          total: 4,
+          value: "OKEN_S",
           source: "decoy",
           note: "This decoy middle value resembles a real fragment.",
-        },
-        {
-          id: "old2-p1",
-          tag: "CacheWarmup",
-          shardId: "OLD-2",
-          part: 1,
-          total: 3,
-          value: "FLAG{LEGACY_",
-          source: "old-cache",
-          note: "This starts an old cache shard.",
         },
         {
           id: "decoy7-p3",
           tag: "Noise",
           shardId: "DECOY-7",
           part: 3,
-          total: 3,
-          value: "FAKE}",
+          total: 4,
+          value: "TITCH_",
           source: "decoy",
-          note: "This closes the fake DECOY-7 shard.",
+          note: "Another decoy fragment that looks runtime-real.",
+        },
+        {
+          id: "old2-p1",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 1,
+          total: 4,
+          value: "FLAG{LE",
+          source: "old-cache",
+          note: "This starts an old cache shard.",
         },
         {
           id: "old2-p3",
           tag: "CacheWarmup",
           shardId: "OLD-2",
           part: 3,
-          total: 3,
-          value: "STALE}",
+          total: 4,
+          value: "OLLBAC",
+          source: "old-cache",
+          note: "The third fragment of the OLD-2 cache shard.",
+        },
+        {
+          id: "decoy7-p4",
+          tag: "Noise",
+          shardId: "DECOY-7",
+          part: 4,
+          total: 4,
+          value: "FAKE}",
+          source: "decoy",
+          note: "This closes the fake DECOY-7 shard.",
+        },
+        {
+          id: "old2-p4",
+          tag: "CacheWarmup",
+          shardId: "OLD-2",
+          part: 4,
+          total: 4,
+          value: "K_STALE}",
           source: "old-cache",
           note: "This closes the stale OLD-2 cache shard.",
         },
@@ -585,7 +610,7 @@ export const CAMPAIGN_STORY_EN = {
       ],
     },
     consoleGuide:
-      'Allowed: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] "..." | grep "..."\n' +
+      'Allowed: adb logcat -d [-b all|main|system|events|crash] | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
       'Suggested route: adb logcat -d -b all | grep "OP1-CORE"\n' +
       "Boss rule: trace, commit, shardId, and part index must all agree.",

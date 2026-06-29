@@ -3686,6 +3686,10 @@ function EvidenceSubmit({ disabled, value, onChange, onSubmit, result, solved })
 }
 
 function hasLevel12SignalDump(logs) {
+  // The board opens however the player reaches the auth dump (-d, -b all, or any
+  // grep). It is NOT the gate — Evidence Reasoning is. So no command is forced:
+  // experts can `-b all` straight to the board; the reasoning step still guards
+  // the clear. (See handleSubmitEvidence / level12ReasoningReady.)
   const output = logs
     .filter((entry) => entry.type === "output")
     .map((entry) => entry.text)
@@ -3693,7 +3697,18 @@ function hasLevel12SignalDump(logs) {
   return /FLAG\{/.test(output) && /AuthService|AEGIS_FALSE_POSITIVE_A1|FLAG-shaped/.test(output);
 }
 
-function Level12SignalBoard({ story, logs, value, onSelectCandidate, solved, result, disabled }) {
+function Level12SignalBoard({
+  story,
+  logs,
+  value,
+  onSelectCandidate,
+  solved,
+  result,
+  disabled,
+  selectedReasonIds = [],
+  onToggleReason,
+  reasoningReady = true,
+}) {
   const board = story.signalBoard;
   const [selectedId, setSelectedId] = useState("");
   const [revealedIds, setRevealedIds] = useState([]);
@@ -3712,7 +3727,7 @@ function Level12SignalBoard({ story, logs, value, onSelectCandidate, solved, res
   }, [story.challengeId]);
 
   useEffect(() => {
-    if (!result || result.correct || !value) {
+    if (!result || result.correct || result.gate || !value) {
       return;
     }
     const submitted = candidates.find((candidate) => candidate.value === value.trim());
@@ -3804,6 +3819,34 @@ function Level12SignalBoard({ story, logs, value, onSelectCandidate, solved, res
               )}
             </aside>
           </div>
+          {!solved && staged && onToggleReason && board.reasoning?.length > 0 && (
+            <div className="signal-reasoning signal-reasoning-gate">
+              <div className="section-heading">
+                <span>{board.reasoningTitle}</span>
+                <strong className={reasoningReady ? "ready" : ""}>
+                  {reasoningReady ? "ready to submit" : "select the reasons"}
+                </strong>
+              </div>
+              <ul>
+                {board.reasoning.map((item) => {
+                  const picked = selectedReasonIds.includes(item.id);
+                  return (
+                    <li key={item.id} className={picked ? "picked" : ""}>
+                      <button
+                        type="button"
+                        className="reason-toggle"
+                        onClick={() => onToggleReason(item.id)}
+                        disabled={disabled}
+                      >
+                        <span>{picked ? "■" : "□"}</span>
+                        {item.text}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           {solved && board.reasoning?.length > 0 && (
             <div className="signal-reasoning">
               <div className="section-heading">
@@ -4155,7 +4198,10 @@ function Level13FragmentBoard({
               </p>
             )}
           </div>
-          {(solved || (restored && commitGateReady) || result?.correct) && board.reasoning?.length > 0 && (
+          {(solved ||
+            result?.correct ||
+            (onToggleReason && restored && commitGateReady)) &&
+            board.reasoning?.length > 0 && (
             <div className="fragment-reasoning">
               <div className="section-heading">
                 <span>{board.reasoningTitle}</span>
@@ -6110,6 +6156,7 @@ function CampaignMode() {
   const [expandedTraceById, setExpandedTraceById] = useState({});
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
   const [level14ReasonIds, setLevel14ReasonIds] = useState([]);
+  const [level12ReasonIds, setLevel12ReasonIds] = useState([]);
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
   const [attackNotice, setAttackNotice] = useState(false);
   const [showDebrief, setShowDebrief] = useState(false);
@@ -6283,6 +6330,7 @@ function CampaignMode() {
     setExpandedTraceById({});
     setSelectedPatchIds([]);
     setLevel14ReasonIds([]);
+    setLevel12ReasonIds([]);
     setAttackNotice(false);
     setShowDebrief(false);
     setNextId(null);
@@ -6331,6 +6379,18 @@ function CampaignMode() {
     (level14CommitVerified &&
       level14CorrectReasonCount >= level14RequiredReasonCount &&
       level14RequiredReasonsSelected);
+  const level12Reasoning = story.signalBoard?.reasoning || [];
+  const level12RequiredReasonIds =
+    story.signalBoard?.requiredReasonIds ||
+    level12Reasoning.filter((item) => item.correct).map((item) => item.id);
+  const level12HasIncorrectSelected = level12ReasonIds.some((id) =>
+    level12Reasoning.some((item) => item.id === id && !item.correct)
+  );
+  const level12ReasoningReady =
+    currentId !== "level1_2" ||
+    level12RequiredReasonIds.length === 0 ||
+    (level12RequiredReasonIds.every((id) => level12ReasonIds.includes(id)) &&
+      !level12HasIncorrectSelected);
 
   useEffect(() => {
     if (
@@ -7072,6 +7132,22 @@ function CampaignMode() {
 
   const handleSubmitEvidence = useCallback(async () => {
     const value = flagValue.trim();
+    const level12Real = (story.signalBoard?.candidates || []).find((item) => item.correct);
+    if (
+      currentId === "level1_2" &&
+      level12Real &&
+      value === level12Real.value &&
+      !level12ReasoningReady
+    ) {
+      setEvidenceResult({
+        correct: false,
+        gate: true,
+        message:
+          story.signalBoard?.reasoningGate ||
+          "Name why this value is the real session before submitting.",
+      });
+      return;
+    }
     if (
       currentId === "level1_4" &&
       value === story.fragmentBoard?.expectedValue &&
@@ -7092,9 +7168,11 @@ function CampaignMode() {
   }, [
     currentId,
     flagValue,
+    level12ReasoningReady,
     level14CommitVerified,
     level14ReasoningReady,
     story.fragmentBoard,
+    story.signalBoard,
     submitEvidenceValue,
   ]);
 
@@ -7103,6 +7181,17 @@ function CampaignMode() {
       return;
     }
     setLevel14ReasonIds((prev) =>
+      prev.includes(reasonId)
+        ? prev.filter((id) => id !== reasonId)
+        : [...prev, reasonId]
+    );
+  }, []);
+
+  const handleToggleLevel12Reason = useCallback((reasonId) => {
+    if (!reasonId) {
+      return;
+    }
+    setLevel12ReasonIds((prev) =>
       prev.includes(reasonId)
         ? prev.filter((id) => id !== reasonId)
         : [...prev, reasonId]
@@ -7448,6 +7537,9 @@ function CampaignMode() {
                       solved={evidenceSolved}
                       result={evidenceResult}
                       disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                      selectedReasonIds={level12ReasonIds}
+                      onToggleReason={handleToggleLevel12Reason}
+                      reasoningReady={level12ReasoningReady}
                     />
                   )}
 

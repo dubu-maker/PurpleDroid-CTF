@@ -46,6 +46,8 @@ def _grep_options(args: List[str]) -> Tuple[dict, List[str], str]:
         "fixed": False,
         "invert": False,
         "line_number": False,
+        "context_before": 0,
+        "context_after": 0,
     }
     patterns: List[str] = []
     remaining: List[str] = []
@@ -76,6 +78,23 @@ def _grep_options(args: List[str]) -> Tuple[dict, List[str], str]:
                 return options, [], "grep: -e 뒤에 pattern이 필요해."
             patterns.append(args[i + 1])
             i += 2
+            continue
+        context_match = re.match(r"^-([ABC])(\d*)$", arg)
+        if context_match:
+            flag = context_match.group(1)
+            number_text = context_match.group(2)
+            if number_text == "":
+                if i + 1 >= len(args) or not args[i + 1].isdigit():
+                    return options, [], f"grep: {arg} 뒤에 숫자가 필요해."
+                count = int(args[i + 1])
+                i += 2
+            else:
+                count = int(number_text)
+                i += 1
+            if flag in ("A", "C"):
+                options["context_after"] = count
+            if flag in ("B", "C"):
+                options["context_before"] = count
             continue
         if arg in long_options:
             options[long_options[arg]] = True
@@ -130,17 +149,32 @@ def _run_grep(args: List[str], data: str) -> Tuple[str, str, int]:
     if error:
         return "", error, 2
 
-    matched: List[str] = []
-    for line_no, line in enumerate(data.splitlines(), start=1):
+    lines = data.splitlines()
+    before = options["context_before"]
+    after = options["context_after"]
+    matched_any = False
+    selected: List[int] = []
+    seen: set[int] = set()
+    for idx, line in enumerate(lines):
         is_match = any(pattern.search(line) for pattern in compiled)
         if options["invert"]:
             is_match = not is_match
-        if is_match:
-            matched.append(f"{line_no}:{line}" if options["line_number"] else line)
+        if not is_match:
+            continue
+        matched_any = True
+        for j in range(max(0, idx - before), min(len(lines), idx + after + 1)):
+            if j not in seen:
+                seen.add(j)
+                selected.append(j)
 
-    if not matched:
+    if not matched_any:
         return "", "", 1
-    return "\n".join(matched) + "\n", "", 0
+    selected.sort()
+    out = [
+        f"{j + 1}:{lines[j]}" if options["line_number"] else lines[j]
+        for j in selected
+    ]
+    return "\n".join(out) + "\n", "", 0
 
 
 def _findstr_options(args: List[str]) -> Tuple[dict, List[str], str]:
