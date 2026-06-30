@@ -2080,9 +2080,9 @@ button:disabled {
 
 .mission-console-starter {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
   margin-bottom: 10px;
   padding: 10px 12px;
   border: 1px solid rgba(106, 255, 191, 0.24);
@@ -2113,7 +2113,7 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .starter-command-list button {
@@ -2121,6 +2121,7 @@ button:disabled {
   gap: 8px;
   align-items: center;
   min-height: 34px;
+  max-width: 100%;
   padding: 7px 10px;
   border: 1px solid rgba(106, 255, 191, 0.36);
   border-radius: 4px;
@@ -2137,6 +2138,8 @@ button:disabled {
   color: #6affbf;
   font-family: "Consolas", "Menlo", monospace;
   font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .starter-command-list span {

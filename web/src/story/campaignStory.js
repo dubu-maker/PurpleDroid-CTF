@@ -1104,6 +1104,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] Courier means routing layer here. Follow the ticket.",
     ],
     consolePlaceholder: "probe Signal Trace API...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Body는 정리돼 있어. 근데 응답이 Body만은 아니야 — -i로 헤더를 열어봐. (메서드는 POST)",
+      commands: [
+        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "Body만" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "헤더까지" },
+      ],
+    },
     objectives: [
       "Signal Trace API를 호출한다.",
       "응답 Body와 Header를 구분한다.",
@@ -1204,6 +1212,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] change the claim. Watch the gate decide.",
     ],
     consolePlaceholder: "inspect signal priority request...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "먼저 standard로 호출해 trust policy를 봐. 그 다음 Body의 tier를 더 높은 등급으로 바꿔 재전송 — 정확한 등급명은 AEGIS가 숨겼어.",
+      commands: [
+        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'", note: "standard로 관찰" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"premium\"}'", note: "등급을 바꿔 시험" },
+      ],
+    },
     objectives: [
       "Signal Priority 엔드포인트에 standard tier로 요청을 보낸다.",
       "응답에서 redacted trust policy와 tier shape를 확인한다.",
@@ -1306,6 +1322,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] do not forge it. Open it.",
     ],
     consolePlaceholder: "inspect dispatch capsule...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "dispatch를 호출해 token capsule을 받고, decode-token으로 segment를 펼쳐봐. Header는 포장지야 — payload를 봐.",
+      commands: [
+        { command: "curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H \"Content-Type: application/json\" -d '{\"signalId\":\"SIG-1004\"}'", note: "token 발급" },
+        { command: "decode-token <dispatch_token>", note: "segment 펼치기" },
+      ],
+    },
     objectives: [
       "Dispatch 엔드포인트를 호출해 dispatch_token을 발급받는다.",
       "토큰이 어떤 segment로 구성되어 있는지 확인한다.",
@@ -1408,6 +1432,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] that word usually means it skipped something important",
     ],
     consolePlaceholder: "forge Signal Express pass...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "standard token을 받아 jwt-decode로 claim을 봐. signature 검증이 없으면 그 다음은 너도 알 거야.",
+      commands: [
+        { command: "echo $DISPATCH_TOKEN", note: "standard 토큰" },
+        { command: "jwt-decode $DISPATCH_TOKEN", note: "claim 확인" },
+      ],
+    },
     objectives: [
       "DISPATCH_TOKEN 환경 변수에서 standard dispatch_token을 확인한다.",
       "원본 token으로 Express Gate를 호출해 거부 응답을 확인한다.",
@@ -1518,6 +1550,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] Good. That means there are multiple assumptions to break.",
     ],
     consolePlaceholder: "assemble sealed archive request...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "버튼은 실패해. 직접 재구성해 — 먼저 dispatch로 sealed token을 받고 payload를 봐. 나머지는 거부 응답이 알려줄 거야.",
+      commands: [
+        { command: "click-open", note: "버튼은 실패" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "sealed token 발급" },
+      ],
+    },
     objectives: [
       "표준 Open 버튼이 실패하는 이유를 확인한다.",
       "Dispatch 엔드포인트에서 sealed dispatch_token을 확보한다.",

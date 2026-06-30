@@ -830,6 +830,14 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] header inspection lies outside canonical operator behavior",
       "[MIRA] Courier means the routing layer. Follow the ticket.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "The body is clean, but the response isn't only the body — open the headers with -i. (method is POST)",
+      commands: [
+        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "body only" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "with headers" },
+      ],
+    },
     objectives: [
       "Call the Signal Trace API.",
       "Distinguish the response body from its headers.",
@@ -903,6 +911,14 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] standard operator behavior remains predictable",
       "[MIRA] Change the claim. Watch the gate decide.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "First call with standard and read the trust policy. Then change the body tier to a higher class and resend — AEGIS hid the exact class name.",
+      commands: [
+        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'", note: "observe standard" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"premium\"}'", note: "try a higher class" },
+      ],
+    },
     objectives: [
       "Send a standard-tier request to the Signal Priority endpoint.",
       "Read the redacted trust policy and tier-shape clues in the response.",
@@ -978,6 +994,14 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] decoded inspection is outside canonical flow",
       "[MIRA] Do not forge it. Open it.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Call dispatch to get the token capsule, then decode-token to expand its segments. The header is wrapping — read the payload.",
+      commands: [
+        { command: "curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H \"Content-Type: application/json\" -d '{\"signalId\":\"SIG-1004\"}'", note: "issue token" },
+        { command: "decode-token <dispatch_token>", note: "expand segments" },
+      ],
+    },
     objectives: [
       "Call the Dispatch endpoint and obtain a dispatch_token.",
       "Identify the token's segment structure.",
@@ -1053,6 +1077,14 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] signature validation status: normalized",
       "[MIRA] Normalized usually means something important was skipped.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Get a standard token and jwt-decode its claims. If signatures aren't verified, you know what comes next.",
+      commands: [
+        { command: "echo $DISPATCH_TOKEN", note: "standard token" },
+        { command: "jwt-decode $DISPATCH_TOKEN", note: "inspect claims" },
+      ],
+    },
     objectives: [
       "Read the standard dispatch_token from DISPATCH_TOKEN.",
       "Call the Express Gate with the original token and observe the denial.",
@@ -1132,6 +1164,14 @@ export const CAMPAIGN_STORY_EN = {
       "[AEGIS] composite trust controls exceed operator capability",
       "[MIRA] Good. Multiple assumptions mean multiple seams.",
     ],
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "The button fails. Rebuild it yourself — first get the sealed token from dispatch and read its payload. The denial responses guide the rest.",
+      commands: [
+        { command: "click-open", note: "button fails" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "issue sealed token" },
+      ],
+    },
     objectives: [
       "Observe why the standard Open button fails.",
       "Obtain a sealed dispatch_token from the Dispatch endpoint.",

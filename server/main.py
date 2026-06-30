@@ -745,12 +745,22 @@ def reset_level(challenge_id: str, authorization: Optional[str] = Header(None)):
 @app.post("/api/v1/challenges/level2_1/actions/track")
 def signal_trace(response: Response):
     """2-1 Signal Trace API (응답 헤더에 라우팅 티켓 숨김)"""
-    from levels.level2_1 import LEVEL2_1_FLAG
-    
-    # Signal Edge의 라우팅 티켓이 Body가 아니라 Header에 새어 나가는 상황
+    from levels.level2_1 import (
+        LEVEL2_1_FLAG,
+        LEVEL2_1_PREVIEW_DECOY,
+        LEVEL2_1_CACHED_DECOY,
+    )
+
+    # Signal Edge의 라우팅 티켓이 Body가 아니라 Header에 새어 나가는 상황.
+    # 진짜는 수식어 없는 X-Courier-Ticket. preview/cached는 ticket 모양 미끼,
+    # X-Internal-Route/X-Trace-Id/Server-Timing은 평범한 라우팅 메타데이터(티켓 아님).
+    response.headers["X-Trace-Id"] = "req-8842"
+    response.headers["X-Courier-Preview"] = LEVEL2_1_PREVIEW_DECOY
     response.headers["X-Courier-Ticket"] = LEVEL2_1_FLAG
-    response.headers["X-Internal-Route"] = LEVEL2_1_FLAG[:8]
-    
+    response.headers["X-Internal-Route"] = "edge-node-07"
+    response.headers["X-Courier-Cached"] = LEVEL2_1_CACHED_DECOY
+    response.headers["Server-Timing"] = "edge;dur=12"
+
     # Body는 아주 평범하게 줘서 스포일러 방지
     return {"ok": True, "message": "routed"}
 

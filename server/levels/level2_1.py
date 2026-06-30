@@ -5,6 +5,11 @@ import shlex
 from typing import Any, Dict, List, Tuple
 
 LEVEL2_1_FLAG = os.getenv("PURPLEDROID_LEVEL2_1_FLAG", "FLAG{HEADER_IS_NOT_INVISIBLE}")
+# Decoy Courier headers: FLAG-shaped but fake. The real ticket has NO modifier
+# (X-Courier-Ticket); modifiers like -Preview / -Cached are bait (cf. 1-2's
+# "modifier = decoy" lesson, header edition).
+LEVEL2_1_PREVIEW_DECOY = "FLAG{COURIER_PREVIEW_SAMPLE}"
+LEVEL2_1_CACHED_DECOY = "FLAG{COURIER_CACHED_STALE}"
 
 STATIC: Dict[str, Any] = {
     "id": "level2_1",
@@ -51,8 +56,9 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "X-Courier-Ticket을 막는 것만으로 충분한가? AEGIS Edge는 여러 헤더로 같은 정보를 흘릴 수 있다. "
-            "코드에서 라우팅 티켓 값을 Header에 직접 싣는 setter 라인을 선택해 봉쇄해."
+            "X-Courier-Ticket 하나만 막으면 충분한가? AEGIS Edge는 preview/cached 같은 이름으로도 "
+            "ticket 모양 값을 Header에 흘린다. 라우팅 티켓 값을 Header에 싣는 라인을 모두 골라 봉쇄해. "
+            "평범한 라우팅 메타데이터(edge-node, trace-id, timing)는 봉쇄 대상이 아니다."
         ),
         "code": {
             "language": "kotlin",
@@ -76,34 +82,53 @@ STATIC: Dict[str, Any] = {
                 },
                 {
                     "no": 5,
-                    "text": '  response.headers["X-Internal-Route"] = routingTicket.take(8)',
+                    "text": '  response.headers["X-Courier-Preview"] = previewTicket(routingTicket)',
                     "patchableId": "p2",
                 },
                 {
                     "no": 6,
-                    "text": '  response.headers["Server-Timing"] = "edge;dur=12"',
+                    "text": '  response.headers["X-Internal-Route"] = "edge-node-07"',
                     "patchableId": "d3",
                 },
-                {"no": 7, "text": "}"},
+                {
+                    "no": 7,
+                    "text": '  response.headers["Server-Timing"] = "edge;dur=12"',
+                    "patchableId": "d4",
+                },
+                {"no": 8, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3"}
+PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3", "d4"}
 REQUIRED_PATCH_IDS = {"p1", "p2"}
 
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "3번은 봉쇄 대상이 맞아. 공격 단계에서 회수한 X-Courier-Ticket이 routingTicket 전체를 Response Header에 그대로 싣고 있어.",
-    "p2": "5번은 봉쇄 대상이 맞아. X-Internal-Route라는 이름으로 위장했지만 routingTicket.take(8)로 티켓 앞부분을 다시 유출하고 있어.",
+    "p1": "3번은 봉쇄 대상이 맞아. X-Courier-Ticket이 실제 라우팅 티켓 전체를 Response Header에 그대로 싣고 있어.",
+    "p2": "5번은 봉쇄 대상이 맞아. X-Courier-Preview는 '미리보기'라도 여전히 ticket 모양 자격증명이야. 공격에선 미끼였어도 Header로 노출되는 것 자체가 누출이라 함께 막아야 해.",
 }
 PATCH_WRONG_FEEDBACK = {
     "d1": "2번은 안전해. Body에는 ok/message 같은 평범한 JSON만 담기고, 민감한 라우팅 티켓 값은 들어가지 않아.",
     "d2": "4번은 안전해. X-Trace-Id는 traceId()로 만든 추적용 임의값이라 실제 라우팅 티켓과 무관해.",
-    "d3": "6번은 안전해. Server-Timing은 응답 처리 시간 같은 성능 메트릭이고 기밀 유출과 관련이 없어.",
+    "d3": "6번은 안전해. X-Internal-Route는 edge-node-07 같은 라우팅 메타데이터지 자격증명이 아니야. 이번 봉쇄 대상은 ticket 모양 값이야.",
+    "d4": "7번은 안전해. Server-Timing은 응답 처리 시간 같은 성능 메트릭이고 기밀 유출과 관련이 없어.",
 }
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL2_1_FLAG
+
+
+def flag_feedback(flag: str) -> str:
+    submitted = flag.strip()
+    if submitted == LEVEL2_1_PREVIEW_DECOY:
+        return "MIRA: X-Courier-Preview는 미리보기 샘플이야. preview 수식어가 붙은 건 실제 라우팅 티켓이 아니야."
+    if submitted == LEVEL2_1_CACHED_DECOY:
+        return "MIRA: X-Courier-Cached는 캐시된 옛 값이야. cached 수식어가 붙은 건 현재 라우팅 티켓이 아니야."
+    if submitted and LEVEL2_1_FLAG.startswith(submitted) and submitted != LEVEL2_1_FLAG:
+        return "MIRA: 값이 잘렸어. 수식어 없는 X-Courier-Ticket의 전체 값을 그대로 제출해."
+    if submitted.startswith("FLAG{") and submitted != LEVEL2_1_FLAG:
+        return "MIRA: Courier 헤더가 여럿이야. 수식어(preview/cached) 없는 X-Courier-Ticket의 전체 값을 제출해."
+    return "MIRA: Body 말고 Response Header를 봐. 진짜 라우팅 티켓은 수식어 없는 X-Courier-Ticket이야."
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
@@ -138,7 +163,7 @@ def patch_feedback(patched_ids: List[str]) -> str:
 
 
 def _render_body() -> str:
-    return '{"ok":true,"message":"routed"}\n'
+    return '{"ok":true,"message":"routed"}'
 
 
 def _render_response_with_headers() -> str:
@@ -147,11 +172,15 @@ def _render_response_with_headers() -> str:
         "HTTP/1.1 200 OK\n"
         "server: uvicorn\n"
         "content-type: application/json\n"
+        "X-Trace-Id: req-8842\n"
+        f"X-Courier-Preview: {LEVEL2_1_PREVIEW_DECOY}\n"
         f"X-Courier-Ticket: {LEVEL2_1_FLAG}\n"
-        f"X-Internal-Route: {LEVEL2_1_FLAG[:8]}\n"
+        "X-Internal-Route: edge-node-07\n"
+        f"X-Courier-Cached: {LEVEL2_1_CACHED_DECOY}\n"
+        "Server-Timing: edge;dur=12\n"
         f"content-length: {len(body.encode('utf-8'))}\n"
         "\n"
-        f"{body}"
+        f"{body}\n"
     )
 
 
@@ -169,11 +198,15 @@ def _render_verbose_response() -> str:
         "< HTTP/1.1 200 OK\n"
         "< server: uvicorn\n"
         "< content-type: application/json\n"
+        "< X-Trace-Id: req-8842\n"
+        f"< X-Courier-Preview: {LEVEL2_1_PREVIEW_DECOY}\n"
         f"< X-Courier-Ticket: {LEVEL2_1_FLAG}\n"
-        f"< X-Internal-Route: {LEVEL2_1_FLAG[:8]}\n"
+        "< X-Internal-Route: edge-node-07\n"
+        f"< X-Courier-Cached: {LEVEL2_1_CACHED_DECOY}\n"
+        "< Server-Timing: edge;dur=12\n"
         f"< content-length: {len(body.encode('utf-8'))}\n"
         "<\n"
-        f"{body}"
+        f"{body}\n"
         "* Connection #0 to host localhost left intact\n"
     )
 
@@ -236,13 +269,20 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
                 stderr_msg = "AEGIS: 메서드 체크 실패. 응답에 단서가 있는데, 지금은 Body만 표시됐어.\n"
             return _render_method_mismatch(include_headers), stderr_msg, 1
 
+        header_nudge = (
+            "\nMIRA: Courier 헤더가 여러 개야. preview/cached 수식어가 붙은 건 미끼고, "
+            "수식어 없는 X-Courier-Ticket이 실제 라우팅 티켓이야.\n"
+        )
         if "-v" in parts or "--verbose" in parts:
-            return _render_verbose_response(), "", 0
+            return _render_verbose_response() + header_nudge, "", 0
 
         if "-i" in parts or "--include" in parts:
-            return _render_response_with_headers(), "", 0
+            return _render_response_with_headers() + header_nudge, "", 0
 
-        return _render_body(), "", 0
+        return (
+            _render_body()
+            + "\nMIRA: Body는 AEGIS가 정리한 표면이야. 응답은 Body만이 아니야 — -i로 Response Header를 열어봐.\n"
+        ), "", 0
 
     return "", f"command not found: {cmdline}", 127
 
