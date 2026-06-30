@@ -11,28 +11,91 @@ from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logc
 
 LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{SIGNAL_SURVIVES_THE_STATIC}")
 
-LOGCAT_LINES = [
-    "I/System: Booting...",
-    "I/PurpleDroid: app started node=static-needle",
-    "D/MIRA: Too many FLAG-shaped echoes. Search less by value, more by flow.",
-    "D/AEGIS: decoy seed session=FLAG{AEGIS_FALSE_POSITIVE_A1}",
-    "W/LegacyAuth: cached session=FLAG{QA_LOGIN_CACHE_2025}",
-    "D/Telemetry: sample flag=FLAG{METRICS_PIPELINE_CANARY}",
-    "D/Network: request => /login trace=LGN-8842",
-    "D/AuthService: preflight session=FLAG{STAGING_AUTH_SAMPLE} trace=LGN-8842",
-    "I/AuthService: Login success trace=LGN-8842 user=agent-violet",
-    "D/AuthService: session=" + LEVEL1_2_FLAG + " trace=LGN-8842",
-    "I/AuthService: refresh queue drained trace=LGN-8842",
-    "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026} trace=LGN-8842",
-    "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD} trace=LGN-8842",
-    "D/Noise: injected evidence=FLAG{MIRROR_STREAM_ACTIVE}",
-    "D/AuthService: replay session=FLAG{REPLAY_BUFFER_FAKE} trace=LGN-8842",
-    "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT} trace=LGN-8842",
-    "W/AEGIS: quarantine marker=FLAG{QUARANTINE_TEST_ONLY}",
-    "D/MIRA: The current trace has a request, a success, then the session that survives.",
-    "I/OtherTag: idle",
-    "I/System: idle",
+# Realistic Android log spam. The live login flow is buried in here so the raw
+# `adb logcat -d` dump is too large to read by eye (it truncates); the player has
+# to filter (grep) and correlate fields instead of scrolling. None of these lines
+# contain the keywords a sane filter would use (session / AuthService / success /
+# request / FLAG), so they survive as pure noise but never as false grep hits.
+NOISE_LINES = [
+    "I/ActivityManager: Start proc 1842:com.purpledroid/u0a44 for activity",
+    "D/Choreographer: Skipped 31 frames! The app may be doing too much work on its main thread.",
+    "I/art: Background concurrent mark compact GC freed 4096(2MB) AllocSpace objects",
+    "D/OpenGLRenderer: endAllActiveAnimators on 0x7f9 (RippleDrawable)",
+    "W/IInputConnectionWrapper: getTextBeforeCursor on inactive InputConnection",
+    "I/WifiService: setWifiEnabled pkg=com.android.settings enable=true",
+    "D/ConnectivityService: NetworkAgentInfo [WIFI () - 100] EVENT_NETWORK_INFO_CHANGED",
+    "V/StatusBar: setSystemUiVisibility vis=0x0 mask=0xffffffff",
+    "I/PowerManagerService: Waking up from sleep (uid=1000)",
+    "D/AudioManager: dispatching onAudioFocusChange to client",
+    "I/PackageManager: Scanning package com.purpledroid in /data/app",
+    "D/dalvikvm: GC_CONCURRENT freed 512K, 12% free 9M/10M, paused 2ms",
+    "W/ResourceType: No package identifier when getting value for resource",
+    "I/Zygote: Process com.purpledroid spawned pid=1842",
+    "D/SensorManager: registerListener accelerometer rate=GAME",
+    "I/NetworkStats: persisting network stats to disk",
+    "D/BatteryService: update start level=86 plugged=0",
+    "V/Telephony: onServiceStateChanged state=IN_SERVICE",
+    "I/LocationManager: location update dispatched provider=fused",
+    "D/WindowManager: relayoutWindow Window{a1b2} flags=0x100",
+    "I/MediaScanner: scan complete files=128",
+    "D/Bluetooth: adapter state STATE_ON",
+    "V/InputDispatcher: dispatching key 0 to channel",
+    "I/JobScheduler: JOB_DEFERRED jobId=42 pkg=com.purpledroid",
+    "D/GraphicBuffer: register, handle 0x7fa width=1080",
+    "W/Settings: Setting airplane_mode_on has moved from secure to global",
+    "I/AlarmManager: setExact type=2 when=1716700000000",
+    "D/SurfaceFlinger: duplicate frame skipped",
+    "I/ActivityTaskManager: Displayed com.purpledroid/.MainActivity +312ms",
+    "D/NotificationService: enqueue pkg=com.purpledroid id=7",
+    "V/Camera2Client: disconnect device idle",
+    "I/UsageStatsService: reportEvent pkg=com.purpledroid type=MOVE_TO_FG",
+    "D/Vibrator: vibrate 20ms",
+    "I/DropBoxManager: add tag=system_app_anr",
+    "D/KeyguardViewMediator: setHidden false",
+    "W/ActivityManager: Slow operation: 48ms so far, now at startProcess",
 ]
+
+LOGCAT_LINES = (
+    [
+        "I/System: Booting...",
+        "I/PurpleDroid: app started node=static-needle",
+        "D/MIRA: Too many FLAG-shaped echoes, and the channel is flooded. Filter first, then follow the flow.",
+    ]
+    + NOISE_LINES[0:8]
+    + [
+        "D/AEGIS: decoy seed session=FLAG{AEGIS_FALSE_POSITIVE_A1}",
+        "W/LegacyAuth: cached session=FLAG{QA_LOGIN_CACHE_2025}",
+        "D/Telemetry: sample flag=FLAG{METRICS_PIPELINE_CANARY}",
+    ]
+    + NOISE_LINES[8:20]
+    + [
+        "D/Network: request => /login trace=LGN-8842",
+        "D/AuthService: preflight session=FLAG{STAGING_AUTH_SAMPLE} trace=LGN-8842",
+    ]
+    + NOISE_LINES[20:26]
+    + [
+        # success and the surviving session stay adjacent on purpose:
+        # `grep -A1 "success"` is the intended clean solve.
+        "I/AuthService: Login success trace=LGN-8842 user=agent-violet",
+        "D/AuthService: session=" + LEVEL1_2_FLAG + " trace=LGN-8842",
+        "I/AuthService: refresh queue drained trace=LGN-8842",
+        "D/AuthService: session=FLAG{TEMP_PREV_LOGIN_2026} trace=LGN-8842",
+        "W/AuthService: restore candidate session=FLAG{MIGRATION_CACHE_OLD} trace=LGN-8842",
+    ]
+    + NOISE_LINES[26:31]
+    + [
+        "D/Noise: injected evidence=FLAG{MIRROR_STREAM_ACTIVE}",
+        "D/AuthService: replay session=FLAG{REPLAY_BUFFER_FAKE} trace=LGN-8842",
+        "D/AuthService: shadow session=FLAG{LEGACY_ROLLBACK_SLOT} trace=LGN-8842",
+        "W/AEGIS: quarantine marker=FLAG{QUARANTINE_TEST_ONLY}",
+    ]
+    + NOISE_LINES[31:36]
+    + [
+        "D/MIRA: The current trace has a request, a success, then the session that survives.",
+        "I/OtherTag: idle",
+        "I/System: idle",
+    ]
+)
 
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
     "logLevel": "DEBUG",
@@ -49,18 +112,20 @@ STATIC: Dict[str, Any] = {
     "description": "Mission: separate the live login session from decoy FLAG-shaped noise.",
     "attack": {
         "hints": [
-            {"platform": "all", "text": 'Start broad, then compare FLAG-shaped values with the login flow.'},
-            {"platform": "all", "text": 'AuthService keeps the useful trace, but not every AuthService session is current.'},
-            {"platform": "all", "text": 'grep supports -E when one tag is too narrow.'},
+            {"platform": "all", "text": 'The raw dump is flooded and gets truncated. Filter before you read; do not scroll.'},
+            {"platform": "all", "text": 'Follow the flow, not the FLAG shape: request -> success -> the session right after it. Try grep -A1 around the success line.'},
+            {"platform": "all", "text": 'Many session= lines are decoys (preflight, replay, restore, rollback). grep -v can drop the noise tags you already ruled out.'},
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
-            "maxOutputBytes": 8000,
+            "maxOutputBytes": 1800,
             "help": (
-                'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n'
-                'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
-                'Tip: compare request trace and AuthService lines; FLAG format alone is not enough.\n'
+                'Allowed: adb logcat -d | grep [-i] [-E|-F] [-v] [-n] [-A N|-B N|-C N] "..." | grep "..."\n'
+                'Windows: adb logcat -d | findstr [/I] [/R] [/N] "..."\n'
+                'Tip: the raw dump is too big to eyeball (it truncates). Narrow with grep, then\n'
+                '     correlate fields: the live session is the one that FOLLOWS "Login success".\n'
+                '     e.g. adb logcat -d | grep -A1 "success"\n'
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -254,6 +319,7 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
     stages = _split_pipes(cmdline)
     data: str | None = None
     filter_status = 0
+    used_filter = False
 
     for stage in stages:
         parts = shlex.split(stage)
@@ -271,6 +337,7 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
             continue
 
         if parts[0].lower() in {"grep", "findstr"}:
+            used_filter = True
             data, filter_error, filter_status = run_log_filter(parts, data)
             if filter_error:
                 return "", filter_error, filter_status
@@ -280,6 +347,15 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
 
     if filter_status == 1 and not data:
         return NO_MATCH_OUTPUT, "", 1
+
+    # Still ambiguous after filtering: nudge toward field correlation rather than
+    # matching by FLAG shape. (A clean `grep -A1 success` leaves exactly one session=.)
+    if data and used_filter and len(re.findall(r"session=FLAG", data)) >= 2:
+        data += (
+            "\nMIRA: Several session= candidates survived your filter. "
+            "The live one is born from the successful login — narrow around the success line "
+            '(e.g. grep -A1 "success") instead of matching FLAG shape.\n'
+        )
     return (data or ""), "", 0
 
 
@@ -294,7 +370,9 @@ def _defense_state(session: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _mask_session_tokens(text: str) -> str:
-    return re.sub(r"(session=)FLAG\s*\{[^}\n]*\}", r"\1FLAG{REDACTED}", text, flags=re.IGNORECASE)
+    # Redact to a token that leaves no FLAG{ trace, so a redacted line can no longer
+    # trip the noSessionFlagLeak check (covers the W/ session lines too).
+    return re.sub(r"session=\s*FLAG\s*\{[^}\n]*\}", "session=[REDACTED]", text, flags=re.IGNORECASE)
 
 
 def _render_logs_with_policy(policy: Dict[str, Any]) -> str:
@@ -302,7 +380,9 @@ def _render_logs_with_policy(policy: Dict[str, Any]) -> str:
     for ln in LOGCAT_LINES:
         if str(policy.get("logLevel", "DEBUG")).upper() == "INFO" and ln.startswith("D/"):
             continue
-        if not bool(policy.get("allowAuthServiceVerbose", True)) and "AuthService" in ln and ln.startswith("D/"):
+        # Disabling verbose auth logging drops every AuthService session= emission,
+        # at any priority (D/ debug and W/ warn alike) — not just debug-level ones.
+        if not bool(policy.get("allowAuthServiceVerbose", True)) and "AuthService" in ln and "session=" in ln:
             continue
         lines.append(ln)
     text = "\n".join(lines)

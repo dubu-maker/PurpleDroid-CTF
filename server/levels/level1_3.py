@@ -28,29 +28,87 @@ def _build_true_parts(flag: str) -> List[str]:
 
 PARTS = _build_true_parts(LEVEL1_3_FLAG)
 
-LOGCAT_LINES = [
-    "I/PurpleDroid: app started node=split-stitch",
-    "W/AEGIS: fragmentation protocol active",
-    "D/MIRA: No complete string does not mean no evidence. Look for related fragments.",
-    "D/Noise: shardId=DECOY-7 part[1/4]=FLAG{BR source=decoy",
-    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1] + " trace=FRG-8842 source=runtime",
-    "D/AuthService: checkpoint=login-success trace=FRG-8842",
-    "D/CacheWarmup: shardId=OLD-2 part[3/4]=OLLBAC source=old-cache",
-    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0] + " trace=FRG-8842 source=runtime",
-    "D/Telemetry: sample flag=FLAG{METRICS_CANARY} source=metrics",
-    "D/CacheWarmup: shardId=OLD-2 part[2/4]=GACY_R source=old-cache",
-    "D/Noise: shardId=DECOY-7 part[3/4]=TITCH_ source=decoy",
-    "W/AEGIS: no complete secret exists in this channel",
-    "D/MIRA: Do not chase a complete secret line. Compare grouping and part index.",
-    f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3] + " trace=FRG-8842 source=runtime",
-    f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2] + " trace=FRG-8842 source=runtime",
-    "D/Noise: shardId=DECOY-7 part[2/4]=OKEN_S source=decoy",
-    "D/CacheWarmup: shardId=OLD-2 part[1/4]=FLAG{LE source=old-cache",
-    "D/Noise: shardId=DECOY-7 part[4/4]=FAKE} source=decoy",
-    "D/CacheWarmup: shardId=OLD-2 part[4/4]=K_STALE} source=old-cache",
-    f"I/CryptoProvider: chunk write complete shardId={TRUE_SHARD_ID} parts=4/4",
-    "W/AEGIS: fragmented evidence classified as non-secret",
+# Storage/crypto-flavored Android spam. Different axis from 1-2: here the dump shows
+# every fragment, but it is flooded + truncates so print order is unreadable by eye.
+# None of these contain the grep keywords (shardId / part / FLAG / EV-031 / runtime),
+# so a sane filter isolates a group cleanly; the skill is grouping + reordering, not
+# scope (1-1) or decoy-vs-live correlation (1-2).
+NOISE_LINES = [
+    "I/Keystore2: keystore unlocked alias=evidence-kek",
+    "D/StorageManager: mounted volume emulated/0 state=mounted",
+    "I/Vold: Disk created /dev/block/vold",
+    "D/FuseDaemon: node lookup cache hit ratio=0.92",
+    "I/art: Compiler allocated 12MB to compile void main()",
+    "D/Zip: extracted assets/manifest.bin",
+    "W/FileUtils: fsync took 31ms",
+    "I/SQLiteConnection: prepare statement pool size=8",
+    "D/JobScheduler: ready jobs reevaluated count=3",
+    "I/PackageManager: dexopt complete pkg=com.purpledroid",
+    "D/NetworkSecurityConfig: using platform default trust anchors",
+    "I/KeyStore: grant alias to uid=10044",
+    "D/EGL_emulation: eglMakeCurrent context=0x7f",
+    "W/MemoryLeakMonitor: watched object retained 1",
+    "I/BatteryStatsService: noteEvent collect",
+    "D/Telephony: SIM state LOADED",
+    "I/AlarmManager: rescheduling 2 alarms",
+    "D/AudioFlinger: mixer thread standby",
+    "I/WindowManager: addWindow Window{c3d4}",
+    "V/SensorService: flush accelerometer",
+    "I/DropBoxManager: add tag=event_data",
+    "D/ConnectivityService: reporting NetworkCapabilities",
+    "I/UsageStats: flush to disk pending=4",
+    "W/ResourcesCompat: Failed to inflate drawable cached",
+    "I/InputReader: device added id=5",
+    "D/GnssLocationProvider: report location batch=0",
 ]
+
+LOGCAT_LINES = (
+    [
+        "I/PurpleDroid: app started node=split-stitch",
+        "W/AEGIS: fragmentation protocol active",
+        "D/MIRA: No complete string does not mean no evidence. The channel is flooded; group related fragments.",
+    ]
+    + NOISE_LINES[0:5]
+    + [
+        "D/Noise: shardId=DECOY-7 part[1/4]=FLAG{BR source=decoy",
+        f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[2/4]=" + PARTS[1] + " trace=FRG-8842 source=runtime",
+        "D/StagingCache: shardId=TMP-3 part[3/4]=FT_ON source=staging-draft",
+    ]
+    + NOISE_LINES[5:10]
+    + [
+        "D/CacheWarmup: shardId=OLD-2 part[3/4]=OLLBAC source=old-cache",
+        "D/AuthService: checkpoint=login-success trace=FRG-8842",
+        f"D/RouteSync: shardId={TRUE_SHARD_ID} part[1/4]=" + PARTS[0] + " trace=FRG-8842 source=runtime",
+        "D/Telemetry: sample flag=FLAG{METRICS_CANARY} source=metrics",
+        "D/StagingCache: shardId=TMP-3 part[1/4]=FLAG{TM source=staging-draft",
+    ]
+    + NOISE_LINES[10:15]
+    + [
+        "D/CacheWarmup: shardId=OLD-2 part[2/4]=GACY_R source=old-cache",
+        "D/Noise: shardId=DECOY-7 part[3/4]=TITCH_ source=decoy",
+        "W/AEGIS: no complete secret exists in this channel",
+        "D/MIRA: Do not chase a complete secret line. Compare grouping and part index.",
+        "D/StagingCache: shardId=TMP-3 part[2/4]=P_DRA source=staging-draft",
+    ]
+    + NOISE_LINES[15:19]
+    + [
+        f"D/CryptoProvider: shardId={TRUE_SHARD_ID} part[4/4]=" + PARTS[3] + " trace=FRG-8842 source=runtime",
+        "D/Noise: shardId=DECOY-7 part[2/4]=OKEN_S source=decoy",
+        "D/CacheWarmup: shardId=OLD-2 part[1/4]=FLAG{LE source=old-cache",
+        f"D/RouteSync: shardId={TRUE_SHARD_ID} part[3/4]=" + PARTS[2] + " trace=FRG-8842 source=runtime",
+    ]
+    + NOISE_LINES[19:23]
+    + [
+        "D/Noise: shardId=DECOY-7 part[4/4]=FAKE} source=decoy",
+        "D/StagingCache: shardId=TMP-3 part[4/4]=LY} source=staging-draft",
+        "D/CacheWarmup: shardId=OLD-2 part[4/4]=K_STALE} source=old-cache",
+    ]
+    + NOISE_LINES[23:26]
+    + [
+        f"I/CryptoProvider: chunk write complete shardId={TRUE_SHARD_ID} parts=4/4",
+        "W/AEGIS: fragmented evidence classified as non-secret",
+    ]
+)
 
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
     "logParts": True,
@@ -68,18 +126,19 @@ STATIC: Dict[str, Any] = {
     "description": "Mission: group related fragments by shardId, then stitch them by part index.",
     "attack": {
         "hints": [
-            {"platform": "all", "text": 'FLAG-shaped lines are incomplete. Search for shardId instead.'},
-            {"platform": "all", "text": 'Fragments with the same shardId belong together; log order is not part order.'},
-            {"platform": "all", "text": f'When one shard looks complete, inspect {TRUE_SHARD_ID} and sort by part index.'},
+            {"platform": "all", "text": 'The dump is flooded and truncates, and no single line is complete. Filter to one shardId; do not scroll.'},
+            {"platform": "all", "text": 'Several shards look similar (DECOY-7, OLD-2, TMP-3, EV-031). Fragments with the same shardId belong together; log order is not part order.'},
+            {"platform": "all", "text": f'Isolate {TRUE_SHARD_ID} (the runtime shard), then reorder part[1/4]..part[4/4] yourself.'},
         ],
         "terminal": {
             "enabled": True,
             "prompt": "$ ",
-            "maxOutputBytes": 8000,
+            "maxOutputBytes": 1500,
             "help": (
-                'Allowed: adb logcat -d | grep [-i] [-E|-F] "..." | grep "..."\n'
-                'Windows: adb logcat -d | findstr [/I] [/R] "..."\n'
-                "Tip: group by shardId, then rebuild by part[n/m] rather than print order.\n"
+                'Allowed: adb logcat -d | grep [-i] [-E|-F] [-v] [-n] "..." | grep "..."\n'
+                'Windows: adb logcat -d | findstr [/I] [/R] [/N] "..."\n'
+                "Tip: the raw dump is too big to read (it truncates). Group by shardId\n"
+                "     (e.g. adb logcat -d | grep EV-031), then rebuild by part[n/m], not print order.\n"
                 "Defense: defense audit | defense apply <json> | defense verify"
             ),
         },
@@ -135,8 +194,8 @@ STATIC: Dict[str, Any] = {
 
 PATCHABLE_IDS = {"p1", "p2", "p3", "p4", "d1", "d2"}
 REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4"}
-PATCH_FEEDBACK = {
-    "d1": "Line 5 is a telemetry canary. It should not exist in production either, but this containment target is the recoverable Evidence fragment path.",
+PATCH_WRONG_FEEDBACK = {
+    "d1": "Line 5 is a telemetry canary. It should not exist in production either, but it is not the recoverable Evidence fragment path you must contain here.",
     "d2": "Line 8 records completion metadata. It does not emit the fragment value itself.",
 }
 
@@ -149,6 +208,9 @@ FLAG_FEEDBACK = {
     ),
     "FLAG{METRICS_CANARY}": (
         "MIRA: telemetry canary is not Evidence. Separate measurement markers from secret fragments."
+    ),
+    "FLAG{TMP_DRAFT_ONLY}": (
+        "MIRA: that is the TMP-3 staging draft shard (source=staging-draft). A draft is not the runtime evidence flow."
     ),
 }
 
@@ -176,9 +238,9 @@ def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) ->
 
 def patch_feedback(patched_ids: List[str]) -> str:
     selected = set(patched_ids)
-    extra = [pid for pid in patched_ids if pid in PATCH_FEEDBACK]
+    extra = [pid for pid in patched_ids if pid in PATCH_WRONG_FEEDBACK]
     if extra:
-        return " ".join(PATCH_FEEDBACK[pid] for pid in extra)
+        return " ".join(PATCH_WRONG_FEEDBACK[pid] for pid in extra)
 
     if REQUIRED_PATCH_IDS - selected:
         return (

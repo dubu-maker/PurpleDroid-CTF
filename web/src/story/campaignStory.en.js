@@ -279,6 +279,14 @@ export const CAMPAIGN_STORY_EN = {
       reasoningGate:
         "Even if the value is right, name why it is real before submitting — reasons from the auth flow, not the FLAG shape. Any decoy reason mixed in blocks the clear.",
     },
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: 'Spread the dump first. If too many FLAGs show up, narrow by flow, not by value — look around "Login success".',
+      commands: [
+        { command: "adb logcat -d", note: "full dump" },
+        { command: 'adb logcat -d | grep "Login success"', note: "narrow by flow" },
+      ],
+    },
     mira: {
       briefing:
         "AEGIS adapted. False signals precede the real one.",
@@ -371,11 +379,12 @@ export const CAMPAIGN_STORY_EN = {
       activeStatus: "fragments captured",
       lockedText:
         "Inspect logs containing shardId to open the Fragment Board.",
+      hideCardNotes: true,
       intro:
-        "Fragment candidates are mixed together. Choose one shardId and place fragments by part index, not by print order.",
+        "Fragment candidates are mixed together. Group by shardId, but the real Evidence is the group whose trace reached login-success. Place fragments by part index, not print order.",
       inspectorTitle: "FRAGMENT INSPECTOR",
       inspectorEmpty:
-        "Select a card to inspect shardId, part index, and source.",
+        "Select a card to inspect shardId, part index, and trace. Decide the real group by which trace reached login-success.",
       selectCard: "Select a Fragment card first.",
       cannotPlace:
         "This card has no part index, so it cannot fit a slot. Separate measurement markers from secret fragments.",
@@ -529,13 +538,27 @@ export const CAMPAIGN_STORY_EN = {
         },
       ],
       reasoningTitle: "RECONSTRUCTION REASONING",
+      requiredReasonCount: 3,
+      requiredReasonIds: ["shardid", "part-index", "runtime-trace"],
+      reasoningPrompt:
+        "Before submitting, choose why this value is the real Evidence.",
+      reasoningGate:
+        "Reasoning is incomplete. Select the three correct reasons (and no decoy reasons) before submitting.",
       reasoning: [
-        { correct: false, text: "Only fragments that start with FLAG were used." },
-        { correct: true, text: "Only fragments with shardId=EV-031 were used." },
-        { correct: true, text: "Fragments were stitched by part index." },
-        { correct: false, text: "Fragments were stitched by log print order." },
-        { correct: true, text: "Only runtime trace fragments were used." },
-        { correct: false, text: "AEGIS classified them as non-secret, so they were ignored." },
+        { id: "flag-start", correct: false, text: "Assumed a shard is real because one of its fragments starts with FLAG{." },
+        { id: "shardid", correct: true, text: "Only fragments with shardId=EV-031 were used." },
+        { id: "part-index", correct: true, text: "Fragments were stitched by part index." },
+        { id: "print-order", correct: false, text: "Assumed the printed line order is the part order and stitched as-is." },
+        { id: "runtime-trace", correct: true, text: "Only runtime trace fragments were used." },
+        { id: "aegis", correct: false, text: "AEGIS classified them as non-secret, so they were ignored." },
+      ],
+    },
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "Don't hunt for a complete FLAG. The pieces are scattered. Start by grouping the same shardId.",
+      commands: [
+        { command: "adb logcat -d", note: "spread the fragments" },
+        { command: "adb logcat -d | grep shardId", note: "group them" },
       ],
     },
     mira: {
@@ -603,7 +626,7 @@ export const CAMPAIGN_STORY_EN = {
     ],
     consoleStarter: {
       label: "TRY FIRST",
-      text: "Inspect main first, then widen the buffer scope you learned in Operation 01.",
+      text: "No new syntax here. main is only an echo. Use everything you learned — buffer scope, trace, stitching, and commit.",
       commands: [
         { command: "adb logcat -d", note: "main buffer" },
         { command: "adb logcat -d -b all", note: "all buffers" },
@@ -631,7 +654,7 @@ export const CAMPAIGN_STORY_EN = {
         "Core fragments were captured. Stitch by part index, not print order, then verify the commit log in the terminal.",
       inspectorTitle: "CORE INSPECTOR",
       inspectorEmpty:
-        "Select a card to inspect trace, shardId, and source. Determine the part position from the terminal log.",
+        "Select a card to inspect trace and shardId. Determine the part position from the terminal log.",
       selectCard: "Select a core fragment card first.",
       cannotPlace:
         "This card is not an Evidence part. Separate commit metadata from secret fragments.",
@@ -739,7 +762,7 @@ export const CAMPAIGN_STORY_EN = {
         { id: "rollback", correct: false, text: "The rollback trace also had a shardId." },
         { id: "part-index", correct: true, text: "It was reconstructed in part-index order." },
         { id: "aegis", correct: false, text: "AEGIS classified it as non-secret." },
-        { id: "runtime", correct: true, text: "Only source=runtime fragments were used." },
+        { id: "runtime", correct: true, text: "Used only OP1-CORE live-flow fragments, not replay/rollback/mirror ones." },
         { id: "mira", correct: false, text: "It appeared near a MIRA tag." },
       ],
     },

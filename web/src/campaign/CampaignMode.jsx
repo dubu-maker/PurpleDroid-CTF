@@ -4090,7 +4090,7 @@ function Level13FragmentBoard({
               {selectedCard ? (
                 <>
                   <code>{selectedCard.value}</code>
-                  <p>{selectedCard.note}</p>
+                  {!board.hideCardNotes && <p>{selectedCard.note}</p>}
                   <dl>
                     <div>
                       <dt>tag</dt>
@@ -4105,10 +4105,6 @@ function Level13FragmentBoard({
                     <div>
                       <dt>trace</dt>
                       <dd>{selectedCard.trace || "none"}</dd>
-                    </div>
-                    <div>
-                      <dt>source</dt>
-                      <dd>{selectedCard.source}</dd>
                     </div>
                   </dl>
                 </>
@@ -4129,9 +4125,7 @@ function Level13FragmentBoard({
                   <button
                     type="button"
                     key={slot.index}
-                    className={`fragment-slot ${card ? "filled" : ""} ${
-                      card?.source === "runtime" ? "runtime" : ""
-                    }`}
+                    className={`fragment-slot ${card ? "filled" : ""}`}
                     onClick={() => (card && selectedCardId === card.id ? clearSlot(slot.index) : placeCard(slot.index))}
                     onDragEnter={(event) => {
                       event.preventDefault();
@@ -4200,6 +4194,7 @@ function Level13FragmentBoard({
           </div>
           {(solved ||
             result?.correct ||
+            result?.gate ||
             (onToggleReason && restored && commitGateReady)) &&
             board.reasoning?.length > 0 && (
             <div className="fragment-reasoning">
@@ -6360,6 +6355,9 @@ function CampaignMode() {
   const requiresTerminalVerification = Boolean(detail?.defense?.instruction?.includes("defense verify"));
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
   const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2" || currentId === "level4_3";
+  // The fragment board reasoning gate covers BOTH 1-3 and 1-4 (they share the board
+  // component and never run at the same time). 1-4 additionally requires commit verification.
+  const fragmentBoardReasoningLevel = currentId === "level1_3" || currentId === "level1_4";
   const level14RequiredReasonCount = story.fragmentBoard?.requiredReasonCount || 0;
   const level14RequiredReasonIds = story.fragmentBoard?.requiredReasonIds || [];
   const level14CorrectReasonCount = (story.fragmentBoard?.reasoning || []).filter(
@@ -6368,17 +6366,21 @@ function CampaignMode() {
   const level14RequiredReasonsSelected = level14RequiredReasonIds.every((id) =>
     level14ReasonIds.includes(id)
   );
+  const level14HasIncorrectSelected = (story.fragmentBoard?.reasoning || []).some(
+    (item) => level14ReasonIds.includes(item.id) && !item.correct
+  );
   const level14CommitVerified =
     currentId !== "level1_4" ||
     hasCommitVerifierEvidence(consoleLogs, story.fragmentBoard) ||
     evidenceSolved ||
     evidenceResult?.correct;
   const level14ReasoningReady =
-    currentId !== "level1_4" ||
+    !fragmentBoardReasoningLevel ||
     level14RequiredReasonCount === 0 ||
     (level14CommitVerified &&
       level14CorrectReasonCount >= level14RequiredReasonCount &&
-      level14RequiredReasonsSelected);
+      level14RequiredReasonsSelected &&
+      !level14HasIncorrectSelected);
   const level12Reasoning = story.signalBoard?.reasoning || [];
   const level12RequiredReasonIds =
     story.signalBoard?.requiredReasonIds ||
@@ -7164,6 +7166,20 @@ function CampaignMode() {
       });
       return;
     }
+    if (
+      currentId === "level1_3" &&
+      value === story.fragmentBoard?.expectedValue &&
+      !level14ReasoningReady
+    ) {
+      setEvidenceResult({
+        correct: false,
+        gate: true,
+        message:
+          story.fragmentBoard?.reasoningGate ||
+          "Select the correct reasoning before submitting.",
+      });
+      return;
+    }
     await submitEvidenceValue(flagValue);
   }, [
     currentId,
@@ -7551,11 +7567,9 @@ function CampaignMode() {
                       solved={evidenceSolved}
                       result={evidenceResult}
                       disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
-                      selectedReasonIds={currentId === "level1_4" ? level14ReasonIds : []}
-                      onToggleReason={
-                        currentId === "level1_4" ? handleToggleLevel14Reason : undefined
-                      }
-                      reasoningReady={currentId !== "level1_4" || level14ReasoningReady}
+                      selectedReasonIds={level14ReasonIds}
+                      onToggleReason={handleToggleLevel14Reason}
+                      reasoningReady={level14ReasoningReady}
                     />
                   )}
 

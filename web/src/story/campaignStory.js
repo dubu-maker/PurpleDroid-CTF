@@ -204,6 +204,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] filter stream... context before match",
     ],
     consolePlaceholder: "filter contaminated auth logs...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "일단 덤프를 펼쳐봐. FLAG가 너무 많이 보이면, 값이 아니라 흐름으로 좁혀 — Login success 근처를 봐.",
+      commands: [
+        { command: "adb logcat -d", note: "전체 덤프" },
+        { command: 'adb logcat -d | grep "Login success"', note: "흐름으로 좁히기" },
+      ],
+    },
     consoleGuide:
       '허용: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
@@ -505,6 +513,14 @@ export const CAMPAIGN_STORY = {
       "[MIRA] indexes... follow them",
     ],
     consolePlaceholder: "inspect fragmented crypto logs...",
+    consoleStarter: {
+      label: "TRY FIRST",
+      text: "완성된 FLAG를 찾지 마. 조각은 흩어져 있어. 같은 shardId로 묶는 것부터 시작해.",
+      commands: [
+        { command: "adb logcat -d", note: "조각 펼치기" },
+        { command: "adb logcat -d | grep shardId", note: "그룹으로 묶기" },
+      ],
+    },
     consoleGuide:
       '허용: adb logcat -d | grep [-i] [-E|-F] [-A N|-B N|-C N] "..." | grep "..."\n' +
       'Windows: adb logcat -d | findstr [/I] [/R] "..."\n' +
@@ -521,11 +537,12 @@ export const CAMPAIGN_STORY = {
       activeStatus: "fragments captured",
       lockedText:
         "shardId가 포함된 로그를 확인하면 Fragment Board가 열린다.",
+      hideCardNotes: true,
       intro:
-        "조각 후보들이 섞여 있다. 같은 shardId를 고르고, 로그 출력 순서가 아니라 part index 순서로 슬롯에 배치해.",
+        "조각 후보들이 섞여 있다. 같은 shardId로 묶되, login-success에 닿은 trace를 단 그룹이 진짜 Evidence다. 로그 출력 순서가 아니라 part index 순서로 슬롯에 배치해.",
       inspectorTitle: "FRAGMENT INSPECTOR",
       inspectorEmpty:
-        "카드를 선택하면 조각의 shardId, part index, source를 확인할 수 있어.",
+        "카드를 선택하면 shardId, part index, trace를 볼 수 있어. 어느 trace가 login-success에 닿았는지로 진짜 그룹을 판단해.",
       selectCard: "먼저 Fragment 카드를 선택해.",
       cannotPlace:
         "이 카드는 part index가 없어 슬롯에 넣을 수 없어. 측정 표식과 secret fragment를 구분해.",
@@ -679,13 +696,19 @@ export const CAMPAIGN_STORY = {
         },
       ],
       reasoningTitle: "RECONSTRUCTION REASONING",
+      requiredReasonCount: 3,
+      requiredReasonIds: ["shardid", "part-index", "runtime-trace"],
+      reasoningPrompt:
+        "제출 전에, 왜 이 값이 진짜 Evidence인지 근거를 골라.",
+      reasoningGate:
+        "근거가 부족해. 올바른 근거 3개를 고르고 잘못된 근거는 빼야 제출할 수 있어.",
       reasoning: [
-        { correct: false, text: "FLAG로 시작하는 조각만 사용했다." },
-        { correct: true, text: "같은 shardId=EV-031의 조각만 사용했다." },
-        { correct: true, text: "part index 순서대로 재조립했다." },
-        { correct: false, text: "로그에 출력된 시간 순서대로 이어붙였다." },
-        { correct: true, text: "runtime trace에 속한 조각만 사용했다." },
-        { correct: false, text: "AEGIS가 non-secret이라고 분류했으므로 무시했다." },
+        { id: "flag-start", correct: false, text: "FLAG{로 시작하는 조각이 있으니 그 shard가 진짜라고 판단했다." },
+        { id: "shardid", correct: true, text: "같은 shardId=EV-031의 조각만 사용했다." },
+        { id: "part-index", correct: true, text: "part index 순서대로 재조립했다." },
+        { id: "print-order", correct: false, text: "출력된 줄 순서가 곧 part 순서라고 보고 그대로 이어붙였다." },
+        { id: "runtime-trace", correct: true, text: "runtime trace에 속한 조각만 사용했다." },
+        { id: "aegis", correct: false, text: "AEGIS가 non-secret이라고 분류했으므로 무시했다." },
       ],
     },
     mira: {
@@ -815,7 +838,7 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "trace the committed core echo...",
     consoleStarter: {
       label: "TRY FIRST",
-      text: "main buffer부터 확인하고, 부족하면 Operation 01에서 배운 넓은 buffer 범위로 넘어가.",
+      text: "새 문법은 없어. main은 echo일 뿐이야. 배운 걸 전부 꺼내 — buffer 범위, trace, 조각 조립, 그리고 commit 검증.",
       commands: [
         { command: "adb logcat -d", note: "main buffer" },
         { command: "adb logcat -d -b all", note: "all buffers" },
@@ -843,7 +866,7 @@ export const CAMPAIGN_STORY = {
         "core fragment가 포착됐다. 출력 순서가 아니라 part index 순서로 조립하고, 조립 후에는 commit 검증 로그를 터미널에서 다시 확인해.",
       inspectorTitle: "CORE INSPECTOR",
       inspectorEmpty:
-        "카드를 선택하면 trace, shardId, source를 확인할 수 있어. part 위치는 터미널 로그에서 직접 판단해야 한다.",
+        "카드를 선택하면 trace와 shardId를 확인할 수 있어. part 위치는 터미널 로그에서 직접 판단해야 한다.",
       selectCard: "먼저 core fragment 카드를 선택해.",
       cannotPlace:
         "이 카드는 Evidence part가 아니야. commit metadata와 secret fragment를 구분해.",
@@ -951,7 +974,7 @@ export const CAMPAIGN_STORY = {
         { id: "rollback", correct: false, text: "rollback trace도 shardId가 있었기 때문이다." },
         { id: "part-index", correct: true, text: "part index 순서대로 재조립했다." },
         { id: "aegis", correct: false, text: "AEGIS가 non-secret이라고 분류했기 때문이다." },
-        { id: "runtime", correct: true, text: "source=runtime 조각만 사용했다." },
+        { id: "runtime", correct: true, text: "replay·rollback·mirror가 아닌 OP1-CORE live 흐름의 조각만 사용했다." },
         { id: "mira", correct: false, text: "MIRA 태그와 가까이 있었기 때문이다." },
       ],
     },
