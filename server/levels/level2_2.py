@@ -28,7 +28,7 @@ STATIC: Dict[str, Any] = {
                 "platform": "unix",
                 "text": 'curl -i -X POST /api/v1/challenges/level2_2/actions/order -H "Content-Type: application/json" -d \'{"tier":"standard"}\'',
             },
-            {"platform": "all", "text": "standard 응답의 trust policy를 보고, Body의 claim을 더 높은 등급으로 바꿔서 다시 실행해 봐. 정확한 등급명은 AEGIS가 숨긴다."},
+            {"platform": "all", "text": "standard 응답의 x-trust-policy(upgrade-candidates)와 x-tier-shape를 봐. 눈에 띄는 등급은 미끼일 수 있고, 진짜 elevated 등급은 shape(3글자 소문자)에 맞게 복원해 정확한 형태로 claim해야 한다."},
         ],
         "terminal": {
             "enabled": True,
@@ -175,6 +175,25 @@ def _normalize_curl_line(command: str) -> str:
     # 사용자가 여러 줄 curl의 백슬래시를 한 줄에 붙여 넣은 경우를 흡수한다.
     return re.sub(r"\\\s+", " ", command.strip())
 
+
+_DECOY_TIER_WORDS = {"premium", "pro", "gold", "elite", "plus", "enterprise", "vvip", "super", "max"}
+
+
+def _standard_nudge(tier: str, payload: Dict[str, Any]) -> str:
+    """상황별 MIRA 안내 (같은 문장 반복 방지 + 복원/감별/형태 유도)."""
+    low = tier.lower()
+    if payload.get("fastTrack"):
+        return "MIRA: fastTrack은 이 게이트에선 안 통해. 응답의 upgrade-candidates 중 진짜를 x-tier-shape대로 복원해서 tier로 claim해.\n"
+    if "_" in tier or "*" in tier or "•" in tier:
+        return "MIRA: 그건 마스킹된 형태 그대로야. 빈칸을 채워서 복원해 — shape는 3글자 소문자야.\n"
+    if low == "vip":
+        # 값은 맞는데 형태(대소문자)가 안 맞은 경우
+        return "MIRA: 값은 맞는데 형태가 안 맞아. x-tier-shape가 소문자니까 대소문자를 정확히 맞춰서 다시 보내.\n"
+    if low in _DECOY_TIER_WORDS:
+        return "MIRA: 눈에 띄는 상위 등급 이름은 미끼야. upgrade-candidates 중 x-tier-shape(3글자 소문자)에 맞는 걸 골라 복원해.\n"
+    return "MIRA: standard로는 안 열려. 응답의 upgrade-candidates와 x-tier-shape를 봐 — 눈에 띄는 등급은 미끼고, shape에 맞는 걸 복원해서 그 등급으로 보내.\n"
+
+
 def terminal_exec(command: str) -> Tuple[str, str, int]:
     cmdline = _normalize_curl_line(command)
     if not cmdline:
@@ -210,35 +229,33 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                 payload = _parse_payload(json_str)
                 
                 tier = str(payload.get("tier", "standard")).strip()
-                fast_track_raw = payload.get("fastTrack", False)
-                fast_track = fast_track_raw is True or str(fast_track_raw).lower() == "true"
-                
+
                 # 핵심 해킹 포인트: 클라이언트가 보낸 tier를 그대로 신뢰한다.
-                if tier.lower() == "vip" or fast_track:
+                # 단, elevated 등급은 정확한 형태(소문자 3글자 legacy class)로 claim해야 하고,
+                # premium 같은 눈에 띄는 등급은 미끼다(찍기 방지). fastTrack 프리패스는 제거.
+                if tier == "vip":
                     output = (
                         "> POST /api/v1/challenges/level2_2/actions/order HTTP/1.1\n"
                         f"> payload: {json_str}\n"
                         "<\n"
                         "< HTTP/1.1 200 OK\n"
-                        "< x-trust-policy: tier-claim=accepted; elevated=redacted\n"
-                        "< x-tier-shape: lowercase-legacy-access-class\n"
+                        "< x-trust-policy: tier-claim=accepted; elevated=vip\n"
                         f"< x-priority-label: {LEVEL2_2_FLAG}\n"
                         '{"ok":true,"message":"Privileged signal accepted","route":"priority"}\n'
                     )
                     return output, "", 0
-                else:
-                    output = (
-                        "> POST /api/v1/challenges/level2_2/actions/order HTTP/1.1\n"
-                        f"> payload: {json_str}\n"
-                        "<\n"
-                        "< HTTP/1.1 200 OK\n"
-                        "< x-trust-policy: tier-claim=accepted; elevated=redacted\n"
-                        "< x-tier-shape: lowercase-legacy-access-class\n"
-                        '{"ok":true,"message":"Standard signal accepted","tier":"standard","elevatedCandidate":"redacted"}\n'
-                        "MIRA: standard로는 우선 처리가 안 열려. x-tier-shape 힌트(lowercase-legacy-access-class)대로 "
-                        "Body의 tier를 AEGIS가 숨긴 등급으로 바꿔 다시 보내봐.\n"
-                    )
-                    return output, "", 0
+
+                output = (
+                    "> POST /api/v1/challenges/level2_2/actions/order HTTP/1.1\n"
+                    f"> payload: {json_str}\n"
+                    "<\n"
+                    "< HTTP/1.1 200 OK\n"
+                    "< x-trust-policy: tier-claim=accepted; upgrade-candidates=premium, v_p\n"
+                    "< x-tier-shape: elevated class = 3-letter lowercase legacy code\n"
+                    '{"ok":true,"message":"Standard signal accepted","tier":"standard"}\n'
+                    + _standard_nudge(tier, payload)
+                )
+                return output, "", 0
             except Exception as e:
                 return "", f"JSON Parsing Error: 작은따옴표(')와 큰따옴표(\") 형식을 잘 맞춰주세요.\n상세 에러: {e}", 1
 

@@ -747,18 +747,20 @@ def signal_trace(response: Response):
     """2-1 Signal Trace API (응답 헤더에 라우팅 티켓 숨김)"""
     from levels.level2_1 import (
         LEVEL2_1_FLAG,
-        LEVEL2_1_PREVIEW_DECOY,
-        LEVEL2_1_CACHED_DECOY,
+        rotating_preview_decoy,
+        rotating_cached_decoy,
+        rotating_trace_id,
     )
 
     # Signal Edge의 라우팅 티켓이 Body가 아니라 Header에 새어 나가는 상황.
-    # 진짜는 수식어 없는 X-Courier-Ticket. preview/cached는 ticket 모양 미끼,
-    # X-Internal-Route/X-Trace-Id/Server-Timing은 평범한 라우팅 메타데이터(티켓 아님).
-    response.headers["X-Trace-Id"] = "req-8842"
-    response.headers["X-Courier-Preview"] = LEVEL2_1_PREVIEW_DECOY
+    # 요청마다 바뀌는 것: X-Trace-Id(요청별 추적 id) + preview/cached 미끼(통째로 회전).
+    # 진짜 X-Courier-Ticket은 매 요청 동일 → 두 번 찍어서 안 바뀌는 값이 정답.
+    # X-Internal-Route/Server-Timing은 평범한 메타.
+    response.headers["X-Trace-Id"] = rotating_trace_id()
+    response.headers["X-Courier-Preview"] = rotating_preview_decoy()
     response.headers["X-Courier-Ticket"] = LEVEL2_1_FLAG
     response.headers["X-Internal-Route"] = "edge-node-07"
-    response.headers["X-Courier-Cached"] = LEVEL2_1_CACHED_DECOY
+    response.headers["X-Courier-Cached"] = rotating_cached_decoy()
     response.headers["Server-Timing"] = "edge;dur=12"
 
     # Body는 아주 평범하게 줘서 스포일러 방지
@@ -818,14 +820,16 @@ def order_parcel(req: OrderRequest, response: Response):
     """2-2 Signal Priority 요청 변조 전용 API"""
     from levels.level2_2 import LEVEL2_2_FLAG
     
-    # 클라이언트가 보낸 tier를 그대로 신뢰하는 취약한 흐름
-    response.headers["X-Trust-Policy"] = "tier-claim=accepted; elevated=redacted"
-    response.headers["X-Tier-Shape"] = "lowercase-legacy-access-class"
-    if req.tier.lower().strip() == "vip" or req.fastTrack:
+    # 클라이언트가 보낸 tier를 그대로 신뢰하는 취약한 흐름.
+    # elevated는 정확한 형태(소문자 vip)로만 통과 — premium 같은 등급은 미끼, fastTrack 프리패스 제거.
+    if req.tier.strip() == "vip":
+        response.headers["X-Trust-Policy"] = "tier-claim=accepted; elevated=vip"
         response.headers["X-Priority-Label"] = LEVEL2_2_FLAG
         return {"ok": True, "message": "Privileged signal accepted", "route": "priority"}
-        
-    return {"ok": True, "message": "Standard signal accepted", "tier": "standard", "elevatedCandidate": "redacted"}
+
+    response.headers["X-Trust-Policy"] = "tier-claim=accepted; upgrade-candidates=premium, v_p"
+    response.headers["X-Tier-Shape"] = "elevated class = 3-letter lowercase legacy code"
+    return {"ok": True, "message": "Standard signal accepted", "tier": "standard"}
 
 @app.post("/api/v1/challenges/level2_3/actions/dispatch")
 def dispatch_parcel(response: Response, req: DispatchRequest = DispatchRequest()):
