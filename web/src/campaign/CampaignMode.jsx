@@ -3928,10 +3928,15 @@ function Level13FragmentBoard({
   const [slotCards, setSlotCards] = useState({});
   const [boardResult, setBoardResult] = useState(null);
   const [staged, setStaged] = useState(false);
-  const active = Boolean(board) && (hasFragmentBoardDump(logs, board) || solved || result?.correct);
   const commitVerified =
     Boolean(board) && (!board.commitVerifier || hasCommitVerifierEvidence(logs, board) || solved || result?.correct);
   const commitGateReady = !board?.commitVerifier || commitVerified;
+  // Boss gate: a board with a commitVerifier (1-4) only opens once the player
+  // has verified the committed core trace in the terminal — so `-b all` shows
+  // the log but does NOT hand over the cards until commit verification is done.
+  const active =
+    Boolean(board) &&
+    ((hasFragmentBoardDump(logs, board) && commitGateReady) || solved || result?.correct);
   const cards = board?.cards || [];
   const slots = board?.slots || [];
   const hideCardPartLabel = Boolean(board?.hideCardPartLabel);
@@ -4054,6 +4059,9 @@ function Level13FragmentBoard({
               {cards.map((card) => {
                 const selected = selectedCardId === card.id;
                 const placed = Object.values(slotCards).includes(card.id);
+                const placedSlot = placed
+                  ? slots.find((slot) => slotCards[slot.index] === card.id)
+                  : null;
                 return (
                   <button
                     type="button"
@@ -4078,6 +4086,9 @@ function Level13FragmentBoard({
                     </strong>
                     <code>{card.value}</code>
                     <small>{card.tag}</small>
+                    {placedSlot && (
+                      <em className="fragment-card-used">▣ {placedSlot.label}</em>
+                    )}
                   </button>
                 );
               })}

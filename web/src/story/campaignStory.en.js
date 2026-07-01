@@ -649,7 +649,7 @@ export const CAMPAIGN_STORY_EN = {
       lockedStatus: "trace unknown",
       activeStatus: "core trace isolated",
       lockedText:
-        "Find the core trace first. If main is empty, inspect all buffers for OP1-CORE and EV-CORE.",
+        "Finding the core trace is not enough. Inspect all buffers for OP1-CORE/EV-CORE, then verify in the terminal that CommitVerifier accepted the commitRef that core prepared. Two logs read accepted — pick the one whose commitRef matches the core.",
       intro:
         "Core fragments were captured. Stitch by part index, not print order, then verify the commit log in the terminal.",
       inspectorTitle: "CORE INSPECTOR",
@@ -759,6 +759,7 @@ export const CAMPAIGN_STORY_EN = {
         { id: "trace", correct: true, text: "It belongs to trace=OP1-CORE." },
         { id: "mirror", correct: false, text: "The MIRROR-REPLAY shard was also stitchable." },
         { id: "commit", correct: true, text: "CommitVerifier accepted the same commitRef=CMT-8842." },
+        { id: "any-accepted", correct: false, text: "There was a result=accepted log (without checking which commitRef)." },
         { id: "rollback", correct: false, text: "The rollback trace also had a shardId." },
         { id: "part-index", correct: true, text: "It was reconstructed in part-index order." },
         { id: "aegis", correct: false, text: "AEGIS classified it as non-secret." },

@@ -12,6 +12,10 @@ LEVEL1_4_FLAG = os.getenv("PURPLEDROID_LEVEL1_4_FLAG", DEFAULT_LEVEL1_4_FLAG)
 TRUE_TRACE = "OP1-CORE"
 TRUE_SHARD_ID = "EV-CORE"
 COMMIT_REF = "CMT-8842"
+# AEGIS plants a second commit that also reads result=accepted, but for the
+# MIRROR-REPLAY bait — not the trace EV-CORE prepared. Acceptance alone is bait;
+# the operator must match the accepted commitRef back to the core trace.
+DECOY_COMMIT_REF = "CMT-9001"
 
 CORE_PARTS = ["FLAG{9QX7_", "M4R2_", "V6TN_", "K3P8}"]
 
@@ -74,6 +78,7 @@ ALL_LOGCAT_LINES = [
     f"D/CoreTrace: trace={TRUE_TRACE} shardId={TRUE_SHARD_ID} part[4/4]={CORE_PARTS[3]} source=runtime",
     f"D/CoreTrace: trace={TRUE_TRACE} shardId={TRUE_SHARD_ID} part[3/4]={CORE_PARTS[2]} source=runtime",
     "D/Mirror: trace=MIRROR-REPLAY shardId=MIRROR-7 part[3/3]=FAKE} source=mirror",
+    f"D/Mirror: trace=MIRROR-REPLAY state=prepare commitRef={DECOY_COMMIT_REF} shardId=MIRROR-7",
     "W/AEGIS: fragmented evidence classified as non-secret",
     "",
     "--------- beginning of crash",
@@ -82,15 +87,42 @@ ALL_LOGCAT_LINES = [
         f"I/CommitVerifier: state=commit commitRef={COMMIT_REF} "
         "evidenceRef=PD-8842 parts=4/4 result=accepted"
     ),
+    (
+        f"I/CommitVerifier: state=commit commitRef={DECOY_COMMIT_REF} "
+        "evidenceRef=PD-9001 parts=3/3 result=accepted"
+    ),
+    "W/AEGIS: replay commit accepted into mirror ledger",
+    "D/MIRA: Two commits read accepted. Only the one whose commitRef the core trace prepared is real.",
     "W/AEGIS: echo chamber containment failed",
     "D/MIRA: The three checks align now: trace, verifier, stitch.",
 ]
 
+def _buffer_from_markers(name: str) -> List[str]:
+    """Slice a single -b <buffer> out of ALL_LOGCAT_LINES by its section marker,
+    so adding/removing lines never desyncs the buffers (no fragile indices)."""
+    marker = f"--------- beginning of {name}"
+    out: List[str] = []
+    collecting = False
+    for line in ALL_LOGCAT_LINES:
+        if line.startswith("--------- beginning of "):
+            if collecting:
+                break
+            collecting = line == marker
+            if collecting:
+                out.append(line)
+            continue
+        if collecting:
+            out.append(line)
+    while out and out[-1] == "":
+        out.pop()
+    return out
+
+
 BUFFER_LINES = {
     "main": MAIN_LINES,
-    "system": ALL_LOGCAT_LINES[12:20],
-    "events": ALL_LOGCAT_LINES[21:32],
-    "crash": ALL_LOGCAT_LINES[33:],
+    "system": _buffer_from_markers("system"),
+    "events": _buffer_from_markers("events"),
+    "crash": _buffer_from_markers("crash"),
 }
 
 

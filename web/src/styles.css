@@ -6227,3 +6227,27 @@ button:disabled {
 .campaign-shell .signal-reasoning-gate li.picked .reason-toggle > span {
   color: var(--violet);
 }
+
+/* ---- 1-3 Fragment Board: clearly mark cards already placed in a slot ---- */
+.campaign-shell .fragment-card.placed {
+  opacity: 0.5;
+  filter: grayscale(0.45);
+  border-color: var(--violet);
+  background: var(--violet-dim);
+}
+.campaign-shell .fragment-card.placed:hover:not(:disabled) {
+  opacity: 0.72;
+}
+.campaign-shell .fragment-card.placed.selected {
+  opacity: 0.85;
+  border-color: var(--violet);
+}
+.campaign-shell .fragment-card .fragment-card-used {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--violet);
+}

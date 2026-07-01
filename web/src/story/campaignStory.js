@@ -861,7 +861,7 @@ export const CAMPAIGN_STORY = {
       lockedStatus: "trace unknown",
       activeStatus: "core trace isolated",
       lockedText:
-        "core trace를 먼저 찾아야 한다. main에 없다면 전체 buffer에서 OP1-CORE와 EV-CORE를 확인해.",
+        "core trace를 찾는 것만으론 부족해. 전체 buffer에서 OP1-CORE/EV-CORE를 확인하고, CommitVerifier가 그 core가 prepare한 commitRef를 accepted 했는지까지 터미널에서 검증해야 보드가 열린다. accepted 로그가 둘이니, core의 commitRef와 맞는 것을 골라.",
       intro:
         "core fragment가 포착됐다. 출력 순서가 아니라 part index 순서로 조립하고, 조립 후에는 commit 검증 로그를 터미널에서 다시 확인해.",
       inspectorTitle: "CORE INSPECTOR",
@@ -971,6 +971,7 @@ export const CAMPAIGN_STORY = {
         { id: "trace", correct: true, text: "trace=OP1-CORE 흐름에 속한다." },
         { id: "mirror", correct: false, text: "MIRROR-REPLAY shard도 조립 가능했기 때문이다." },
         { id: "commit", correct: true, text: "CommitVerifier가 같은 commitRef=CMT-8842를 accepted 했다." },
+        { id: "any-accepted", correct: false, text: "result=accepted 로그가 있었기 때문이다 (어떤 commitRef인지는 안 봄)." },
         { id: "rollback", correct: false, text: "rollback trace도 shardId가 있었기 때문이다." },
         { id: "part-index", correct: true, text: "part index 순서대로 재조립했다." },
         { id: "aegis", correct: false, text: "AEGIS가 non-secret이라고 분류했기 때문이다." },
