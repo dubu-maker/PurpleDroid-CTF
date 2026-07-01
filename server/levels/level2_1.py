@@ -1,15 +1,32 @@
 from __future__ import annotations
 
 import os
+import re
+import secrets
 import shlex
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 LEVEL2_1_FLAG = os.getenv("PURPLEDROID_LEVEL2_1_FLAG", "FLAG{HEADER_IS_NOT_INVISIBLE}")
-# Decoy Courier headers: FLAG-shaped but fake. The real ticket has NO modifier
-# (X-Courier-Ticket); modifiers like -Preview / -Cached are bait (cf. 1-2's
-# "modifier = decoy" lesson, header edition).
-LEVEL2_1_PREVIEW_DECOY = "FLAG{COURIER_PREVIEW_SAMPLE}"
-LEVEL2_1_CACHED_DECOY = "FLAG{COURIER_CACHED_STALE}"
+# The decoy Courier tickets and X-Trace-Id ROTATE wholesale on every call; the real
+# X-Courier-Ticket stays byte-for-byte identical every time. So one response can't
+# tell you which is real — call twice and the value that did NOT change is the ticket.
+# A repetition/comparison skill (not grep/text-filtering from Chapter 1). The rule is
+# intentionally simple for a Chapter-2 tutorial level: stable = real, changing = decoy.
+_PREVIEW_DECOY_PREFIX = "FLAG{COURIER_PREVIEW_SAMPLE_"
+_CACHED_DECOY_PREFIX = "FLAG{COURIER_CACHED_STALE_"
+_DECOY_RE = re.compile(r"^FLAG\{COURIER_(PREVIEW_SAMPLE|CACHED_STALE)_[0-9A-F]{6}\}$")
+
+
+def rotating_preview_decoy() -> str:
+    return _PREVIEW_DECOY_PREFIX + secrets.token_hex(3).upper() + "}"
+
+
+def rotating_cached_decoy() -> str:
+    return _CACHED_DECOY_PREFIX + secrets.token_hex(3).upper() + "}"
+
+
+def rotating_trace_id() -> str:
+    return "req-" + secrets.token_hex(3)
 
 STATIC: Dict[str, Any] = {
     "id": "level2_1",
@@ -120,15 +137,22 @@ def check_flag(flag: str) -> bool:
 
 def flag_feedback(flag: str) -> str:
     submitted = flag.strip()
-    if submitted == LEVEL2_1_PREVIEW_DECOY:
-        return "MIRA: X-Courier-Preview는 미리보기 샘플이야. preview 수식어가 붙은 건 실제 라우팅 티켓이 아니야."
-    if submitted == LEVEL2_1_CACHED_DECOY:
-        return "MIRA: X-Courier-Cached는 캐시된 옛 값이야. cached 수식어가 붙은 건 현재 라우팅 티켓이 아니야."
+    if _DECOY_RE.match(submitted):
+        if "PREVIEW_SAMPLE" in submitted:
+            return (
+                "MIRA: X-Courier-Preview는 미리보기 샘플이야. 다시 호출해봐 — 매번 값이 바뀔 거야. "
+                "매 요청마다 새로 만들어지는 값은 실제 라우팅 티켓이 될 수 없어."
+            )
+
+        return (
+            "MIRA: X-Courier-Cached는 캐시된 옛 값이야. 다시 호출해봐 — 이것도 매번 값이 바뀔 거야. "
+            "안정적인 신호가 아니라 매 요청마다 재생성되는 노이즈야."
+        )
     if submitted and LEVEL2_1_FLAG.startswith(submitted) and submitted != LEVEL2_1_FLAG:
-        return "MIRA: 값이 잘렸어. 수식어 없는 X-Courier-Ticket의 전체 값을 그대로 제출해."
+        return "MIRA: 값이 잘렸어. 두 번 다 그대로인 X-Courier-Ticket의 전체 값을 제출해."
     if submitted.startswith("FLAG{") and submitted != LEVEL2_1_FLAG:
-        return "MIRA: Courier 헤더가 여럿이야. 수식어(preview/cached) 없는 X-Courier-Ticket의 전체 값을 제출해."
-    return "MIRA: Body 말고 Response Header를 봐. 진짜 라우팅 티켓은 수식어 없는 X-Courier-Ticket이야."
+        return "MIRA: Courier 헤더가 여럿이야. 같은 요청을 한 번 더 보내서 비교해봐 — 매번 바뀌는 건 미끼고, 두 번 다 값이 똑같은 헤더가 진짜야."
+    return "MIRA: Body 말고 Response Header를 봐. 같은 요청을 두 번 보내서 값이 바뀌지 않는 Courier 헤더를 찾아."
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
@@ -172,11 +196,11 @@ def _render_response_with_headers() -> str:
         "HTTP/1.1 200 OK\n"
         "server: uvicorn\n"
         "content-type: application/json\n"
-        "X-Trace-Id: req-8842\n"
-        f"X-Courier-Preview: {LEVEL2_1_PREVIEW_DECOY}\n"
+        f"X-Trace-Id: {rotating_trace_id()}\n"
+        f"X-Courier-Preview: {rotating_preview_decoy()}\n"
         f"X-Courier-Ticket: {LEVEL2_1_FLAG}\n"
         "X-Internal-Route: edge-node-07\n"
-        f"X-Courier-Cached: {LEVEL2_1_CACHED_DECOY}\n"
+        f"X-Courier-Cached: {rotating_cached_decoy()}\n"
         "Server-Timing: edge;dur=12\n"
         f"content-length: {len(body.encode('utf-8'))}\n"
         "\n"
@@ -198,11 +222,11 @@ def _render_verbose_response() -> str:
         "< HTTP/1.1 200 OK\n"
         "< server: uvicorn\n"
         "< content-type: application/json\n"
-        "< X-Trace-Id: req-8842\n"
-        f"< X-Courier-Preview: {LEVEL2_1_PREVIEW_DECOY}\n"
+        f"< X-Trace-Id: {rotating_trace_id()}\n"
+        f"< X-Courier-Preview: {rotating_preview_decoy()}\n"
         f"< X-Courier-Ticket: {LEVEL2_1_FLAG}\n"
         "< X-Internal-Route: edge-node-07\n"
-        f"< X-Courier-Cached: {LEVEL2_1_CACHED_DECOY}\n"
+        f"< X-Courier-Cached: {rotating_cached_decoy()}\n"
         "< Server-Timing: edge;dur=12\n"
         f"< content-length: {len(body.encode('utf-8'))}\n"
         "<\n"
@@ -226,7 +250,17 @@ def _render_method_mismatch(include_headers: bool) -> str:
     )
 
 
-def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
+_FIRST_NUDGE = (
+    "\nMIRA: Courier 헤더가 여러 개야. 이거 하나로는 판단하지 마 — "
+    "같은 요청을 한 번 더 보내서 어떤 값이 그대로고 어떤 값이 바뀌는지 직접 비교해봐.\n"
+)
+_SECOND_NUDGE = (
+    "\nMIRA: 방금 응답이랑 나란히 비교해봐. 매 요청마다 바뀌는 값은 미끼야. "
+    "두 번 다 값이 똑같은 Courier 헤더 — 그게 진짜 라우팅 티켓이야.\n"
+)
+
+
+def _run_attack_terminal(command: str, session: Optional[Dict[str, Any]] = None) -> Tuple[str, str, int]:
     cmdline = command.strip()
     if not cmdline:
         return "", "", 0
@@ -269,15 +303,23 @@ def _run_attack_terminal(command: str) -> Tuple[str, str, int]:
                 stderr_msg = "AEGIS: 메서드 체크 실패. 응답에 단서가 있는데, 지금은 Body만 표시됐어.\n"
             return _render_method_mismatch(include_headers), stderr_msg, 1
 
-        header_nudge = (
-            "\nMIRA: Courier 헤더가 여러 개야. preview/cached 수식어가 붙은 건 미끼고, "
-            "수식어 없는 X-Courier-Ticket이 실제 라우팅 티켓이야.\n"
+        wants_headers = (
+            "-i" in parts or "--include" in parts or "-v" in parts or "--verbose" in parts
         )
-        if "-v" in parts or "--verbose" in parts:
-            return _render_verbose_response() + header_nudge, "", 0
-
-        if "-i" in parts or "--include" in parts:
-            return _render_response_with_headers() + header_nudge, "", 0
+        if wants_headers:
+            # Count header views per session so the 2nd+ call can nudge differently
+            # (guide the actual comparison instead of repeating the first hint).
+            views = 1
+            if session is not None:
+                # Store under session["level2_1"] so POST .../level2_1/reset
+                # (which does session.pop("level2_1")) restarts the nudge escalation.
+                level_state = session.setdefault("level2_1", {})
+                views = int(level_state.get("track_views", 0)) + 1
+                level_state["track_views"] = views
+            nudge = _SECOND_NUDGE if views >= 2 else _FIRST_NUDGE
+            if "-v" in parts or "--verbose" in parts:
+                return _render_verbose_response() + nudge, "", 0
+            return _render_response_with_headers() + nudge, "", 0
 
         return (
             _render_body()
@@ -291,7 +333,7 @@ def terminal_exec_with_session(command: str, session: Dict[str, Any]) -> Tuple[s
     cmdline = command.strip()
     if cmdline.startswith("defense"):
         return "", "2-1 containment uses code-line selection only.", 2
-    return _run_attack_terminal(cmdline)
+    return _run_attack_terminal(cmdline, session)
 
 
 def terminal_exec(command: str) -> Tuple[str, str, int]:

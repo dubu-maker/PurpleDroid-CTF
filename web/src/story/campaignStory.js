@@ -1106,7 +1106,7 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "probe Signal Trace API...",
     consoleStarter: {
       label: "TRY FIRST",
-      text: "Body는 정리돼 있어. 근데 응답이 Body만은 아니야 — -i로 헤더를 열어봐. (메서드는 POST)",
+      text: "Body는 정리돼 있어. 근데 응답이 Body만은 아니야 — -i로 헤더를 열어봐. (메서드는 POST) 그리고 같은 요청을 한 번 더 보내서 뭐가 바뀌는지 비교해봐.",
       commands: [
         { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "Body만" },
         { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "헤더까지" },
@@ -1174,13 +1174,14 @@ export const CAMPAIGN_STORY = {
     debrief: {
       title: "INVISIBLE HEADER 정리",
       summary:
-        "Signal Edge는 Body와 Header를 분리해 정보를 전달한다. AEGIS는 사용자에게 보이는 Body를 정리했지만, 내부 라우팅에 쓰인 X-Courier-Ticket은 Header에 남겨두었다. 게다가 X-Internal-Route처럼 다른 이름의 Header에도 같은 티켓의 일부가 흘러나올 수 있었다.",
+        "Signal Edge는 Body와 Header를 분리해 정보를 전달한다. AEGIS는 사용자에게 보이는 Body를 정리했지만, 내부 라우팅에 쓰인 X-Courier-Ticket은 Header에 남겨두었다. 게다가 AEGIS는 preview·cached 같은 미끼 헤더를 섞고 그 값을 매 요청마다 바꿔 진짜 티켓을 감췄다. 하지만 같은 요청을 두 번 보내 비교하면, 매번 바뀌는 미끼와 달리 실제 라우팅 티켓만 값이 그대로 남는다.",
       learned: [
         "화면에 보이지 않는 값도 응답에 포함될 수 있다.",
         "Header는 Body와 다른 정보 채널이다.",
         "라우팅 티켓은 다음 노드 접근에 사용될 수 있으므로 민감정보다.",
-        "민감값은 전체 값뿐 아니라 prefix, fragment, alias 형태로 새어 나가도 위험하다.",
-        "Header 이름이 안전해 보여도 값의 출처가 routingTicket이면 봉쇄 대상이다.",
+        "이름·모양이 비슷한 미끼(preview·cached)가 섞일 수 있으니, Header 이름만으로 진짜를 단정하지 마라.",
+        "같은 요청을 반복해 비교하면, 매번 바뀌는 값은 노이즈고 그대로 남는 값이 실제 식별자다.",
+        "값의 출처가 실제 routingTicket이면 헤더 이름과 무관하게 봉쇄 대상이다 (평범한 라우팅 메타데이터는 제외).",
         "보안 점검에서는 Body뿐 아니라 Header, Status, Cookie, Redirect까지 함께 확인해야 한다.",
       ],
       nextTeaser: "다음 노드에서는 Signal Edge에 전달되는 요청 값을 변조해 AEGIS의 신뢰 등급 판단을 시험한다.",

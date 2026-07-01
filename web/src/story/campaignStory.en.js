@@ -832,7 +832,7 @@ export const CAMPAIGN_STORY_EN = {
     ],
     consoleStarter: {
       label: "TRY FIRST",
-      text: "The body is clean, but the response isn't only the body — open the headers with -i. (method is POST)",
+      text: "The body is clean, but the response isn't only the body — open the headers with -i. (method is POST) Then send the same request again and compare what changed.",
       commands: [
         { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "body only" },
         { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "with headers" },
@@ -879,13 +879,14 @@ export const CAMPAIGN_STORY_EN = {
     debrief: {
       title: "INVISIBLE HEADER Debrief",
       summary:
-        "Signal Edge transports information through both body and headers. AEGIS sanitized the visible body while leaving X-Courier-Ticket—and a fragment under another header name—inside the response metadata.",
+        "Signal Edge transports information through both body and headers. AEGIS sanitized the visible body while leaving X-Courier-Ticket inside the response metadata. It also mixed in decoy headers like preview/cached and rotated their values on every request to hide the real ticket. But send the same request twice and compare: unlike the decoys that change each time, only the real routing ticket stays the same.",
       learned: [
         "A value can be exposed even when the interface never renders it.",
         "Response headers are a separate information channel from the body.",
         "Routing tickets are sensitive when they grant access to another node.",
-        "Prefixes, fragments, and aliases of a secret can still leak useful information.",
-        "A harmless-looking header name does not make a sensitive source value safe.",
+        "Look-alike decoys (preview/cached) can be mixed in, so don't trust a header by its name alone.",
+        "Repeat the same request and compare: values that change each time are noise; the one that stays is the real identifier.",
+        "If a value's source is the real routingTicket, it's a containment target regardless of the header name (plain routing metadata is not).",
         "Inspect headers, status codes, cookies, and redirects alongside the body.",
       ],
       nextTeaser:
