@@ -20,3 +20,6 @@ server/.purpledroid_sessions.json.tmp
 .web.log
 .server.pid*
 .web.pid*
+
+# Local Claude Code / dev tooling config (machine-specific, e.g. preview launch ports)
+.claude/

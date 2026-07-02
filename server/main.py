@@ -545,6 +545,23 @@ def get_challenge_detail(challenge_id: str, authorization: Optional[str] = Heade
     # attack도 마찬가지로(locked면 클라에서 입력 막기)
     detail["attack"]["enabled"] = st["attack"] in ("available", "solved")
 
+    # 방어가 아직 안 열렸으면(공격 미해결) 방어 코드/지시문을 payload에서 리댁션한다.
+    # 시각적 LOCKED 오버레이만으론 DOM/네트워크 응답을 읽는 플레이어(AI 에이전트, devtools 등)에게
+    # 정답 코드 라인과 patchableId(p*=정답 / d*=미끼)가 그대로 노출된다. 실제 containment는
+    # 서버가 값 자체를 내려주지 않는 것 — 공격을 풀면 refresh로 원본이 다시 내려온다.
+    if not defense_enabled:
+        defense = detail.get("defense")
+        if isinstance(defense, dict):
+            if defense.get("instruction"):
+                defense["instruction"] = "Evidence를 회수하면 봉쇄 대상 코드가 열려."
+            code = defense.get("code")
+            if isinstance(code, dict) and isinstance(code.get("lines"), list):
+                for line in code["lines"]:
+                    if isinstance(line, dict):
+                        if "text" in line:
+                            line["text"] = "// ▓▓▓ locked — recover the evidence first"
+                        line.pop("patchableId", None)
+
     detail["next"] = {"id": _next_level_id(challenge_id)}
     return ok(detail)
 

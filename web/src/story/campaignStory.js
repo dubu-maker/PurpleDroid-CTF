@@ -283,7 +283,7 @@ export const CAMPAIGN_STORY = {
         },
         {
           id: "live_session",
-          value: "FLAG{SIGNAL_SURVIVES_THE_STATIC}",
+          value: "FLAG{AUTH_SESSION_LIVE_7F19}",
           tag: "AuthService",
           trace: "LGN-8842",
           surface: "session candidate",
@@ -1107,23 +1107,53 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "probe Signal Trace API...",
     consoleStarter: {
       label: "TRY FIRST",
-      text: "Body는 정리돼 있어. 근데 응답이 Body만은 아니야 — -i로 헤더를 열어봐. (메서드는 POST) 그리고 같은 요청을 한 번 더 보내서 뭐가 바뀌는지 비교해봐.",
+      text: "Body는 AEGIS가 정리한 표면이야. 먼저 Body만 찔러봐 — 다음 단계는 MIRA가 열어줄게.",
       commands: [
-        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "Body만" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "헤더까지" },
+        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "① Body만" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "② 헤더 열기 (-i)", revealAfter: "actions/track" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "③ 한 번 더 → 비교", revealAfter: " -i" },
       ],
     },
     objectives: [
       "Signal Trace API를 호출한다.",
       "응답 Body와 Header를 구분한다.",
-      "Response Header에서 X-Courier-Ticket 값을 찾는다.",
+      "같은 요청을 두 번 보내, 매번 바뀌는 미끼와 달리 값이 그대로인 ticket 모양 Courier 헤더를 찾는다.",
       "라우팅 티켓이 Header에 노출되지 않도록 봉쇄한다.",
     ],
+    courierTriage: {
+      title: "COURIER TRIAGE",
+      lockedStatus: "awaiting snapshots",
+      activeStatus: "snapshots captured",
+      lockedText:
+        "curl -i로 Response Header를 두 번 캡처하면 대조표가 열려. 스냅샷이 두 개는 있어야 뭐가 바뀌고 뭐가 그대로인지 판단할 수 있어.",
+      needSecondText:
+        "스냅샷이 하나뿐이야. 값 하나만으론 진짜인지 미끼인지 몰라 — 같은 요청을 한 번 더 보내.",
+      intro:
+        "두 스냅샷을 나란히 대조해봐. 어떤 값이 매번 바뀌고 어떤 게 그대로인지는 네가 읽어내야 해. 값이 그대로 남은 ticket 모양 Courier 헤더를 pin 하면 제출칸에 들어가.",
+      columns: { header: "HEADER", snapA: "SNAPSHOT A", snapB: "SNAPSHOT B", state: "STATE" },
+      stateLabels: { changed: "changed", stable: "stable", missing: "—" },
+      pinLabel: "pin",
+      pinnedLabel: "pinned → 제출칸 반영",
+      pinGate:
+        "먼저 두 응답을 대조해서 값이 그대로인 ticket 모양 헤더를 pin 해. 이름이나 FLAG 형태가 아니라 두 스냅샷의 안정성이 근거야.",
+      reasoningTitle: "TRIAGE REASONING",
+      reasoning: [
+        { id: "r1", correct: false, text: "헤더 이름에 Ticket이 들어가서 골랐다." },
+        { id: "r2", correct: false, text: "FLAG{ 형태라서 자격증명이라고 봤다." },
+        { id: "r3", correct: false, text: "Courier 계열 헤더라서 라우팅 티켓이라고 판단했다." },
+        { id: "r4", correct: true, text: "두 응답에서 값이 바뀌지 않고 그대로 남았다." },
+        { id: "r5", correct: true, text: "Preview·Cached·Trace처럼 매 요청 재생성되는 값과 달리 안정적이다." },
+        { id: "r6", correct: false, text: "고정값이면 무조건 정답이라 메타데이터 헤더(edge-node 등)도 후보로 봤다." },
+      ],
+      requiredReasonIds: ["r4", "r5"],
+      reasoningGate:
+        "값이 맞아도 왜 진짜인지 근거를 골라야 제출돼. 이름·FLAG 형태가 아니라 두 스냅샷의 안정성으로 — 고정이어도 자격증명이 아닌 메타데이터는 빼고.",
+    },
     mira: {
       briefing:
         "단말 로그는 끝났어. 이제부터는 AEGIS Grid의 외곽이야. Courier는 배송 기사가 아니라, AEGIS 노드 사이에서 신호와 명령을 운반하는 라우팅 계층이지.",
       attack:
-        "화면에 보이는 Body만 믿지 마. 우선 /api/v1/challenges/level2_1/actions/track 경로를 -i 옵션으로 찔러봐. AEGIS가 요구하는 요청 방식이 드러나면, 같은 경로를 그 방식으로 다시 호출해. X-Courier-Ticket, 그 값이 다음 노드로 가는 라우팅 티켓이야.",
+        "화면에 보이는 Body만 믿지 마. 우선 /api/v1/challenges/level2_1/actions/track 경로를 -i 옵션으로 찔러봐. AEGIS가 요구하는 요청 방식이 드러나면, 같은 경로를 그 방식으로 다시 호출해. Courier 헤더가 여러 개야 — 이름만 믿지 말고, 같은 요청을 두 번 보내서 매번 바뀌는 미끼와 두 번 다 똑같은 진짜 티켓을 갈라내.",
       attackSolved:
         "라우팅 티켓 회수 완료. Body는 정리됐지만 Header는 아직 말이 많았네.",
       defense:

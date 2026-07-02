@@ -252,6 +252,7 @@ const TERMINAL_TRANSLATIONS = [
     "패치 조합이 아직 완성되지 않았어. decoy를 빼고 핵심 신뢰 경계를 다시 비교해봐.",
     "The patch combination is not complete yet. Remove decoys and compare the core trust boundaries again.",
   ],
+  ["패치가 충분하지 않습니다.", "The patch is not sufficient yet."],
   ["production sourcemap 통제", "production source map control"],
   ["credential scope 제한", "credential scope restriction"],
   [
@@ -3581,6 +3582,17 @@ function MissionConsole({
 }) {
   const outputRef = useRef(null);
   const starterCommands = Array.isArray(starter?.commands) ? starter.commands : [];
+  // Staged TRY FIRST: a chip carrying `revealAfter` only appears once the player has
+  // actually run a command containing that marker. Chips without `revealAfter` always
+  // show, so other levels are unaffected.
+  const executedCommandText = (Array.isArray(logs) ? logs : [])
+    .filter((entry) => entry?.type === "command")
+    .map((entry) => entry?.text || "")
+    .join("\n");
+  const isStarterRevealed = (item) => {
+    const marker = item && typeof item === "object" ? item.revealAfter : undefined;
+    return !marker || executedCommandText.includes(marker);
+  };
 
   useEffect(() => {
     if (outputRef.current) {
@@ -3609,14 +3621,14 @@ function MissionConsole({
             {starter?.text && <p>{starter.text}</p>}
           </div>
           <div className="starter-command-list">
-            {starterCommands.map((item) => {
+            {starterCommands.map((item, idx) => {
               const commandText = typeof item === "string" ? item : item.command;
-              if (!commandText) {
+              if (!commandText || !isStarterRevealed(item)) {
                 return null;
               }
               return (
                 <button
-                  key={commandText}
+                  key={item?.id || `${commandText}-${idx}`}
                   type="button"
                   disabled={disabled || busy}
                   onClick={() => setCommand(commandText)}
@@ -3695,6 +3707,182 @@ function hasLevel12SignalDump(logs) {
     .map((entry) => entry.text)
     .join("\n");
   return /FLAG\{/.test(output) && /AuthService|AEGIS_FALSE_POSITIVE_A1|FLAG-shaped/.test(output);
+}
+
+const COURIER_TRIAGE_HEADER_RE = /^(?:<\s*)?(X-[\w-]+|Server-Timing):\s*(.+?)\s*$/i;
+const COURIER_TICKET_SHAPED_RE = /^FLAG\{.*\}$/;
+
+// Parse the Courier/Trace headers out of a `curl -i` (or -v) track response body.
+function parseCourierSnapshot(stdout) {
+  if (!stdout || !/X-Courier-|X-Trace-Id/i.test(stdout)) {
+    return null;
+  }
+  const snapshot = {};
+  for (const rawLine of stdout.split(/\r?\n/)) {
+    const match = rawLine.match(COURIER_TRIAGE_HEADER_RE);
+    if (match) {
+      snapshot[match[1]] = match[2].trim();
+    }
+  }
+  return Object.keys(snapshot).length ? snapshot : null;
+}
+
+// The real routing ticket is the one header that is BOTH stable across the two
+// snapshots AND ticket-shaped (FLAG{...}). Rotating decoys change every call; stable
+// metadata (edge-node, timing) is not FLAG-shaped. Derived from the player's own live
+// captures, so the answer never sits in the story bundle / DOM.
+function courierCorrectKey(snapA, snapB) {
+  if (!snapA || !snapB) {
+    return "";
+  }
+  const keys = new Set([...Object.keys(snapA), ...Object.keys(snapB)]);
+  for (const key of keys) {
+    if (snapA[key] && snapA[key] === snapB[key] && COURIER_TICKET_SHAPED_RE.test(snapA[key])) {
+      return key;
+    }
+  }
+  return "";
+}
+
+function CourierTriage({
+  triage,
+  snapshots,
+  correctKey,
+  pinnedKey,
+  onPin,
+  reasoning,
+  selectedReasonIds = [],
+  onToggleReason,
+  reasoningReady = true,
+  solved,
+  disabled,
+}) {
+  if (!triage) {
+    return null;
+  }
+  const snapA = snapshots[snapshots.length - 2] || null;
+  const snapB = snapshots[snapshots.length - 1] || null;
+  const active = Boolean(snapA && snapB) || solved;
+  const cols = triage.columns || {};
+  const stateLabels = triage.stateLabels || {};
+  const keys = active
+    ? [...new Set([...(snapA ? Object.keys(snapA) : []), ...(snapB ? Object.keys(snapB) : [])])]
+    : [];
+
+  return (
+    <section className={`signal-board-panel courier-triage ${active ? "active" : "locked"}`}>
+      <div className="section-heading">
+        <span>{triage.title}</span>
+        <strong>{active ? triage.activeStatus : triage.lockedStatus}</strong>
+      </div>
+      {!active ? (
+        <p className="signal-board-intro">
+          {snapshots.length === 1 ? triage.needSecondText : triage.lockedText}
+        </p>
+      ) : (
+        <>
+          <p className="signal-board-intro">{triage.intro}</p>
+          <table className="courier-triage-table">
+            <thead>
+              <tr>
+                <th>{cols.header || "HEADER"}</th>
+                <th>{cols.snapA || "SNAPSHOT A"}</th>
+                <th>{cols.snapB || "SNAPSHOT B"}</th>
+                <th>{cols.state || "STATE"}</th>
+                <th aria-label="pin" />
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map((key) => {
+                const a = snapA?.[key] ?? "";
+                const b = snapB?.[key] ?? "";
+                const stable = Boolean(a && b && a === b);
+                const state = !a || !b
+                  ? stateLabels.missing || "—"
+                  : stable
+                  ? stateLabels.stable || "stable"
+                  : stateLabels.changed || "changed";
+                const isPinned = pinnedKey === key;
+                const isAnswer = solved && key === correctKey;
+                return (
+                  <tr
+                    key={key}
+                    className={`${stable ? "stable" : "changed"} ${isPinned ? "pinned" : ""} ${
+                      isAnswer ? "answer" : ""
+                    }`}
+                  >
+                    <td className="triage-key">{key}</td>
+                    <td>
+                      <code>{a || "—"}</code>
+                    </td>
+                    <td>
+                      <code>{b || "—"}</code>
+                    </td>
+                    <td className="triage-state">{state}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="triage-pin"
+                        onClick={() => onPin(key, b || a)}
+                        disabled={disabled || solved}
+                      >
+                        {isPinned ? "pinned" : triage.pinLabel || "pin"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {pinnedKey && !solved && <span className="signal-staged">{triage.pinnedLabel}</span>}
+          {!solved && onToggleReason && reasoning.length > 0 && (
+            <div className="signal-reasoning signal-reasoning-gate">
+              <div className="section-heading">
+                <span>{triage.reasoningTitle}</span>
+                <strong className={reasoningReady ? "ready" : ""}>
+                  {reasoningReady ? "ready to submit" : "select the reasons"}
+                </strong>
+              </div>
+              <ul>
+                {reasoning.map((item) => {
+                  const picked = selectedReasonIds.includes(item.id);
+                  return (
+                    <li key={item.id} className={picked ? "picked" : ""}>
+                      <button
+                        type="button"
+                        className="reason-toggle"
+                        onClick={() => onToggleReason(item.id)}
+                        disabled={disabled}
+                      >
+                        <span>{picked ? "■" : "□"}</span>
+                        {item.text}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {solved && reasoning.length > 0 && (
+            <div className="signal-reasoning">
+              <div className="section-heading">
+                <span>{triage.reasoningTitle}</span>
+                <strong>resolved</strong>
+              </div>
+              <ul>
+                {reasoning.map((item) => (
+                  <li key={item.id} className={item.correct ? "trusted" : "decoy"}>
+                    <span>{item.correct ? "OK" : "--"}</span>
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 function Level12SignalBoard({
@@ -6163,6 +6351,9 @@ function CampaignMode() {
   const [selectedPatchIds, setSelectedPatchIds] = useState([]);
   const [level14ReasonIds, setLevel14ReasonIds] = useState([]);
   const [level12ReasonIds, setLevel12ReasonIds] = useState([]);
+  const [courierSnapshots, setCourierSnapshots] = useState([]);
+  const [courier21ReasonIds, setCourier21ReasonIds] = useState([]);
+  const [courier21PinnedKey, setCourier21PinnedKey] = useState("");
   const [containmentVerifiedById, setContainmentVerifiedById] = useState({});
   const [attackNotice, setAttackNotice] = useState(false);
   const [showDebrief, setShowDebrief] = useState(false);
@@ -6337,6 +6528,9 @@ function CampaignMode() {
     setSelectedPatchIds([]);
     setLevel14ReasonIds([]);
     setLevel12ReasonIds([]);
+    setCourierSnapshots([]);
+    setCourier21ReasonIds([]);
+    setCourier21PinnedKey("");
     setAttackNotice(false);
     setShowDebrief(false);
     setNextId(null);
@@ -6404,6 +6598,47 @@ function CampaignMode() {
     level12RequiredReasonIds.length === 0 ||
     (level12RequiredReasonIds.every((id) => level12ReasonIds.includes(id)) &&
       !level12HasIncorrectSelected);
+
+  // 2-1 COURIER TRIAGE: derive the real ticket from the player's own two snapshots
+  // (stable + FLAG-shaped), never from the story bundle. Gate FLAG submit on a correct
+  // pin + correct reasoning, mirroring the 1-2 reasoning gate.
+  const courierTriage = story.courierTriage;
+  const courier21Reasoning = courierTriage?.reasoning || [];
+  const courier21RequiredReasonIds =
+    courierTriage?.requiredReasonIds ||
+    courier21Reasoning.filter((item) => item.correct).map((item) => item.id);
+  const courier21HasIncorrectSelected = courier21ReasonIds.some((id) =>
+    courier21Reasoning.some((item) => item.id === id && !item.correct)
+  );
+  const courier21ReasoningReady =
+    courier21RequiredReasonIds.length === 0 ||
+    (courier21RequiredReasonIds.every((id) => courier21ReasonIds.includes(id)) &&
+      !courier21HasIncorrectSelected);
+  const courier21SnapA = courierSnapshots[courierSnapshots.length - 2] || null;
+  const courier21SnapB = courierSnapshots[courierSnapshots.length - 1] || null;
+  const courier21CorrectKey = courierCorrectKey(courier21SnapA, courier21SnapB);
+  const courier21RealValue = courier21CorrectKey ? courier21SnapB?.[courier21CorrectKey] || "" : "";
+  const courier21PinCorrect = Boolean(courier21PinnedKey && courier21PinnedKey === courier21CorrectKey);
+  const courier21TriageReady = courier21PinCorrect && courier21ReasoningReady;
+
+  const handleToggleCourier21Reason = useCallback((reasonId) => {
+    if (!reasonId) {
+      return;
+    }
+    setCourier21ReasonIds((prev) =>
+      prev.includes(reasonId) ? prev.filter((id) => id !== reasonId) : [...prev, reasonId]
+    );
+  }, []);
+
+  const handleCourier21Pin = useCallback(
+    (key, value) => {
+      setCourier21PinnedKey(key);
+      if (value) {
+        setFlagValue(value);
+      }
+    },
+    [setFlagValue]
+  );
 
   useEffect(() => {
     if (
@@ -6627,6 +6862,13 @@ function CampaignMode() {
             text: output || `(exit ${data.exitCode})`,
           },
         ]);
+
+        if (currentId === "level2_1") {
+          const snapshot = parseCourierSnapshot(data.stdout);
+          if (snapshot) {
+            setCourierSnapshots((prev) => [...prev, snapshot].slice(-2));
+          }
+        }
 
         const traceEntry = extractNetworkTraceFromCommand(nextCommand, data.stdout, token);
         if (traceEntry) {
@@ -7191,13 +7433,34 @@ function CampaignMode() {
       });
       return;
     }
+    if (
+      currentId === "level2_1" &&
+      courier21RealValue &&
+      value === courier21RealValue &&
+      !courier21TriageReady
+    ) {
+      setEvidenceResult({
+        correct: false,
+        gate: true,
+        message: !courier21PinCorrect
+          ? story.courierTriage?.pinGate ||
+            "Pin the ticket-shaped Courier header that stayed identical across both snapshots first."
+          : story.courierTriage?.reasoningGate ||
+            "Select why it is real before submitting — stability, not the name or FLAG shape.",
+      });
+      return;
+    }
     await submitEvidenceValue(flagValue);
   }, [
+    courier21PinCorrect,
+    courier21RealValue,
+    courier21TriageReady,
     currentId,
     flagValue,
     level12ReasoningReady,
     level14CommitVerified,
     level14ReasoningReady,
+    story.courierTriage,
     story.fragmentBoard,
     story.signalBoard,
     submitEvidenceValue,
@@ -7261,8 +7524,8 @@ function CampaignMode() {
         correct: isCorrect,
         message: isCorrect
           ? story.defenseSuccessText
-          : story.defenseFailureText ||
-            localizeTerminalOutput(data.message, locale, currentId) ||
+          : localizeTerminalOutput(data.message, locale, currentId) ||
+            story.defenseFailureText ||
             "Containment rejected.",
       });
 
@@ -7581,6 +7844,22 @@ function CampaignMode() {
                       selectedReasonIds={level14ReasonIds}
                       onToggleReason={handleToggleLevel14Reason}
                       reasoningReady={level14ReasoningReady}
+                    />
+                  )}
+
+                  {currentId === "level2_1" && (
+                    <CourierTriage
+                      triage={story.courierTriage}
+                      snapshots={courierSnapshots}
+                      correctKey={courier21CorrectKey}
+                      pinnedKey={courier21PinnedKey}
+                      onPin={handleCourier21Pin}
+                      reasoning={courier21Reasoning}
+                      selectedReasonIds={courier21ReasonIds}
+                      onToggleReason={handleToggleCourier21Reason}
+                      reasoningReady={courier21ReasoningReady}
+                      solved={evidenceSolved}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
                     />
                   )}
 

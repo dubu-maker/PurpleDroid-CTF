@@ -18,6 +18,11 @@
   - (B) 아키텍처 정합 — per-locale decoy 피드백을 프론트 스토리(`campaignStory{,.en}.js`)에 두고, 선택된 decoy id로 문구 선택. 로컬라이즈 깔끔, 작업량↑.
 - **권장:** 이건 cross-cutting 결정이니 패턴을 한 번 정해서 전 레벨에 통일. 이게 "1-1 친절하게"의 진짜 해결이고 부수적으로 전 레벨이 같이 좋아짐.
 
+### 0-2. 🔴 방어 코드가 공격 단계에 DOM/네트워크로 노출 (LOCKED 오버레이는 픽셀만 가림) — [x] 완료 (2026-07-02)
+- **현상:** `get_challenge_detail`이 `copy.deepcopy(mod.STATIC)`로 방어 코드(정답 라인 텍스트 + `patchableId` p*=정답/d*=미끼)를 **공격 단계에도 그대로 내려줌**. 프론트는 시각적 LOCKED 오버레이로만 가림 → **DOM/네트워크를 읽는 플레이어(AI 에이전트=제미니, devtools)에겐 정답이 그대로 노출.** 실제로 제미니가 공격 풀기 전에 방어 정답 라인(`X-Courier-Ticket`/`X-Courier-Preview`)을 정확히 읊음 = 비교 없이 지름길 가능.
+- **교훈:** "시각적으로 숨김 ≠ 데이터 숨김." 플레이어가 픽셀이 아니라 DOM/응답을 읽을 수 있다고 가정하고, **민감 payload는 서버에서 gate**해야 진짜 containment.
+- **수정:** `main.py get_challenge_detail`에서 `defense_enabled=False`면 방어 코드 라인 `text`를 리댁션 마커로, `patchableId` 제거, `instruction`도 중립화. 공격 해결 시 `refreshMission` refetch로 원본 복구(안전). **전 레벨 공통 적용.** 검증: locked payload에 티켓명/patchableId/routingTicket 0회·마커 8줄, 해결 후 원본 복구, 브라우저 DOM에도 공격 중 정답 0회.
+
 ---
 
 ## 1. Operation 01 — INITIAL BREACH
@@ -26,12 +31,12 @@
 - 🟢 공격 3단 흐름(라이브→dump→-b all) 유지. SCOPE 축 성공, 서사-메커니즘 정합(main만 purge → crash 생존, `contradiction window=0.3ms`=프롤로그 회수) 우수.
 - 🔴 방어 피드백 → **0-1로 해결**.
 - 🟡 `-d` 단계 초보 정체 완화: `-d` 출력엔 버퍼명이 없어 `-b all`을 스스로 떠올려야 함. `buffer_chain` 뉘앙스를 살짝 흘리면 친절(main엔 여전히 플래그 없음).
-- 🟡 파서 유연성: `adb logcat -b crash`(단독), `-b all -d`(순서 바꿈), `-b all`(`-d` 없이)도 통하는지 확인.
+- [x] **파서 유연성 (라이브 검증+수정 2026-07-02):** `-b all -d`(순서 바꿈) ✅, `-b all`(`-d` 없이)→live 넛지 ✅. **버그 발견·수정:** `-b crash`/`-b system`/`-b events` 단독이 요청을 무시하고 조용히 `main`을 반환했음(정확히 추론한 숙련자가 헛다리). `_select_logcat_lines`에 named-buffer 분기 추가 → `-b crash`=crash 버퍼(**플래그 노출**), `-b system`/`-b events`=해당 버퍼(충실), `-b main -b crash`=조합, 미지 버퍼(`-b radio`)=exit 1 에러. `-b all`만 전체는 그대로.
 - 🟢 flag 표기 통일: `FLAG{Always_Check_The_Logs_First}` → 다른 레벨처럼 `ALWAYS_CHECK_THE_LOGS_FIRST` (선택).
 
 ### 1-2 DECOY STATIC (`level1_2`)
 - 🟢 EVIDENCE REASONING 게이트 + 인스펙터("verdict is still sealed", trace/phase 증거만 제공) = 찍기 방지 잘 됨. 정답 이유 2개가 서로 다른 축(4=흐름 방향, 5=인접성), 오답 6번이 preflight의 trace 공유 함정을 정확히 겨냥.
-- 🟡 디코이 flag 이름 vibe: 미끼는 `FAKE/OLD/SAMPLE/CACHE`류, 진짜만 레벨 제목과 동일한 `SIGNAL_SURVIVES_THE_STATIC` → 카드 단계에서 텔레그래프. 진짜 이름을 평범하게(예: `AUTH_SESSION_LIVE_7F19`) 바꾸면 REASONING이 "확인용"이 아닌 "판별용"으로 온전히 작동.
+- [x] **진짜 flag 이름 텔레그래프 수정 (2026-07-02):** `FLAG{SIGNAL_SURVIVES_THE_STATIC}`(코드네임 DECOY STATIC과 "STATIC" 겹침) → **`FLAG{AUTH_SESSION_LIVE_7F19}`**로 중립화. 이제 진짜 세션 라인이 디코이(`TEMP_PREV_LOGIN`/`REPLAY_BUFFER` 등)와 이름상 구분 안 돼 위치/흐름 추론(r4·r5)이 필수 → REASONING이 판별용으로 작동. 수정 3곳: `level1_2.py:12`(로그 라인은 변수 참조라 자동 갱신), `campaignStory.js:286`, `campaignStory.en.js:189`. 검증: 새 flag correct=true / 옛 flag=false / 로그 `session=FLAG{AUTH_SESSION_LIVE_7F19}`.
 - 🟡 오답 이유(1/2/3/6) 선택 시 제출이 실제로 블록되는지 확인.
 - 🟢 TRY FIRST 2번 칩 `grep "Login success"`가 정답 흐름을 바로 특정 → `grep AuthService`나 `grep -A1 trace=`로 완화(선택). REASONING이 뒤를 받쳐줘 치명적이진 않음.
 
@@ -53,7 +58,9 @@
 
 ### 2-1 INVISIBLE HEADER (`level2_1`)
 - 🔴 **"교과서적"의 원인 = compare 메커니즘이 장식.** 값은 rotating으로 만들어놨는데(Trace/Preview/Cached 변동, Ticket 고정), objective·hint·MIRA가 정답 헤더 이름 `X-Courier-Ticket`을 다 알려줌 + 미끼 이름이 `Preview/Cached`(가짜 티) → 두 번 호출·비교 없이 이름으로 읽힘.
-  - **수정:** objective/hint/MIRA에서 `X-Courier-Ticket` 이름 제거 → "여러 courier 헤더 중 매 호출마다 안 바뀌는 하나가 진짜". compare가 필수가 됨. 난이도 안 올림.
+  - [x] **수정 완료 (2026-07-02, 미니 스코프):** attack 단계 텔레그래프 제거 — `level2_1.py` description/hint, `campaignStory{,.en}.js` objectives[2]·mira.attack에서 `X-Courier-Ticket` 이름 제거 → "같은 요청 두 번 보내 매번 바뀌는 미끼 vs 값 그대로인 ticket 모양 값" 비교기반으로 재서술. EN `attackFailureText`도 비교기반으로(서버 flag_feedback은 KO라 EN은 story문구 유지). **단계 TRY FIRST**: `MissionConsole`에 opt-in `revealAfter` 추가 — ① Body만 실행→② `-i` 헤더 열림→③ 한 번 더(비교) 열림(타 레벨 무영향). 백엔드 compare 메커니즘(rotating decoy + stable ticket)과 세션 넛지 에스컬레이션은 이미 있어 그대로 활용. 방어 코드의 `X-Courier-Ticket`은 attack 중 LOCKED 오버레이로 가려져 텔레그래프 아님. 라이브 검증: 칩 ①→②→③ 순차 노출, objectives/MIRA에 티켓명 없음, 터미널 헤더 출력만 실제 값 노출.
+
+  - [x] **COURIER TRIAGE 시그니처 장치 완료 (2026-07-02):** "버튼 3번→제출"이 너무 친절 + MIRA가 결론을 떠먹임 → 1-2 REASONING 게이트의 2-1판을 만듦. 플레이어의 curl -i 2회 응답을 파싱해 스냅샷 A/B **대조표**(HEADER×A×B×STATE) 생성 — changed/stable **사실만**, 정답 라벨 없음. **정답 헤더는 story에 없음**: 프론트가 "stable AND FLAG-shaped"를 라이브 데이터로 계산(`courierCorrectKey`)→번들/DOM 누수 0, 2회 캡처 강제. stable 행이 3개(Ticket/Internal-Route/Server-Timing)라 "안정 AND ticket 모양" 2변수 판단 필수. pin(정답 헤더)→제출칸 자동입력, TRIAGE REASONING(정답 r4·r5 + 디코이 r1~r3·r6=stable-but-metadata 함정) 통과해야 FLAG 제출 허용(`handleSubmitEvidence` level2_1 게이트). MIRA 넛지도 결론 대신 "TRIAGE에서 직접 판단해"로 완화. 파일: `campaignStory{,.en}.js` courierTriage, `CampaignMode.jsx`(CourierTriage 컴포넌트+캡처+게이트), `level2_1.py` 넛지, `styles.css`. 라이브 검증: 스냅샷 2개 전 잠김→2회 캡처 시 표 채워짐(미끼=changed, 티켓=stable), 정답 pin+이유없음=차단, 디코이 이유=차단, 정답 pin+r4·r5=통과·방어 진입.
 - 🟡 (선택) 미끼 헤더 이름 중립화(`Route/Edge` 등) → 이름 찍기까지 봉쇄. 튜토리얼 위치상 위 하나만으로 충분할 수도.
 - 🟢 nudge(첫 `-i`에 헤더명 안 흘림), rotating, content-length=30 정합 — 유지.
 
@@ -88,8 +95,8 @@
 
 ## 4. 집에서 먼저 할 라이브 확인 체크리스트 (🟡)
 
-- [ ] **0-1 수정 전 재현:** 1-1 방어에 decoy(4번 등) 섞어 오답 → 지금은 정적 문구만 뜨는지 확인. 7264 뒤집은 뒤 per-line 피드백 뜨는지.
-- [ ] 1-1 파서: `adb logcat -b crash` 단독 / `-b all -d`(순서) / `-b all`(`-d` 없이) 통하나.
+- [x] **0-1 수정 완료 (2026-07-02):** `CampaignMode.jsx:7264` 우선순위 뒤집음 → 백엔드 per-line 피드백(`localizeTerminalOutput(data.message)`) 우선, `story.defenseFailureText`는 폴백. API 검증: `level1` 오답 `d1+p1` → "Line 4 is ordinary analytics metadata... / 아직 닫히지 않은 핵심 통제가 1개 남아 있어..." 반환 확인. EN 글루는 `TERMINAL_TRANSLATIONS`에 이미 존재, 백엔드 기본 폴백("패치가 충분하지 않습니다.")도 번역 추가함.
+- [x] 1-1 파서: `-b crash` 단독(→crash+플래그, 수정됨) / `-b all -d`(순서) / `-b all`(`-d` 없이→live) 전부 확인·수정 완료.
 - [ ] 1-2 / 1-3 / 1-4: 오답 "이유(reason)" 선택 시 제출 블록되나.
 - [ ] 1-3 / 1-4: 터미널서 손으로 stitch 후 EVIDENCE SHARD 직접 제출 시 board/reasoning 우회하나.
 
@@ -97,8 +104,8 @@
 
 ## 5. 종합 우선순위 (임팩트 순)
 
-1. **0-1** 방어 피드백 프론트 override 해제 (전 레벨 + 1-1 친절화 동시 해결)
-2. **2-1** objective에서 답 헤더 이름 제거 (compare 필수화, "교과서적" 해소)
+1. ~~**0-1** 방어 피드백 프론트 override 해제 (전 레벨 + 1-1 친절화 동시 해결)~~ ✅ 완료
+2. ~~**2-1** objective에서 답 헤더 이름 제거 (compare 필수화, "교과서적" 해소)~~ ✅ 완료 (미니: 텔레그래프 제거 + 단계 TRY FIRST. COURIER DIFF 패널은 보류)
 3. **2-4** alg=none vs 무검증 개념 정합
 4. **2-3** 진짜 필드 이름 위장 (한 방→판별 2스텝)
 5. **1-2** 진짜 flag 이름 평범화 / **2-2** fastTrack 지시문 연결

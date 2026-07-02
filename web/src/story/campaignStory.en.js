@@ -186,7 +186,7 @@ export const CAMPAIGN_STORY_EN = {
         },
         {
           id: "live_session",
-          value: "FLAG{SIGNAL_SURVIVES_THE_STATIC}",
+          value: "FLAG{AUTH_SESSION_LIVE_7F19}",
           tag: "AuthService",
           trace: "LGN-8842",
           surface: "session candidate",
@@ -833,23 +833,53 @@ export const CAMPAIGN_STORY_EN = {
     ],
     consoleStarter: {
       label: "TRY FIRST",
-      text: "The body is clean, but the response isn't only the body — open the headers with -i. (method is POST) Then send the same request again and compare what changed.",
+      text: "The body is the surface AEGIS cleaned up. Probe the body first — MIRA will open the next step.",
       commands: [
-        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "body only" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "with headers" },
+        { command: "curl -X POST /api/v1/challenges/level2_1/actions/track", note: "① body only" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "② open headers (-i)", revealAfter: "actions/track" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_1/actions/track", note: "③ again → compare", revealAfter: " -i" },
       ],
     },
     objectives: [
       "Call the Signal Trace API.",
       "Distinguish the response body from its headers.",
-      "Recover X-Courier-Ticket from the response headers.",
+      "Send the same request twice and find the ticket-shaped Courier header whose value stays identical while the decoys rotate.",
       "Seal every header path that exposes the routing ticket.",
     ],
+    courierTriage: {
+      title: "COURIER TRIAGE",
+      lockedStatus: "awaiting snapshots",
+      activeStatus: "snapshots captured",
+      lockedText:
+        "Capture the response headers twice with curl -i and the comparison table opens. You need two snapshots before you can tell what changed and what stayed.",
+      needSecondText:
+        "Only one snapshot so far. A single value can't tell you real from decoy — send the same request once more.",
+      intro:
+        "Line up the two snapshots. Which value changes every call and which stays is for you to read. Pin the ticket-shaped Courier header whose value stayed identical and it fills the submit field.",
+      columns: { header: "HEADER", snapA: "SNAPSHOT A", snapB: "SNAPSHOT B", state: "STATE" },
+      stateLabels: { changed: "changed", stable: "stable", missing: "—" },
+      pinLabel: "pin",
+      pinnedLabel: "pinned → staged in submit field",
+      pinGate:
+        "First compare the two responses and pin the ticket-shaped header whose value stayed the same. The proof is stability across snapshots, not the name or the FLAG shape.",
+      reasoningTitle: "TRIAGE REASONING",
+      reasoning: [
+        { id: "r1", correct: false, text: "I picked it because the header name contains 'Ticket'." },
+        { id: "r2", correct: false, text: "I trusted it because it is shaped like FLAG{...}." },
+        { id: "r3", correct: false, text: "I judged it real because it is a Courier-family header." },
+        { id: "r4", correct: true, text: "Its value did not change across the two responses." },
+        { id: "r5", correct: true, text: "Unlike Preview/Cached/Trace it is stable instead of regenerated each request." },
+        { id: "r6", correct: false, text: "Any stable value must be the answer, so a metadata header (edge-node, etc.) is also a candidate." },
+      ],
+      requiredReasonIds: ["r4", "r5"],
+      reasoningGate:
+        "Even with the right value, name why it is real before submitting — stability across the two snapshots, not the name or FLAG shape, and metadata that is stable but not a credential does not count.",
+    },
     mira: {
       briefing:
         "The device logs are behind us. This is the outer AEGIS Grid. Courier is not a delivery worker here; it is the routing layer carrying signals and commands between nodes.",
       attack:
-        "Do not trust the visible body alone. Probe /api/v1/challenges/level2_1/actions/track with headers included. If AEGIS reveals the required method, call it again and follow X-Courier-Ticket.",
+        "Do not trust the visible body alone. Probe /api/v1/challenges/level2_1/actions/track with headers included. If AEGIS reveals the required method, call it again. There are several Courier headers — don't trust the name; send the same request twice and separate the decoys that rotate from the one ticket value that stays identical.",
       attackSolved:
         "Routing ticket recovered. The body was quiet, but the headers were still talking.",
       defense:
@@ -872,7 +902,7 @@ export const CAMPAIGN_STORY_EN = {
     defenseInstruction:
       "Select every response-header setter that exposes the routing ticket itself or a fragment derived from it. Judge the source of the value, not the safety of the header name.",
     attackFailureText:
-      "Evidence rejected. Inspect the complete response headers and recover the exact X-Courier-Ticket value.",
+      "Evidence rejected. Send the same request twice and compare the headers — the decoys rotate every call, so submit the ticket-shaped Courier value that stays identical across both responses.",
     defenseFailureText:
       "Containment is incomplete. Another header still exposes routingTicket data or a derived fragment.",
     attackSuccessText: "Routing Ticket recovered from the response headers.",

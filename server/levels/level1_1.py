@@ -77,6 +77,9 @@ ALL_BUFFER_LINES = [
 
 LOGCAT_LINES = ALL_BUFFER_LINES
 
+# Canonical Android buffer order; used to serve individually named -b <buffer> requests.
+BUFFER_ORDER = ["main", "system", "events", "crash"]
+
 DEFENSE_DEFAULT_POLICY: Dict[str, Any] = {
     "logLevel": "DEBUG",
     "redactFlagPattern": False,
@@ -303,6 +306,19 @@ def _filter_logcat_tags(lines: List[str], tags: List[str]) -> List[str]:
     return filtered
 
 
+def _buffer_sections() -> Dict[str, List[str]]:
+    """Split ALL_BUFFER_LINES into {buffer_name: [header, ...lines]} sections."""
+    sections: Dict[str, List[str]] = {}
+    current: Optional[str] = None
+    for line in ALL_BUFFER_LINES:
+        if line.startswith("--------- beginning of "):
+            current = line[len("--------- beginning of "):].strip()
+            sections[current] = [line]
+        elif current is not None:
+            sections[current].append(line)
+    return sections
+
+
 def _select_logcat_lines(options: Dict[str, Any]) -> Tuple[List[str], str, int]:
     buffers = set(options.get("buffers") or [])
     tags = options.get("tags") or []
@@ -322,6 +338,25 @@ def _select_logcat_lines(options: Dict[str, Any]) -> Tuple[List[str], str, int]:
             lines.append(
                 "05-26 10:14:03.112 D/MIRA: tag isolation clipped the evidence line. Keep the wider dump; loosen the filter."
             )
+        return lines, "", 0
+
+    # An explicitly named buffer other than 'main' (e.g. -b crash / -b events / -b system):
+    # honor it faithfully instead of silently returning main. Precise scoping should reveal
+    # exactly the requested retained buffer (crash holds the evidence).
+    if buffers - {"main"}:
+        sections = _buffer_sections()
+        unknown = sorted(b for b in buffers if b not in sections)
+        if unknown:
+            return (
+                [],
+                f"adb logcat: unknown buffer '{unknown[0]}'. Available buffers: main, system, events, crash, all.\n",
+                1,
+            )
+        collected: List[str] = []
+        for name in BUFFER_ORDER:
+            if name in buffers:
+                collected.extend(sections.get(name, []))
+        lines = _filter_logcat_tags(collected, tags)
         return lines, "", 0
 
     lines = _filter_logcat_tags(MAIN_BUFFER_LINES, tags)

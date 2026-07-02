@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 from levels.logcat_support import NO_MATCH_OUTPUT, run_log_filter, validate_logcat_args
 
-LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{SIGNAL_SURVIVES_THE_STATIC}")
+LEVEL1_2_FLAG = os.getenv("PURPLEDROID_LEVEL1_2_FLAG", "FLAG{AUTH_SESSION_LIVE_7F19}")
 
 # Realistic Android log spam. The live login flow is buried in here so the raw
 # `adb logcat -d` dump is too large to read by eye (it truncates); the player has

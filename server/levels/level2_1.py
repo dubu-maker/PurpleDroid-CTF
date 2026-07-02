@@ -33,7 +33,7 @@ STATIC: Dict[str, Any] = {
     "level": 2,
     "title": "2-1 Invisible Header",
     "summary": "응답 헤더에 라우팅 티켓이 숨어있다.",
-    "description": "미션: Signal Trace API를 호출하고, 화면에 보이지 않는 Response Header(응답 헤더)에서 X-Courier-Ticket 값을 찾아라.",
+    "description": "미션: Signal Trace API를 호출하고, 화면에 보이지 않는 Response Header(응답 헤더)를 조사하라. Courier 계열 헤더가 여럿 섞여 있는데, 같은 요청을 두 번 보내면 매번 바뀌는 미끼와 값이 그대로인 진짜 라우팅 티켓이 갈린다.",
     "status": {
         "attack": "available",
         "defense": "locked",
@@ -54,7 +54,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "all",
-                "text": "헤더 키워드: X-Courier-Ticket (Body가 아니라 Header를 봐야 함)",
+                "text": "Body가 아니라 Header를 봐. Courier 헤더가 여러 개니 이름만 믿지 말고, 같은 요청을 두 번 보내서 매번 바뀌는 미끼와 값이 그대로인 ticket 모양 값을 갈라내.",
             },
         ],
         "terminal": {
@@ -151,8 +151,8 @@ def flag_feedback(flag: str) -> str:
     if submitted and LEVEL2_1_FLAG.startswith(submitted) and submitted != LEVEL2_1_FLAG:
         return "MIRA: 값이 잘렸어. 두 번 다 그대로인 X-Courier-Ticket의 전체 값을 제출해."
     if submitted.startswith("FLAG{") and submitted != LEVEL2_1_FLAG:
-        return "MIRA: Courier 헤더가 여럿이야. 같은 요청을 한 번 더 보내서 비교해봐 — 매번 바뀌는 건 미끼고, 두 번 다 값이 똑같은 헤더가 진짜야."
-    return "MIRA: Body 말고 Response Header를 봐. 같은 요청을 두 번 보내서 값이 바뀌지 않는 Courier 헤더를 찾아."
+        return "MIRA: Courier 헤더가 여럿이야. COURIER TRIAGE에서 두 스냅샷을 직접 대조해 — 어떤 게 진짜인지 판단은 네 몫이야."
+    return "MIRA: Body 말고 Response Header를 봐. 같은 요청을 두 번 보내서 COURIER TRIAGE에 스냅샷을 쌓아."
 
 
 def judge_patch(patched_ids: List[str]) -> bool:
@@ -251,12 +251,12 @@ def _render_method_mismatch(include_headers: bool) -> str:
 
 
 _FIRST_NUDGE = (
-    "\nMIRA: Courier 헤더가 여러 개야. 이거 하나로는 판단하지 마 — "
-    "같은 요청을 한 번 더 보내서 어떤 값이 그대로고 어떤 값이 바뀌는지 직접 비교해봐.\n"
+    "\nMIRA: Courier 헤더가 여러 개고, FLAG처럼 보이는 것도 여럿이야. "
+    "응답 하나로는 뭐가 진짜인지 몰라 — 같은 요청을 한 번 더 보내.\n"
 )
 _SECOND_NUDGE = (
-    "\nMIRA: 방금 응답이랑 나란히 비교해봐. 매 요청마다 바뀌는 값은 미끼야. "
-    "두 번 다 값이 똑같은 Courier 헤더 — 그게 진짜 라우팅 티켓이야.\n"
+    "\nMIRA: 이제 두 스냅샷이 COURIER TRIAGE에 잡혔어. 뭐가 바뀌고 뭐가 그대로인지는 "
+    "네가 직접 읽어내 — 답은 안 짚어줄게.\n"
 )
 
 
