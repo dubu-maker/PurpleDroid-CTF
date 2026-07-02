@@ -163,9 +163,9 @@ PATCH_CORRECT_FEEDBACK = {
     "p2": "Line 7 is a real containment target: sessionToken is an authentication secret.",
 }
 PATCH_WRONG_FEEDBACK = {
-    "d1": "Line 4 is ordinary analytics metadata. It does not emit a secret value.",
-    "d2": "Line 5 is guidance from MIRA. It does not emit evidence or an authentication token.",
-    "d3": "Line 8 is performance telemetry. It does not expose evidence or sessionToken.",
+    "d1": "4번은 평범한 analytics 메타데이터야. 비밀 값을 내보내지 않아.",
+    "d2": "5번은 MIRA의 안내 메시지야. 증거나 인증 토큰을 내보내지 않아.",
+    "d3": "8번은 성능 텔레메트리야. 증거나 sessionToken을 노출하지 않아.",
 }
 
 

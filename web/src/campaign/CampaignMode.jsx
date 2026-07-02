@@ -33,6 +33,36 @@ function normalizeApiBase(raw) {
 
 const API_BASE = normalizeApiBase(API_BASE_RAW);
 const TERMINAL_TRANSLATIONS = [
+  // Server terminal/feedback text is Korean-source; these full-sentence pairs are kept
+  // at the top so they match the raw Korean before any granular entry can mangle them.
+  // --- Operation 01 defense (per-decoy) feedback ---
+  ["4번은 평범한 analytics 메타데이터야. 비밀 값을 내보내지 않아.", "Line 4 is ordinary analytics metadata. It does not emit a secret value."],
+  ["5번은 MIRA의 안내 메시지야. 증거나 인증 토큰을 내보내지 않아.", "Line 5 is guidance from MIRA. It does not emit evidence or an authentication token."],
+  ["8번은 성능 텔레메트리야. 증거나 sessionToken을 노출하지 않아.", "Line 8 is performance telemetry. It does not expose evidence or sessionToken."],
+  ["2번은 요청 trace만 기록해. 세션 값을 내보내지 않아.", "Line 2 records the request trace only. It does not emit a session value."],
+  ["5번은 성공 상태와 사용자 컨텍스트를 기록할 뿐, 세션 자체는 아니야.", "Line 5 records the success state and user context, not the session itself."],
+  ["8번은 큐 상태만 기록해. 토큰 값을 내보내지 않아.", "Line 8 records queue state only. It does not emit a token value."],
+  ["5번은 telemetry canary야. 프로덕션에 있으면 안 되는 건 맞지만, 여기서 봉쇄해야 할 회수 가능한 Evidence 조각 경로는 아니야.", "Line 5 is a telemetry canary. It should not exist in production either, but it is not the recoverable Evidence fragment path you must contain here."],
+  ["8번은 완료 메타데이터를 기록해. 조각 값 자체를 내보내지 않아.", "Line 8 records completion metadata. It does not emit the fragment value itself."],
+  ["3번은 미끼 echo야. 이 봉쇄 대상에선 노이즈일 뿐, 진짜 Evidence 경로가 아니야.", "Line 3 is a decoy echo. It is noise in this containment target, not the real Evidence path."],
+  ["4번은 trace 메타데이터와 commitRef를 기록하지만, Evidence 값을 내보내지 않아.", "Line 4 records trace metadata and commitRef, but it does not emit the Evidence value."],
+  ["7번은 commit 상태를 기록해. 검증 메타데이터는 비밀 자료와 분리해서 둬.", "Line 7 records commit status. Keep verification metadata separate from secret material."],
+  ["11번은 조각 개수만 기록해. 회수 가능한 값을 노출하지 않아.", "Line 11 records a fragment count only. It does not expose a recoverable value."],
+  // --- 2-1 (Signal Edge) terminal nudges + feedback ---
+  ["MIRA: Courier 헤더가 여러 개고, FLAG처럼 보이는 것도 여럿이야. 응답 하나로는 뭐가 진짜인지 몰라 — 같은 요청을 한 번 더 보내.", "MIRA: There are several Courier headers, and several look like FLAG. One response can't tell you which is real -- send the same request once more."],
+  ["MIRA: 이제 두 스냅샷이 COURIER TRIAGE에 잡혔어. 뭐가 바뀌고 뭐가 그대로인지는 네가 직접 읽어내 — 답은 안 짚어줄게.", "MIRA: Both snapshots are now in COURIER TRIAGE. What changed and what stayed is for you to read -- I won't point to the answer."],
+  ["MIRA: Body는 AEGIS가 정리한 표면이야. 응답은 Body만이 아니야 — -i로 Response Header를 열어봐.", "MIRA: The body is the surface AEGIS cleaned up. The response isn't only the body -- open the Response Header with -i."],
+  ["MIRA: X-Courier-Preview는 미리보기 샘플이야. 다시 호출해봐 — 매번 값이 바뀔 거야. 매 요청마다 새로 만들어지는 값은 실제 라우팅 티켓이 될 수 없어.", "MIRA: X-Courier-Preview is a preview sample. Call it again -- its value changes every time. A value regenerated on every request cannot be the real routing ticket."],
+  ["MIRA: X-Courier-Cached는 캐시된 옛 값이야. 다시 호출해봐 — 이것도 매번 값이 바뀔 거야. 안정적인 신호가 아니라 매 요청마다 재생성되는 노이즈야.", "MIRA: X-Courier-Cached is a cached old value. Call it again -- it also changes every time. It is not a stable signal but noise regenerated on each request."],
+  ["MIRA: 값이 잘렸어. 두 번 다 그대로인 X-Courier-Ticket의 전체 값을 제출해.", "MIRA: The value is truncated. Submit the complete value of the X-Courier-Ticket that stayed identical both times."],
+  ["MIRA: Courier 헤더가 여럿이야. COURIER TRIAGE에서 두 스냅샷을 직접 대조해 — 어떤 게 진짜인지 판단은 네 몫이야.", "MIRA: There are several Courier headers. Compare the two snapshots yourself in COURIER TRIAGE -- judging which is real is up to you."],
+  ["MIRA: Body 말고 Response Header를 봐. 같은 요청을 두 번 보내서 COURIER TRIAGE에 스냅샷을 쌓아.", "MIRA: Look at the Response Header, not the body. Send the same request twice to stack snapshots in COURIER TRIAGE."],
+  ["2번은 안전해. Body에는 ok/message 같은 평범한 JSON만 담기고, 민감한 라우팅 티켓 값은 들어가지 않아.", "Line 2 is safe. The body carries only plain JSON like ok/message; it does not include the sensitive routing ticket value."],
+  ["4번은 안전해. X-Trace-Id는 traceId()로 만든 추적용 임의값이라 실제 라우팅 티켓과 무관해.", "Line 4 is safe. X-Trace-Id is a random tracing value from traceId(), unrelated to the real routing ticket."],
+  ["6번은 안전해. X-Internal-Route는 edge-node-07 같은 라우팅 메타데이터지 자격증명이 아니야. 이번 봉쇄 대상은 ticket 모양 값이야.", "Line 6 is safe. X-Internal-Route is routing metadata like edge-node-07, not a credential. The containment targets here are ticket-shaped values."],
+  ["7번은 안전해. Server-Timing은 응답 처리 시간 같은 성능 메트릭이고 기밀 유출과 관련이 없어.", "Line 7 is safe. Server-Timing is a performance metric like response processing time and is unrelated to secret exposure."],
+  ["AEGIS: 405. 응답 헤더를 읽어봐. 서버가 허용하는 메서드가 명시돼 있어.", "AEGIS: 405. Read the response headers. The server states which method it allows."],
+  ["AEGIS: 메서드 체크 실패. 응답에 단서가 있는데, 지금은 Body만 표시됐어.", "AEGIS: Method check failed. The response has a clue, but only the body is shown right now."],
   [
     "마지막 필터에서 일치하는 로그가 없어.",
     "No log lines matched the final filter.",

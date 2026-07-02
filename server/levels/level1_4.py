@@ -227,10 +227,10 @@ PATCH_CORRECT_FEEDBACK = {
     "p5": "Line 10 emits a plaintext session token.",
 }
 PATCH_WRONG_FEEDBACK = {
-    "d1": "Line 3 is a decoy echo. It is noise in this containment target, not the real Evidence path.",
-    "d2": "Line 4 records trace metadata and commitRef, but it does not emit the Evidence value.",
-    "d3": "Line 7 records commit status. Keep verification metadata separate from secret material.",
-    "d4": "Line 11 records a fragment count only. It does not expose a recoverable value.",
+    "d1": "3번은 미끼 echo야. 이 봉쇄 대상에선 노이즈일 뿐, 진짜 Evidence 경로가 아니야.",
+    "d2": "4번은 trace 메타데이터와 commitRef를 기록하지만, Evidence 값을 내보내지 않아.",
+    "d3": "7번은 commit 상태를 기록해. 검증 메타데이터는 비밀 자료와 분리해서 둬.",
+    "d4": "11번은 조각 개수만 기록해. 회수 가능한 값을 노출하지 않아.",
 }
 
 FLAG_FEEDBACK = {

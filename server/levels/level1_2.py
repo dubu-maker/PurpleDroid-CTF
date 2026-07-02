@@ -189,9 +189,9 @@ PATCH_CORRECT_FEEDBACK = {
     "p3": "Line 7 is a containment target too: replay buffers are decoys for Evidence, not safe values to log in plaintext.",
 }
 PATCH_WRONG_FEEDBACK = {
-    "d1": "Line 2 records the request trace only. It does not emit a session value.",
-    "d2": "Line 5 records the success state and user context, not the session itself.",
-    "d4": "Line 8 records queue state only. It does not emit a token value.",
+    "d1": "2번은 요청 trace만 기록해. 세션 값을 내보내지 않아.",
+    "d2": "5번은 성공 상태와 사용자 컨텍스트를 기록할 뿐, 세션 자체는 아니야.",
+    "d4": "8번은 큐 상태만 기록해. 토큰 값을 내보내지 않아.",
 }
 
 FLAG_FEEDBACK = {

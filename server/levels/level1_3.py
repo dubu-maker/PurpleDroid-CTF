@@ -195,8 +195,8 @@ STATIC: Dict[str, Any] = {
 PATCHABLE_IDS = {"p1", "p2", "p3", "p4", "d1", "d2"}
 REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4"}
 PATCH_WRONG_FEEDBACK = {
-    "d1": "Line 5 is a telemetry canary. It should not exist in production either, but it is not the recoverable Evidence fragment path you must contain here.",
-    "d2": "Line 8 records completion metadata. It does not emit the fragment value itself.",
+    "d1": "5번은 telemetry canary야. 프로덕션에 있으면 안 되는 건 맞지만, 여기서 봉쇄해야 할 회수 가능한 Evidence 조각 경로는 아니야.",
+    "d2": "8번은 완료 메타데이터를 기록해. 조각 값 자체를 내보내지 않아.",
 }
 
 FLAG_FEEDBACK = {
