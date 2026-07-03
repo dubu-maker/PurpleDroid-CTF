@@ -925,15 +925,16 @@ export const CAMPAIGN_STORY_EN = {
     },
   },
   level2_2: {
-    title: "Tamper With The Trust Tier",
+    title: "Priority Capsule",
     briefing:
-      "X-Courier-Ticket exposed how AEGIS routes signals between edge nodes. Now the priority decision itself is under inspection. The Signal Priority Gate assigns each signal a Trust Tier, yet one endpoint appears to accept the tier claimed in the request body without binding it to server-side authority. If a client claim becomes a permission, any node can declare itself privileged.",
+      "X-Courier-Ticket exposed how AEGIS routes signals between edge nodes. Now the priority decision itself — and what it issues — is under inspection. The Signal Priority Gate assigns each signal a Trust Tier, yet one endpoint accepts the tier claimed in the request body without binding it to server-side authority. Tamper the tier to win priority and AEGIS issues a dispatch token — it calls the capsule sealed, but sealed is not encrypted: the payload is only signed and reads in the clear. Forge trust to obtain the capsule, then recover the Evidence inside it.",
     intel: [
       "This node focuses on the JSON request body. Client input is a claim, not evidence.",
-      "Signal Priority endpoint: /api/v1/challenges/level2_2/actions/order",
-      "Send a POST request with a JSON body and begin with tier set to standard.",
-      "The standard response redacts the exact privileged tier, but it still reveals the trust policy and tier shape.",
-      "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'",
+      "Signal Priority endpoint: /api/v1/challenges/level2_2/actions/order (POST + JSON body). Begin with tier set to standard.",
+      "The standard response redacts the exact privileged tier but reveals upgrade-candidates and a tier shape. Obvious tier names can be decoys.",
+      "Winning priority makes the response body carry a dispatch_token. Don't stop at the body surface — open that token.",
+      "The token is header.payload.signature. A signed token is still readable (signature = integrity, not encryption). The header kid is packaging; the real value is a payload claim.",
+      "Terminal helper: decode-token <dispatch_token>",
     ],
     consoleBoot: [
       "[MIRA] header leak sealed",
@@ -945,29 +946,29 @@ export const CAMPAIGN_STORY_EN = {
     ],
     consoleStarter: {
       label: "TRY FIRST",
-      text: "First call with standard and read the trust policy. Then change the body tier to a higher class and resend — AEGIS hid the exact class name.",
+      text: "First call with standard and read the trust policy. From there MIRA guides each step — escalate the tier to win priority, then open the token you're issued.",
       commands: [
         { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'", note: "observe standard" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"premium\"}'", note: "try a higher class" },
       ],
     },
     objectives: [
       "Send a standard-tier request to the Signal Priority endpoint.",
-      "Read the redacted trust policy and tier-shape clues in the response.",
-      "Tamper with the request-body claim and test the priority route.",
-      "Seal every path where a client claim grants routing authority.",
+      "Read the upgrade-candidates and tier shape, then reconstruct the real privileged tier (obvious names are decoys).",
+      "Use the tampered tier to win priority and receive a dispatch token.",
+      "Decode the token with decode-token to recover the Evidence in its payload (the header kid is packaging).",
+      "Seal every path where a client claim grants authority or where Evidence leaks into a readable payload.",
     ],
     mira: {
       briefing:
         "AEGIS Edge is too willing to believe the body you send. Start with standard. It will hide the privileged tier name, but policy residue should remain.",
       attack:
-        "Then declare your signal at a higher tier. The important fact is simple: the claim is under your control.",
+        "Then declare your signal at a higher tier. Obvious names are decoys — reconstruct the real one to shape. Clear it and a capsule drops. You have to open it to see what's real.",
       attackSolved:
-        "Evidence Shard recovered. AEGIS treated a request-body trust claim as server authority.",
+        "Evidence recovered. AEGIS trusted the body's tier claim, issued the capsule, and its payload just read in the clear.",
       defense:
-        "Seal the branches that turn client claims into priority. Reading a value and granting power from it are different operations.",
+        "Seal two things now: the branch that grants priority from a client claim, and the line that writes Evidence and session secrets into a readable payload.",
       complete:
-        "The Trust Tier tamper path is sealed. Next, we inspect what AEGIS places inside a dispatch token.",
+        "Trust tampering and the readable capsule are sealed. Next, a forged pass tests whether the Express Gate checks a signature at all.",
     },
     aegis: {
       briefing:
@@ -982,30 +983,30 @@ export const CAMPAIGN_STORY_EN = {
         "Trust Tier input sealed. Dispatch token exposure remains within tolerance.",
     },
     defenseInstruction:
-      "Select the branches that grant priority from client-controlled tier or fastTrack claims. Input parsing, validation, audit logging, and server-side trust lookup are not the vulnerable authority decisions.",
+      "Select the risky lines in the priority-dispatch flow: the branch that grants priority from a client-claimed tier, and the lines that write Evidence or the session secret into the readable token payload. Input validation, identifiers, routing metadata, and token issuance itself are not the vulnerable decisions.",
     attackFailureText:
-      "Evidence rejected. Read the standard response policy, then alter the client-controlled trust claim and inspect the privileged response.",
+      "Evidence rejected. Escalate the tier to win priority, then decode the issued token and read its payload claim — the header kid is packaging.",
     defenseFailureText:
-      "Containment is incomplete. A client-controlled tier or fastTrack claim can still grant priority routing.",
-    attackSuccessText: "Trust Tier tampered. AEGIS misclassified the signal as privileged.",
-    defenseSuccessText: "Client-controlled Trust Tier sealed. The next Signal Edge node is open.",
+      "Containment is incomplete. A client tier claim still grants priority, or Evidence still rides a readable token payload.",
+    attackSuccessText: "Trust claim tampered → priority capsule issued → payload decoded.",
+    defenseSuccessText: "Client trust and the readable payload are sealed. The next Signal Edge node is open.",
     debrief: {
-      title: "TRUST TAMPER Debrief",
+      title: "PRIORITY CAPSULE Debrief",
       summary:
-        "A request body is a statement authored by the client. AEGIS accepted tier and fastTrack without recomputing authority from server policy, allowing the Signal Priority Gate to be manipulated.",
+        "A request body is a statement authored by the client. AEGIS accepted the tier claim without recomputing authority, granted priority, and issued a dispatch token in return. The flaw compounds: the token was called sealed, but its payload was only signed — not encrypted — and carried the Evidence and a session secret in the clear. The header kid was just packaging (a decoy).",
       learned: [
-        "Client input is never an authority source by itself.",
-        "Permissions, prices, tiers, and priority must be recomputed server-side.",
-        "The critical flaw is the branch that converts input into authority, not the line that reads it.",
-        "A small boolean such as fastTrack becomes dangerous when it changes authorization.",
-        "Frontend controls cannot prevent request tampering through curl or DevTools.",
-        "Validation and authorization are separate: valid syntax does not prove permission.",
+        "Client input (tier, etc.) is a claim; permissions, tiers, and priority must be recomputed server-side.",
+        "Obvious high-tier names can be decoys — reconstruct the real one from the response shape/candidates.",
+        "Sealed (signed) is not encrypted: a signed token's payload still reads in the clear.",
+        "Putting Evidence or a sessionToken in a token payload leaks it to anyone who obtains the token.",
+        "Envelope fields like the header kid/typ are packaging — the real value lives in a payload claim.",
+        "Validation, authorization, and confidentiality are separate concerns.",
       ],
       nextTeaser:
-        "The next node reveals what data survives inside an AEGIS dispatch token.",
+        "The next node forges that capsule into a VIP pass to test whether the Express Gate verifies its signature.",
     },
   },
-  level2_3: {
+  level2_3_ARCHIVED_MERGED_INTO_2_2: {
     title: "Decode The Dispatch Capsule",
     briefing:
       "The previous nodes showed routing metadata in both headers and request bodies. This node examines the dispatch_token issued when AEGIS forwards a signal to another edge node. AEGIS calls it a sealed capsule, but sealed does not necessarily mean encrypted. Inspect its structure and recover the Evidence Shard left inside the payload.",
@@ -1126,7 +1127,7 @@ export const CAMPAIGN_STORY_EN = {
     ],
     mira: {
       briefing:
-        "In 2-3 we opened the token. Now we find out how much AEGIS believes what it reads.",
+        "In the previous node (PRIORITY CAPSULE) we opened the token. Now we find out how much AEGIS believes what it reads.",
       attack:
         "Send the original standard token first. Once the gate refuses it, inspect the payload and test whether AEGIS ever verifies the signature behind those claims.",
       attackSolved:
@@ -1165,7 +1166,7 @@ export const CAMPAIGN_STORY_EN = {
         "Tier and role claims are untrusted until the signature is verified.",
         "Without mandatory verification, a token becomes a forgeable identity document.",
         "Authorization should combine verified claims with server-side policy or account state.",
-        "2-3 exposed readable claims; 2-4 exposed trust in unverified claims.",
+        "PRIORITY CAPSULE exposed readable claims; this node exposes trust in unverified claims.",
       ],
       nextTeaser:
         "The final Signal Edge node combines token forgery, route discovery, and an integrity bypass behind a Sealed Archive.",

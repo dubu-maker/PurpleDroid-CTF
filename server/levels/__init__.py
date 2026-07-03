@@ -27,7 +27,7 @@ LEVELS = {
     level1_4.STATIC["id"]: level1_4,
     level2_1.STATIC["id"]: level2_1,
     level2_2.STATIC["id"]: level2_2,
-    level2_3.STATIC["id"]: level2_3,
+    # level2_3 은 2-2(Priority Capsule)로 합쳐져 게임에서 제외. 단, 모듈은 유지(2-4가 토큰 함수 import).
     level2_4.STATIC["id"]: level2_4,
     level2_5.STATIC["id"]: level2_5,
     level3_1.STATIC["id"]: level3_1,
@@ -51,7 +51,6 @@ LEVEL_ORDER = [
     level1_4.STATIC["id"],
     level2_1.STATIC["id"],
     level2_2.STATIC["id"],
-    level2_3.STATIC["id"],
     level2_4.STATIC["id"],
     level2_5.STATIC["id"],
     level3_1.STATIC["id"],

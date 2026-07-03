@@ -316,7 +316,7 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
         )
         return {"attack": attack, "defense": defense}
 
-    boss_prereqs = ("level2_1", "level2_2", "level2_3", "level2_4")
+    boss_prereqs = ("level2_1", "level2_2", "level2_4")
     level3_boss_prereqs = ("level3_1", "level3_2", "level3_3", "level3_4", "level3_5")
     level4_prereqs = ("level3_boss",)
     level4_2_prereqs = ("level4_1",)
@@ -834,15 +834,22 @@ class DeliveryEventReq(BaseModel):
 
 @app.post("/api/v1/challenges/level2_2/actions/order")
 def order_parcel(req: OrderRequest, response: Response):
-    """2-2 Signal Priority 요청 변조 전용 API"""
-    from levels.level2_2 import LEVEL2_2_FLAG
-    
+    """2-2 PRIORITY CAPSULE — 신뢰 등급 조작 → 우선 통행 승인 시 dispatch 토큰 발급."""
+    from levels.level2_2 import issue_priority_token
+
     # 클라이언트가 보낸 tier를 그대로 신뢰하는 취약한 흐름.
     # elevated는 정확한 형태(소문자 vip)로만 통과 — premium 같은 등급은 미끼, fastTrack 프리패스 제거.
+    # vip 승인 시에만 payload가 읽히는 dispatch 토큰을 발급한다(진짜 Evidence는 그 안에).
     if req.tier.strip() == "vip":
+        token = issue_priority_token(req.signalId or "SIG-1004")
         response.headers["X-Trust-Policy"] = "tier-claim=accepted; elevated=vip"
-        response.headers["X-Priority-Label"] = LEVEL2_2_FLAG
-        return {"ok": True, "message": "Privileged signal accepted", "route": "priority"}
+        response.headers["X-Dispatch-Trace"] = "capsule-issued"
+        return {
+            "ok": True,
+            "message": "Priority signal accepted",
+            "route": "priority-lane",
+            "dispatch_token": token,
+        }
 
     response.headers["X-Trust-Policy"] = "tier-claim=accepted; upgrade-candidates=premium, v_p"
     response.headers["X-Tier-Shape"] = "elevated class = 3-letter lowercase legacy code"

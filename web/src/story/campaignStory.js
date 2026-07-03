@@ -1221,19 +1221,20 @@ export const CAMPAIGN_STORY = {
   level2_2: {
     challengeId: "level2_2",
     operationId: "op02",
-    codename: "TRUST TAMPER",
-    title: "신뢰 등급을 흔들어라",
+    codename: "PRIORITY CAPSULE",
+    title: "우선 통행 캡슐",
     location: "Signal Priority Gate",
-    threat: "Client-Side Trust Claim",
+    threat: "Client Trust → Readable Token",
     briefing:
-      "INVISIBLE HEADER에서 잡아낸 X-Courier-Ticket은 AEGIS Edge가 외부 노드 사이의 라우팅에 쓰는 메타데이터였다. 이제 그 라우팅이 어떻게 결정되는지를 본다. AEGIS Grid는 각 Signal에 Trust Tier를 매겨 처리 우선순위를 정한다. 그런데 Edge Gateway의 한 엔드포인트가 의심스럽다. 요청 Body의 tier 필드를 그대로 받아 등급을 매기는 것 같다. 클라이언트가 보낸 주장(claim)을 서버가 검증 없이 신뢰하면, 어떤 노드든 자신을 우선 처리 대상으로 선언할 수 있다.",
+      "INVISIBLE HEADER에서 잡아낸 X-Courier-Ticket은 AEGIS Edge가 노드 사이 라우팅에 쓰는 메타데이터였다. 이제 그 라우팅이 어떻게 결정되고, 무엇을 발급하는지를 본다. AEGIS Grid는 각 Signal에 Trust Tier를 매겨 우선순위를 정하는데, Edge Gateway의 한 엔드포인트가 요청 Body의 tier 주장을 검증 없이 그대로 신뢰한다. 등급을 조작해 우선 통행을 얻으면 dispatch 토큰이 발급되는데 — AEGIS는 이 캡슐을 sealed라 부르지만, sealed가 encrypted는 아니다. 토큰의 payload는 서명만 있고 그대로 읽힌다. 신뢰를 조작해 캡슐을 받아내고, 그 안의 Evidence를 복원하라.",
     progressiveHints: true,
     intel: [
       "이번 노드는 Header가 아니라 Request Body를 본다. 클라이언트가 보낸 JSON은 서버 입장에서 증거가 아니라 주장이다.",
-      "Signal Priority 엔드포인트: /api/v1/challenges/level2_2/actions/order",
-      "요청은 POST + JSON Body 형태다. 처음에는 tier를 \"standard\"로 보내봐.",
-      "standard 응답은 정확한 상위 tier 이름을 숨긴다. 대신 trust policy와 tier shape 같은 흔적을 남긴다.",
-      "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'",
+      "Signal Priority 엔드포인트: /api/v1/challenges/level2_2/actions/order (POST + JSON Body). 처음엔 tier를 \"standard\"로.",
+      "standard 응답은 정확한 상위 tier 이름을 숨긴다. 대신 upgrade-candidates와 tier shape 흔적을 남겨. 눈에 띄는 등급 이름은 미끼일 수 있다.",
+      "우선 통행이 승인되면 응답 Body에 dispatch_token이 실린다. Body 표면이 아니라 그 토큰을 봐야 한다.",
+      "토큰은 header.payload.signature 구조다. 서명된 토큰도 payload는 그대로 읽힌다(서명=무결성, 암호화 아님). header의 kid는 포장지, 진짜는 payload claim이다.",
+      "터미널 helper: decode-token <dispatch_token>",
     ],
     consoleBoot: [
       "[MIRA] header leak sealed",
@@ -1246,29 +1247,29 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "inspect signal priority request...",
     consoleStarter: {
       label: "TRY FIRST",
-      text: "먼저 standard로 호출해 trust policy를 봐. 그 다음 Body의 tier를 더 높은 등급으로 바꿔 재전송 — 정확한 등급명은 AEGIS가 숨겼어.",
+      text: "먼저 standard로 호출해 응답의 trust policy를 봐. 그 다음은 MIRA가 단계마다 짚어줄 거야 — 등급을 조작해 우선 통행을 얻고, 발급된 토큰을 열어.",
       commands: [
         { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"standard\"}'", note: "standard로 관찰" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_2/actions/order -H \"Content-Type: application/json\" -d '{\"tier\":\"premium\"}'", note: "등급을 바꿔 시험" },
       ],
     },
     objectives: [
       "Signal Priority 엔드포인트에 standard tier로 요청을 보낸다.",
-      "응답에서 redacted trust policy와 tier shape를 확인한다.",
-      "요청 Body의 trust claim을 변조해 우선 처리 경로가 열리는지 확인한다.",
-      "클라이언트 주장으로 권한이 결정되지 않도록 봉쇄한다.",
+      "응답의 upgrade-candidates와 tier shape를 읽어 진짜 elevated 등급을 복원한다 (눈에 띄는 이름은 미끼).",
+      "조작한 tier로 우선 통행을 얻어 dispatch 토큰을 발급받는다.",
+      "발급된 토큰을 decode-token으로 펼쳐 payload의 Evidence를 회수한다 (header kid는 포장지).",
+      "클라이언트 주장으로 권한이 결정되거나 Evidence가 읽히는 payload에 남지 않도록 봉쇄한다.",
     ],
     mira: {
       briefing:
         "AEGIS Edge는 네가 보내는 Body를 너무 친절하게 믿어. 일단 standard로 한 번 찔러봐. 정확한 상위 tier 이름은 숨기겠지만, policy 흔적은 남을 거야.",
       attack:
-        "그 다음 네 신호를 더 높은 등급으로 다시 선언해. 중요한 건 Body 값이 네 손에 있다는 점이야.",
+        "그 다음 네 신호를 더 높은 등급으로 다시 선언해. 눈에 띄는 이름은 미끼고, 진짜는 shape에 맞게 복원해야 해. 통과하면 캡슐이 나올 거야 — 그건 열어봐야 진짜가 보여.",
       attackSolved:
-        "Evidence Shard 회수 완료. AEGIS가 요청 Body의 trust claim을 그대로 신뢰했어.",
+        "Evidence 회수 완료. AEGIS가 Body의 trust claim을 그대로 믿어 캡슐을 내줬고, 그 payload는 그냥 읽혔어.",
       defense:
-        "이제 클라이언트가 보낸 주장으로 우선 처리를 부여하는 라인을 막아. 값을 읽는 것과 그 값에 권한을 주는 건 다른 일이야.",
+        "이제 두 가지를 막아. 클라이언트 주장으로 우선 처리를 주는 라인, 그리고 읽히는 payload에 Evidence·세션 비밀을 그대로 싣는 라인.",
       complete:
-        "Trust tier 변조 경로는 닫혔어. 다음 노드는 Signal Edge가 발급하는 dispatch token 내부를 들여다보게 될 거야.",
+        "신뢰 조작과 읽히는 캡슐 경로가 닫혔어. 다음 노드는 위조된 통행권으로 Express Gate를 시험하게 될 거야.",
     },
     aegis: {
       briefing:
@@ -1309,24 +1310,24 @@ export const CAMPAIGN_STORY = {
         ],
       },
     },
-    attackSuccessText: "Trust tier tampered. AEGIS priority gate misclassified the signal.",
-    defenseSuccessText: "Client-controlled trust tier sealed. 다음 Signal Edge 노드가 열렸다.",
+    attackSuccessText: "Trust claim tampered → priority capsule issued → payload decoded.",
+    defenseSuccessText: "Client trust와 읽히는 payload가 봉쇄됐다. 다음 Signal Edge 노드가 열렸다.",
     debrief: {
-      title: "TRUST TAMPER 정리",
+      title: "PRIORITY CAPSULE 정리",
       summary:
-        "Request Body는 사용자가 직접 만들 수 있는 주장이다. AEGIS는 tier와 fastTrack 값을 서버 정책으로 다시 판단하지 않고 그대로 신뢰했고, 그 결과 Signal Edge의 우선순위 게이트가 조작됐다.",
+        "Request Body는 사용자가 만드는 주장이다. AEGIS는 tier 주장을 서버 정책으로 재판단하지 않고 그대로 신뢰해 우선 통행을 내줬고, 그 대가로 dispatch 토큰을 발급했다. 문제는 이어진다 — 토큰은 sealed라 불렸지만 payload는 서명만 있고 암호화되지 않아 그대로 읽혔고, 그 안에 Evidence와 세션 비밀이 평문으로 들어 있었다. header의 kid는 포장지(미끼)였다.",
       learned: [
-        "클라이언트 요청값은 신뢰 대상이 아니다.",
-        "권한, 등급, 가격, 우선순위 같은 결정은 서버가 재계산해야 한다.",
-        "값을 읽는 것 자체보다, 그 값으로 권한을 부여하는 분기가 핵심 봉쇄 대상이다.",
-        "boolean fastTrack처럼 작아 보이는 필드도 권한 결정에 연결되면 취약점이 된다.",
-        "프론트 제약이나 기본 버튼은 curl/DevTools 요청 변조를 막지 못한다.",
-        "Validation과 Authorization은 별개다. 형식이 맞아도 권한 판단은 서버 기준이어야 한다.",
+        "클라이언트 요청값(tier 등)은 주장일 뿐, 권한·등급·우선순위 결정은 서버가 재계산해야 한다.",
+        "눈에 띄는 상위 등급 이름은 미끼일 수 있다 — 응답의 shape/candidates로 진짜를 판별·복원해야 한다.",
+        "sealed(서명)와 encrypted(암호화)는 다르다. 서명된 토큰도 payload는 그대로 읽힌다.",
+        "토큰 payload에 Evidence·sessionToken 같은 secret을 평문으로 담으면 토큰만 받으면 노출된다.",
+        "header의 kid/typ 같은 봉투 필드는 포장지다 — 진짜 값은 payload claim에 있다.",
+        "Validation·Authorization·Confidentiality는 별개다. 형식이 맞아도 권한은 서버 기준이어야 하고, 읽히는 곳엔 secret을 두면 안 된다.",
       ],
-      nextTeaser: "다음 노드에서는 Signal Edge가 발급한 dispatch token 안에 어떤 데이터가 실려 있는지 확인한다.",
+      nextTeaser: "다음 노드에서는 위조한 통행권 토큰으로 Express Gate가 서명을 검증하는지 시험한다.",
     },
   },
-  level2_3: {
+  level2_3_ARCHIVED_MERGED_INTO_2_2: {
     challengeId: "level2_3",
     operationId: "op02",
     codename: "DISPATCH CAPSULE",
@@ -1443,7 +1444,7 @@ export const CAMPAIGN_STORY = {
     location: "Signal Express Gate",
     threat: "Unverified Token Claim Trust",
     briefing:
-      "DISPATCH CAPSULE에서 확인한 dispatch_token은 단순한 문자열이 아니었다. Header, Payload, Signature로 나뉜 AEGIS routing capsule이었다. 문제는 Express Gate가 이 토큰을 어떻게 검증하는지다. AEGIS는 token payload의 tier와 role claim을 보고 우선 경로를 열지만, 실제 signature를 확인하지 않는 것 같다. 이번 노드에서는 standard capsule을 VIP pass로 위조해 Express Gate가 검증 없이 claim을 신뢰하는지 확인한다.",
+      "PRIORITY CAPSULE에서 열어본 dispatch_token은 단순한 문자열이 아니었다. Header, Payload, Signature로 나뉜 AEGIS routing capsule이었다. 문제는 Express Gate가 이 토큰을 어떻게 검증하는지다. AEGIS는 token payload의 tier와 role claim을 보고 우선 경로를 열지만, 실제 signature를 확인하지 않는 것 같다. 이번 노드에서는 standard capsule을 VIP pass로 위조해 Express Gate가 검증 없이 claim을 신뢰하는지 확인한다.",
     progressiveHints: true,
     intel: [
       "2-4 터미널에는 standard dispatch_token이 DISPATCH_TOKEN 환경 변수로 준비되어 있다.",
@@ -1481,7 +1482,7 @@ export const CAMPAIGN_STORY = {
     ],
     mira: {
       briefing:
-        "2-3에서는 토큰을 열어봤지. 이번엔 그 토큰을 AEGIS가 얼마나 믿는지 시험할 차례야.",
+        "앞 노드(PRIORITY CAPSULE)에서 토큰을 열어봤지. 이번엔 그 토큰을 AEGIS가 얼마나 믿는지 시험할 차례야.",
       attack:
         "원본 token은 standard일 거야. 먼저 그대로 Express Gate에 보내봐. 거부되면 payload를 확인하고, AEGIS가 signature를 정말 검증하는지 흔들어봐.",
       attackSolved:
@@ -1543,7 +1544,7 @@ export const CAMPAIGN_STORY = {
         "payload의 tier, role 같은 claim은 signature 검증 전까지 신뢰하면 안 된다.",
         "signature 검증을 강제하지 않으면 token은 위조 가능한 신분증이 된다.",
         "권한 판단은 token claim만이 아니라 서버 측 정책이나 DB 상태와 함께 검증해야 한다.",
-        "2-3은 token payload 노출 문제였고, 2-4는 token claim 신뢰 문제다.",
+        "PRIORITY CAPSULE은 token payload 노출 문제였고, 이번엔 token claim 신뢰 문제다.",
       ],
       nextTeaser:
         "다음 노드는 Signal Edge의 봉인된 Archive다. 토큰, 경로, 무결성 우회가 한 번에 엮인다.",
@@ -3229,8 +3230,7 @@ const FALLBACK_CODENAMES = {
   level1_3: "SPLIT TRACE",
   level1_4: "ECHO CHAMBER",
   level2_1: "INVISIBLE HEADER",
-  level2_2: "TRUST TAMPER",
-  level2_3: "DISPATCH CAPSULE",
+  level2_2: "PRIORITY CAPSULE",
   level2_4: "EXPRESS FORGE",
   level2_5: "SEALED ARCHIVE",
   level3_1: "BOLA WINDOW",
