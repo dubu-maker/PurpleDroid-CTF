@@ -1037,6 +1037,17 @@ export const CAMPAIGN_STORY_EN = {
       sending: "sending…",
       responseTitle: "RESPONSE",
       evidenceHint: "evidenceShard staged in the submit field below.",
+      preflightTitle: "PREFLIGHT — predict the policy",
+      preReady: "ready to send",
+      preReason: "reason first",
+      preEndpoint: "endpoint",
+      preTokenAud: "token audience",
+      preRequired: "audience this endpoint requires",
+      preSelect: "select…",
+      preVerdict: "a correct server would",
+      allow: "ALLOW",
+      deny: "DENY",
+      preGate: "Complete the preflight prediction to unlock Send. (Compare the token audience with the endpoint's required audience.)",
     },
     mira: {
       briefing:

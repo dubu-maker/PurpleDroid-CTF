@@ -1364,6 +1364,17 @@ export const CAMPAIGN_STORY = {
       sending: "보내는 중…",
       responseTitle: "RESPONSE",
       evidenceHint: "evidenceShard가 아래 제출칸에 담겼어.",
+      preflightTitle: "PREFLIGHT — 정책 예측",
+      preReady: "전송 가능",
+      preReason: "먼저 판단해",
+      preEndpoint: "endpoint",
+      preTokenAud: "token audience",
+      preRequired: "이 endpoint가 요구하는 audience",
+      preSelect: "선택…",
+      preVerdict: "올바른 서버라면",
+      allow: "허가",
+      deny: "거부",
+      preGate: "PREFLIGHT 예측을 맞춰야 SEND가 열려. (token audience와 endpoint 요구 audience를 대조해 판단해)",
     },
     mira: {
       briefing:

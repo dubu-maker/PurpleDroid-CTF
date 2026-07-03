@@ -3811,9 +3811,35 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
   const [authValue, setAuthValue] = useState("");
   const [response, setResponse] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [requiredAudChoice, setRequiredAudChoice] = useState("");
+  const [verdict, setVerdict] = useState("");
+
+  // PREFLIGHT: before Send, the player predicts what a correct server would do.
+  // The token's audience vs this endpoint's required audience decides the policy;
+  // the drift is that the Edge serves it anyway.
+  const audiences = [...new Set(routes.map((route) => route.audience))];
+  const selectedRoute = routes.find((route) => route.path === selectedPath) || null;
+  const endpointRequiredAud = selectedRoute?.audience || "";
+  const tokenAud = capsulePayload?.aud || "";
+  const expectedVerdict =
+    tokenAud && endpointRequiredAud ? (tokenAud === endpointRequiredAud ? "allow" : "deny") : "";
+  const preflightReady = Boolean(
+    selectedPath &&
+      requiredAudChoice &&
+      requiredAudChoice === endpointRequiredAud &&
+      verdict &&
+      verdict === expectedVerdict
+  );
+
+  const pickRoute = (path) => {
+    setSelectedPath(path);
+    setRequiredAudChoice("");
+    setVerdict("");
+    setResponse(null);
+  };
 
   const send = async () => {
-    if (disabled || solved || busy || !selectedPath) {
+    if (disabled || solved || busy || !selectedPath || !preflightReady) {
       return;
     }
     setBusy(true);
@@ -3872,7 +3898,7 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
               <li key={route.path} className={selectedPath === route.path ? "selected" : ""}>
                 <button
                   type="button"
-                  onClick={() => setSelectedPath(route.path)}
+                  onClick={() => pickRoute(route.path)}
                   disabled={disabled || solved}
                 >
                   <code>{route.path}</code>
@@ -3901,14 +3927,68 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
             disabled={disabled || solved}
           />
         </div>
+
+        {selectedPath && !solved && (
+          <div className="forge-preflight">
+            <div className="section-heading">
+              <span>{labels.preflightTitle || "PREFLIGHT — predict the policy"}</span>
+              <strong className={preflightReady ? "ready" : ""}>
+                {preflightReady ? (labels.preReady || "ready to send") : (labels.preReason || "reason first")}
+              </strong>
+            </div>
+            <div className="preflight-row">
+              <span>{labels.preEndpoint || "endpoint"}</span>
+              <code>{selectedPath}</code>
+            </div>
+            <div className="preflight-row">
+              <span>{labels.preTokenAud || "token audience"}</span>
+              <code>{tokenAud || "—"}</code>
+            </div>
+            <div className="preflight-row">
+              <span>{labels.preRequired || "this endpoint requires"}</span>
+              <select
+                value={requiredAudChoice}
+                onChange={(event) => setRequiredAudChoice(event.target.value)}
+                disabled={disabled || solved}
+              >
+                <option value="">{labels.preSelect || "select…"}</option>
+                {audiences.map((audience) => (
+                  <option key={audience} value={audience}>
+                    {audience}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="preflight-row">
+              <span>{labels.preVerdict || "a correct server would"}</span>
+              <div className="preflight-verdict">
+                {["allow", "deny"].map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    className={verdict === choice ? "picked" : ""}
+                    onClick={() => setVerdict(choice)}
+                    disabled={disabled || solved}
+                  >
+                    {choice === "allow" ? (labels.allow || "ALLOW") : (labels.deny || "DENY")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           className="forge-send"
           onClick={send}
-          disabled={disabled || solved || busy || !selectedPath}
+          disabled={disabled || solved || busy || !selectedPath || !preflightReady}
         >
           {busy ? (labels.sending || "sending…") : labels.send || "SEND"}
         </button>
+        {selectedPath && !preflightReady && !solved && (
+          <p className="forge-preflight-hint">{labels.preGate || "Complete the preflight prediction to unlock Send."}</p>
+        )}
       </div>
 
       {response && (
