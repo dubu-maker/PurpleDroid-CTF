@@ -3802,6 +3802,19 @@ function courierCorrectKey(snapA, snapB) {
 }
 
 // 2-3 AUDIENCE DRIFT — Postman-style Capsule Router (replaces the terminal for this node).
+const PREFLIGHT_STATUSES = [
+  { code: "200", labelKey: "status200", fallback: "200 OK" },
+  { code: "401", labelKey: "status401", fallback: "401 Unauthorized" },
+  { code: "403", labelKey: "status403", fallback: "403 Forbidden" },
+];
+const PREFLIGHT_REASONS = [
+  { id: "sig", labelKey: "reasonSig", fallback: "signature invalid" },
+  { id: "exp", labelKey: "reasonExp", fallback: "token expired" },
+  { id: "aud", labelKey: "reasonAud", fallback: "audience mismatch" },
+  { id: "scope", labelKey: "reasonScope", fallback: "scope mismatch" },
+  { id: "tier", labelKey: "reasonTier", fallback: "tier too low" },
+];
+
 function RequestForge({ attack, forge, token, onEvidence, solved, disabled, locale }) {
   const capsuleToken = attack?.capsuleToken || "";
   const capsulePayload = attack?.capsulePayload || {};
@@ -3811,30 +3824,33 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
   const [authValue, setAuthValue] = useState("");
   const [response, setResponse] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [requiredAudChoice, setRequiredAudChoice] = useState("");
-  const [verdict, setVerdict] = useState("");
+  const [statusChoice, setStatusChoice] = useState("");
+  const [reasonIds, setReasonIds] = useState([]);
 
-  // PREFLIGHT: before Send, the player predicts what a correct server would do.
-  // The token's audience vs this endpoint's required audience decides the policy;
-  // the drift is that the Edge serves it anyway.
-  const audiences = [...new Set(routes.map((route) => route.audience))];
+  // PREFLIGHT: before Send, predict what a CORRECT Edge should return (status) and
+  // why (the failing check), by comparing the token's aud/scope with what the
+  // endpoint requires. The drift is that the real Edge returns 200 anyway.
   const selectedRoute = routes.find((route) => route.path === selectedPath) || null;
-  const endpointRequiredAud = selectedRoute?.audience || "";
   const tokenAud = capsulePayload?.aud || "";
-  const expectedVerdict =
-    tokenAud && endpointRequiredAud ? (tokenAud === endpointRequiredAud ? "allow" : "deny") : "";
-  const preflightReady = Boolean(
-    selectedPath &&
-      requiredAudChoice &&
-      requiredAudChoice === endpointRequiredAud &&
-      verdict &&
-      verdict === expectedVerdict
-  );
+  const tokenScope = capsulePayload?.scope || "";
+  const reqAud = selectedRoute?.audience || "";
+  const reqScope = selectedRoute?.scope || "";
+  const audMismatch = Boolean(reqAud) && reqAud !== "public" && tokenAud !== reqAud;
+  const scopeMismatch = Boolean(reqScope) && reqScope !== "none" && tokenScope !== reqScope;
+  const correctStatus = audMismatch || scopeMismatch ? "403" : "200";
+  const correctReasons = [audMismatch ? "aud" : null, scopeMismatch ? "scope" : null].filter(Boolean);
+  const reasonsOk =
+    reasonIds.length === correctReasons.length &&
+    correctReasons.every((id) => reasonIds.includes(id));
+  const preflightReady = Boolean(selectedPath && statusChoice === correctStatus && reasonsOk);
+
+  const toggleReason = (id) =>
+    setReasonIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
 
   const pickRoute = (path) => {
     setSelectedPath(path);
-    setRequiredAudChoice("");
-    setVerdict("");
+    setStatusChoice("");
+    setReasonIds([]);
     setResponse(null);
   };
 
@@ -3936,41 +3952,46 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
                 {preflightReady ? (labels.preReady || "ready to send") : (labels.preReason || "reason first")}
               </strong>
             </div>
-            <div className="preflight-row">
-              <span>{labels.preEndpoint || "endpoint"}</span>
-              <code>{selectedPath}</code>
+            <div className="preflight-compare">
+              <div className="preflight-row">
+                <span>{labels.preEndpoint || "endpoint"}</span>
+                <code>{selectedPath}</code>
+              </div>
+              <div className="preflight-row">
+                <span>{labels.preTokenSays || "token says"}</span>
+                <code>aud = {tokenAud || "—"} · scope = {tokenScope || "—"}</code>
+              </div>
+              <div className="preflight-row">
+                <span>{labels.preRequires || "endpoint requires"}</span>
+                <code>aud = {reqAud || "—"} · scope = {reqScope || "—"}</code>
+              </div>
             </div>
-            <div className="preflight-row">
-              <span>{labels.preTokenAud || "token audience"}</span>
-              <code>{tokenAud || "—"}</code>
-            </div>
-            <div className="preflight-row">
-              <span>{labels.preRequired || "this endpoint requires"}</span>
-              <select
-                value={requiredAudChoice}
-                onChange={(event) => setRequiredAudChoice(event.target.value)}
-                disabled={disabled || solved}
-              >
-                <option value="">{labels.preSelect || "select…"}</option>
-                {audiences.map((audience) => (
-                  <option key={audience} value={audience}>
-                    {audience}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="preflight-row">
-              <span>{labels.preVerdict || "a correct server would"}</span>
-              <div className="preflight-verdict">
-                {["allow", "deny"].map((choice) => (
+            <div className="preflight-predict">
+              <p className="preflight-prompt">{labels.preStatusPrompt || "A correct Edge should return:"}</p>
+              <div className="preflight-choices">
+                {PREFLIGHT_STATUSES.map((option) => (
                   <button
-                    key={choice}
+                    key={option.code}
                     type="button"
-                    className={verdict === choice ? "picked" : ""}
-                    onClick={() => setVerdict(choice)}
+                    className={statusChoice === option.code ? "picked" : ""}
+                    onClick={() => setStatusChoice(option.code)}
                     disabled={disabled || solved}
                   >
-                    {choice === "allow" ? (labels.allow || "ALLOW") : (labels.deny || "DENY")}
+                    {labels[option.labelKey] || option.fallback}
+                  </button>
+                ))}
+              </div>
+              <p className="preflight-prompt">{labels.preBecause || "because:"}</p>
+              <div className="preflight-choices">
+                {PREFLIGHT_REASONS.map((reason) => (
+                  <button
+                    key={reason.id}
+                    type="button"
+                    className={reasonIds.includes(reason.id) ? "picked" : ""}
+                    onClick={() => toggleReason(reason.id)}
+                    disabled={disabled || solved}
+                  >
+                    {labels[reason.labelKey] || reason.fallback}
                   </button>
                 ))}
               </div>

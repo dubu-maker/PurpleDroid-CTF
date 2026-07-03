@@ -2505,6 +2505,45 @@ button:disabled {
   color: #6affbf;
 }
 
+.request-forge .preflight-compare {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 7px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(120, 140, 180, 0.14);
+}
+
+.request-forge .preflight-prompt {
+  margin: 6px 0 3px;
+  color: #9fb0e0;
+  font-size: 12px;
+}
+
+.request-forge .preflight-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.request-forge .preflight-choices button {
+  border: 1px solid rgba(157, 78, 221, 0.35);
+  background: rgba(5, 7, 12, 0.72);
+  color: #d7ddff;
+  padding: 3px 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.request-forge .preflight-choices button:hover:not(:disabled) {
+  border-color: rgba(106, 255, 191, 0.6);
+}
+
+.request-forge .preflight-choices button.picked {
+  border-color: rgba(106, 255, 191, 0.78);
+  background: rgba(106, 255, 191, 0.12);
+  color: #6affbf;
+}
+
 .request-forge .forge-preflight-hint {
   margin: 2px 0 0;
   color: #7f8db0;
