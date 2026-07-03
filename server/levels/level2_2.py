@@ -13,7 +13,7 @@ from typing import Dict, Any, Tuple
 #   4) decode-token 으로 token payload 를 펼쳐 evidenceShard(진짜 flag) 회수.
 #      header 의 kid 는 포장지(미끼).
 LEVEL2_2_FLAG = os.getenv("PURPLEDROID_LEVEL2_2_FLAG", "FLAG{ELEVATE_THEN_DECODE}")
-HEADER_KID_DECOY = "FLAG{DISPATCH_KID_DECOY}"      # token header 의 key id — 포장지, 미끼
+HEADER_KID_DECOY = "FLAG{DISPATCH_KID_7F3A}"        # token header 의 key id — 포장지, 미끼(이름으로 자백 안 하게 중립화)
 SESSION_TOKEN_VALUE = "sd-op1004-live-7f19"         # payload 에 새는 세션 비밀(방어 p3 대상)
 SIGNATURE_PREVIEW = "signed-preview"
 
@@ -244,7 +244,12 @@ def _normalize_curl_line(command: str) -> str:
 _DECOY_TIER_WORDS = {"premium", "pro", "gold", "elite", "plus", "enterprise", "vvip", "super", "max"}
 
 
-def _standard_nudge(tier: str, payload: Dict[str, Any]) -> str:
+def _order_candidates(revealed_masked: bool) -> str:
+    """처음엔 눈에 띄는 미끼(premium)만 노출. 미끼로 실패하면 마스킹된 진짜 후보(v_p)가 드러난다."""
+    return "premium, v_p" if revealed_masked else "premium"
+
+
+def _standard_nudge(tier: str, payload: Dict[str, Any], revealed_masked: bool) -> str:
     """tier 단계 상황별 MIRA 안내 (같은 문장 반복 방지 + 복원/감별/형태 유도)."""
     low = tier.lower()
     if payload.get("fastTrack"):
@@ -254,11 +259,13 @@ def _standard_nudge(tier: str, payload: Dict[str, Any]) -> str:
     if low == "vip":
         return "MIRA: 값은 맞는데 형태가 안 맞아. x-tier-shape가 소문자니까 대소문자를 정확히 맞춰서 다시 보내.\n"
     if low in _DECOY_TIER_WORDS:
-        return "MIRA: 눈에 띄는 상위 등급 이름은 미끼야. upgrade-candidates 중 x-tier-shape(3글자 소문자)에 맞는 걸 골라 복원해.\n"
-    return "MIRA: standard로는 안 열려. 응답의 upgrade-candidates와 x-tier-shape를 봐 — 눈에 띄는 등급은 미끼고, shape에 맞는 걸 복원해서 그 등급으로 보내.\n"
+        return "MIRA: premium 같은 눈에 띄는 상위 등급 이름은 미끼야. upgrade-candidates에 드러난 마스킹 후보를 빈칸 채워 3글자 소문자로 복원해.\n"
+    if revealed_masked:
+        return "MIRA: standard로는 안 열려. upgrade-candidates에 드러난 마스킹 후보를 x-tier-shape(3글자 소문자)대로 복원해.\n"
+    return "MIRA: standard로는 안 열려. upgrade-candidates의 premium부터 그대로 claim해봐 — 표면 등급이 통하는지 먼저 시험해.\n"
 
 
-def terminal_exec(command: str) -> Tuple[str, str, int]:
+def _run(command: str, session: Dict[str, Any] = None) -> Tuple[str, str, int]:
     cmdline = _normalize_curl_line(command)
     if not cmdline:
         return "", "", 0
@@ -330,18 +337,40 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                     )
                     return output, "", 0
 
+                # 단계 공개: standard 관찰 땐 눈에 띄는 미끼(premium)만. escalation을 시도하면
+                # (standard 외 tier claim) 마스킹된 진짜 후보(v_p)와 shape 힌트가 드러난다.
+                level_state = session.setdefault("level2_2", {}) if session is not None else {}
+                revealed = bool(level_state.get("revealed_masked"))
+                if tier.lower() != "standard":
+                    revealed = True
+                    if session is not None:
+                        level_state["revealed_masked"] = True
+
+                shape_line = (
+                    "< x-tier-shape: elevated class = 3-letter lowercase legacy code\n"
+                    if revealed
+                    else ""
+                )
                 output = (
                     "> POST /api/v1/challenges/level2_2/actions/order HTTP/1.1\n"
                     f"> payload: {json_str}\n"
                     "<\n"
                     "< HTTP/1.1 200 OK\n"
-                    "< x-trust-policy: tier-claim=accepted; upgrade-candidates=premium, v_p\n"
-                    "< x-tier-shape: elevated class = 3-letter lowercase legacy code\n"
-                    '{"ok":true,"message":"Standard signal accepted","tier":"standard"}\n'
-                    + _standard_nudge(tier, payload)
+                    f"< x-trust-policy: tier-claim=accepted; upgrade-candidates={_order_candidates(revealed)}\n"
+                    + shape_line
+                    + '{"ok":true,"message":"Standard signal accepted","tier":"standard"}\n'
+                    + _standard_nudge(tier, payload, revealed)
                 )
                 return output, "", 0
             except Exception as e:
                 return "", f"JSON Parsing Error: 작은따옴표(')와 큰따옴표(\") 형식을 잘 맞춰주세요.\n상세 에러: {e}", 1
 
     return "", f"command not found: {cmdline}", 127
+
+
+def terminal_exec(command: str) -> Tuple[str, str, int]:
+    return _run(command, None)
+
+
+def terminal_exec_with_session(command: str, session: Dict[str, Any]) -> Tuple[str, str, int]:
+    return _run(command, session)

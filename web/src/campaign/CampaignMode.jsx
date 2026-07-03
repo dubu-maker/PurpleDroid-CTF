@@ -35,6 +35,24 @@ const API_BASE = normalizeApiBase(API_BASE_RAW);
 const TERMINAL_TRANSLATIONS = [
   // Server terminal/feedback text is Korean-source; these full-sentence pairs are kept
   // at the top so they match the raw Korean before any granular entry can mangle them.
+  // --- 2-2 (Priority Capsule) nudges + flag/defense feedback ---
+  ["MIRA: fastTrack은 이 게이트에선 안 통해. 응답의 upgrade-candidates 중 진짜를 x-tier-shape대로 복원해서 tier로 claim해.", "MIRA: fastTrack doesn't work at this gate. Reconstruct the real one from the response's upgrade-candidates per x-tier-shape and claim it as tier."],
+  ["MIRA: 그건 마스킹된 형태 그대로야. 빈칸을 채워서 복원해 — shape는 3글자 소문자야.", "MIRA: That's still the masked form. Fill in the blank to reconstruct it -- the shape is 3 lowercase letters."],
+  ["MIRA: 값은 맞는데 형태가 안 맞아. x-tier-shape가 소문자니까 대소문자를 정확히 맞춰서 다시 보내.", "MIRA: Right value, wrong form. x-tier-shape is lowercase, so match the case exactly and resend."],
+  ["MIRA: premium 같은 눈에 띄는 상위 등급 이름은 미끼야. upgrade-candidates에 드러난 마스킹 후보를 빈칸 채워 3글자 소문자로 복원해.", "MIRA: An eye-catching high-tier name like premium is a decoy. Fill the blank to reconstruct the masked candidate revealed in upgrade-candidates into 3 lowercase letters."],
+  ["MIRA: standard로는 안 열려. upgrade-candidates에 드러난 마스킹 후보를 x-tier-shape(3글자 소문자)대로 복원해.", "MIRA: standard won't open it. Reconstruct the masked candidate revealed in upgrade-candidates per x-tier-shape (3 lowercase letters)."],
+  ["MIRA: standard로는 안 열려. upgrade-candidates의 premium부터 그대로 claim해봐 — 표면 등급이 통하는지 먼저 시험해.", "MIRA: standard won't open it. Start by claiming the premium from upgrade-candidates as-is -- first test whether a surface tier gets through."],
+  ["MIRA: 우선 통행 승인 — priority dispatch_token이 발급됐어. Body 표면 말고 그 토큰을 decode-token으로 펼쳐 payload를 봐.", "MIRA: Priority granted -- a priority dispatch_token was issued. Don't stop at the body surface; expand that token with decode-token and read the payload."],
+  ["MIRA: header의 kid는 key id(포장지)야 — 미끼. 진짜 Evidence는 payload의 evidenceShard 평문 claim에 있어.", "MIRA: The header's kid is a key id (packaging) -- a decoy. The real Evidence is in the payload's evidenceShard plaintext claim."],
+  ["MIRA: 그건 token header의 kid(key id)야 — 포장지지 Evidence가 아니야. decode-token으로 payload의 evidenceShard claim을 봐.", "MIRA: That's the token header's kid (key id) -- packaging, not Evidence. Use decode-token and look at the payload's evidenceShard claim."],
+  ["MIRA: 그 값이 아니야. 먼저 tier를 vip로 올려 dispatch_token을 받고, decode-token으로 payload의 evidenceShard를 확인해.", "MIRA: That's not the value. First raise the tier to vip to receive the dispatch_token, then check the payload's evidenceShard with decode-token."],
+  ["MIRA: Body 표면엔 Evidence가 없어. tier를 올려 발급된 dispatch_token을 decode-token으로 펼쳐 payload claim(evidenceShard)을 봐.", "MIRA: There's no Evidence on the body surface. Raise the tier, then expand the issued dispatch_token with decode-token and read the payload claim (evidenceShard)."],
+  ["2번은 안전해. signalId 형식을 확인하는 입력 검증이고 권한/노출과 무관해.", "Line 2 is safe. It's input validation checking the signalId format, unrelated to authority or exposure."],
+  ["5번은 안전해. signalId를 payload에 넣는 건 라우팅 식별자지 secret이 아니야.", "Line 5 is safe. Putting signalId in the payload is a routing identifier, not a secret."],
+  ["6번은 안전해. route는 라우팅 메타데이터야.", "Line 6 is safe. route is routing metadata."],
+  ["9번은 안전해. note는 발급 상태 메타데이터야.", "Line 9 is safe. note is issuance-state metadata."],
+  ["11번은 안전해. 토큰 발급/서명 자체가 문제가 아니라, payload 안에 무엇을 넣었는지가 문제야.", "Line 11 is safe. Token issuance/signing itself isn't the problem -- what you put inside the payload is."],
+  ["아직 위험 라인이 남아있어. 클라이언트 tier로 권한을 주는 분기와, 읽히는 payload에 Evidence·세션 비밀을 싣는 라인을 모두 확인해.", "A risky line still remains. Check both the branch that grants authority from the client tier and the lines that put Evidence or the session secret into the readable payload."],
   // --- Operation 01 defense (per-decoy) feedback ---
   ["4번은 평범한 analytics 메타데이터야. 비밀 값을 내보내지 않아.", "Line 4 is ordinary analytics metadata. It does not emit a secret value."],
   ["5번은 MIRA의 안내 메시지야. 증거나 인증 토큰을 내보내지 않아.", "Line 5 is guidance from MIRA. It does not emit evidence or an authentication token."],
