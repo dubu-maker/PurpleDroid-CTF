@@ -864,6 +864,21 @@ def dispatch_parcel(response: Response, req: DispatchRequest = DispatchRequest()
     response.headers["X-Dispatch-Trace"] = "capsule-issued"
     return {"ok": True, "dispatch_token": token}
 
+
+class RouteRequestReq(BaseModel):
+    path: str = Field(default="", max_length=120)
+    authorization: str = Field(default="", max_length=4000)
+
+
+@app.post("/api/v1/challenges/level2_3/actions/request")
+def audience_route_request(req: RouteRequestReq, authorization: Optional[str] = Header(None)):
+    """2-3 AUDIENCE DRIFT — Capsule Router. audience 미검증 버그로 캡슐이 drift한다."""
+    from levels.level2_3 import route_request
+
+    auth = (req.authorization or authorization or "").strip()
+    body, status = route_request(req.path, auth)
+    return ok({"status": status, "response": body})
+
 @app.post("/api/v1/challenges/level2_5/actions/dispatch")
 def boss_dispatch(req: BossDispatchRequest = BossDispatchRequest()):
     from levels.level2_5 import issue_boss_token

@@ -3,104 +3,27 @@ from __future__ import annotations
 import base64
 import json
 import os
-import re
-import shlex
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
-
-LEVEL2_3_FLAG = os.getenv("PURPLEDROID_LEVEL2_3_FLAG", "FLAG{DECODE_THE_DISPATCH_PAYLOAD}")
+# 2-3 AUDIENCE DRIFT
+# 개념 사슬: 2-2(token payload는 읽힌다) → 2-3(유효한 토큰이라도 아무 endpoint에서나
+#           쓰면 안 된다) → 2-4(claim을 변조하면 signature 검증이 중요하다).
+# 재사용: 2-2 PRIORITY CAPSULE에서 넘어온 dispatch capsule(유효 서명, aud=priority-dispatch).
+# 취약점: AEGIS Edge가 토큰 서명(유효성)만 확인하고, aud(audience)가 이 endpoint용으로
+#         발급됐는지 바인딩을 검증하지 않는다. priority-dispatch 캡슐이 archive-vault로
+#         "drift"해서 Evidence를 꺼낸다.
+LEVEL2_3_FLAG = os.getenv("PURPLEDROID_LEVEL2_3_FLAG", "FLAG{AUDIENCE_DRIFT_UNCHECKED}")
 DEFAULT_SIGNAL_ID = "SIG-1004"
-HEADER_DECOY_FLAG = "FLAG{HEADER_DECOY_NOISE}"
+HEADER_DECOY_FLAG = "FLAG{HEADER_DECOY_NOISE}"   # 옛 상수 유지(2-4가 issue_dispatch_token 경유로 의존)
 SIGNATURE_PREVIEW = "signed-preview"
 
-
-STATIC: Dict[str, Any] = {
-    "id": "level2_3",
-    "level": 2,
-    "title": "2-3 Dispatch Capsule",
-    "summary": "sealed capsule처럼 보이는 dispatch_token도 payload는 읽힐 수 있다.",
-    "description": (
-        "미션: dispatch 요청 응답에서 발급된 token capsule을 조사하고, "
-        "payload claim 안에 남은 Evidence Shard를 회수하라."
-    ),
-    "status": {"attack": "available", "defense": "locked"},
-    "attack": {
-        "hints": [
-            {
-                "platform": "web",
-                "text": "F12 Network에서 /actions/dispatch 응답 Body의 dispatch_token을 확인해.",
-            },
-            {
-                "platform": "windows",
-                "text": 'curl.exe -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d "{\\"signalId\\":\\"SIG-1004\\"}"',
-            },
-            {
-                "platform": "unix",
-                "text": 'curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H "Content-Type: application/json" -d \'{"signalId":"SIG-1004"}\'',
-            },
-            {"platform": "all", "text": "dispatch_token은 점(.)으로 나뉜 segment 구조다. 첫 segment가 정답이라는 뜻은 아니야."},
-            {"platform": "all", "text": "Header는 포장지에 가깝고, 실제 claim은 payload segment에 들어갈 때가 많아."},
-            {"platform": "app", "text": "터미널에서 decode-token <dispatch_token> 명령으로 segment를 펼쳐볼 수 있어."},
-        ],
-        "terminal": {
-            "enabled": True,
-            "prompt": "$ ",
-            "maxOutputBytes": 10000,
-            "help": (
-                "Allowed:\n"
-                "  curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H \"Content-Type: application/json\" -d '{\"signalId\":\"SIG-1004\"}'\n"
-                "  decode-token <dispatch_token>\n"
-            ),
-        },
-        "flagFormat": "FLAG{...}",
-    },
-    "defense": {
-        "enabled": False,
-        "instruction": (
-            "Dispatch token 발급 자체가 문제가 아닙니다. 디코딩 가능한 payload 안에 "
-            "Evidence Shard와 sessionToken 같은 민감값을 직접 포함하는 라인을 선택해 봉쇄하세요."
-        ),
-        "code": {
-            "language": "kotlin",
-            "patchMode": "toggleComment",
-            "lines": [
-                {"no": 1, "text": "fun issueDispatchToken(signalId: String, session: Session): String {"},
-                {"no": 2, "text": "  val header = mapOf("},
-                {"no": 3, "text": '    "typ" to "AEGIS-DISPATCH",'},
-                {"no": 4, "text": '    "alg" to "HS256"'},
-                {"no": 5, "text": "  )"},
-                {"no": 6, "text": "  val payload = mutableMapOf("},
-                {"no": 7, "text": '    "signalId" to signalId,', "patchableId": "d1"},
-                {"no": 8, "text": '    "route" to "signal-edge",', "patchableId": "d2"},
-                {"no": 9, "text": '    "state" to "issued",', "patchableId": "d3"},
-                {"no": 10, "text": '    "operatorId" to session.operatorId,', "patchableId": "d4"},
-                {"no": 11, "text": '    "evidenceShard" to FLAG,', "patchableId": "p1"},
-                {"no": 12, "text": '    "sessionToken" to session.accessToken,', "patchableId": "p2"},
-                {"no": 13, "text": '    "expiresIn" to 300', "patchableId": "d5"},
-                {"no": 14, "text": "  )"},
-                {"no": 15, "text": "  return signAndEncode(header, payload)", "patchableId": "d6"},
-                {"no": 16, "text": "}"},
-            ],
-        },
-    },
-}
+# 캡슐 payload 안에 보이는 값 — 이번 레벨의 Evidence가 아니다(디코이).
+CAPSULE_PAYLOAD_DECOY = "FLAG{PRIORITY_CAPSULE_PAYLOAD}"
 
 
-PATCHABLE_IDS = {"p1", "p2", "d1", "d2", "d3", "d4", "d5", "d6"}
-REQUIRED_PATCH_IDS = {"p1", "p2"}
-
-PATCH_CORRECT_FEEDBACK = {
-    "p1": "11번은 봉쇄 대상이 맞아. Evidence Shard를 readable payload claim에 그대로 넣고 있어.",
-    "p2": "12번은 봉쇄 대상이 맞아. sessionToken도 디코딩 가능한 payload에 남으면 그대로 노출돼.",
-}
-PATCH_WRONG_FEEDBACK = {
-    "d1": "7번은 일반 식별자 claim이야. signalId는 라우팅에 필요할 수 있고, 이번 취약점의 핵심 secret은 아니야.",
-    "d2": "8번은 일반 route claim이야. 라우팅 상태 설명이지 Evidence나 세션 비밀값은 아니야.",
-    "d3": "9번은 발급 상태 claim이야. 상태값 자체보다 readable payload에 들어간 민감값을 찾아야 해.",
-    "d4": "10번 operatorId는 상황에 따라 최소화할 수 있지만, 이번 미션의 직접 봉쇄 대상은 읽히면 안 되는 secret류 claim이야.",
-    "d5": "13번 expiresIn은 만료 시간 claim이야. 토큰 운영에 필요한 일반 메타데이터로 볼 수 있어.",
-    "d6": "15번은 안전해. 토큰 발급 자체가 문제가 아니라, payload 안에 무엇을 넣었는지가 문제야.",
-}
+# -----------------------------
+# JWT-ish helpers (2-4가 issue_dispatch_token 경유로 의존)
+# -----------------------------
 def _b64url_encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
 
@@ -114,6 +37,18 @@ def _json_b64(data: Dict[str, Any]) -> str:
     return _b64url_encode(json.dumps(data, separators=(",", ":")).encode("utf-8"))
 
 
+def _decode_token(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+    chunks = token.split(".")
+    if len(chunks) != 3:
+        raise ValueError("token format error: header.payload.signature 형식이어야 해.")
+    header = json.loads(_b64url_decode(chunks[0]).decode("utf-8"))
+    payload = json.loads(_b64url_decode(chunks[1]).decode("utf-8"))
+    return header, payload, chunks[2]
+
+
+# -----------------------------
+# 2-4가 import하는 dispatch token issuer — 시그니처/동작 그대로 유지(변경 금지)
+# -----------------------------
 def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID, include_evidence: bool = True) -> str:
     sid = (signal_id or DEFAULT_SIGNAL_ID).strip() or DEFAULT_SIGNAL_ID
     header = {
@@ -132,7 +67,7 @@ def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID, include_evidence: b
         payload.update(
             {
                 "debug": "flags_are_not_always_flags",
-                "evidenceShard": LEVEL2_3_FLAG,
+                "evidenceShard": CAPSULE_PAYLOAD_DECOY,
                 "note": "payload_is_visible_not_encrypted",
             }
         )
@@ -141,32 +76,201 @@ def issue_dispatch_token(signal_id: str = DEFAULT_SIGNAL_ID, include_evidence: b
     return f"{_json_b64(header)}.{_json_b64(payload)}.{SIGNATURE_PREVIEW}"
 
 
+# -----------------------------
+# 2-3 priority capsule (2-2에서 넘어온 캡슐). aud/scope claim을 담는다.
+# -----------------------------
+def issue_priority_capsule() -> str:
+    header = {"typ": "AEGIS-DISPATCH", "alg": "HS256", "kid": "priority-edge-2f"}
+    payload = {
+        "tier": "vip",
+        "aud": "priority-dispatch",
+        "scope": "dispatch:read",
+        "route": "priority-edge",
+        "exp": "2099-12-31T23:59:59Z",
+    }
+    return f"{_json_b64(header)}.{_json_b64(payload)}.{SIGNATURE_PREVIEW}"
+
+
+CAPSULE_TOKEN = issue_priority_capsule()
+
+
+def _capsule_payload() -> Dict[str, Any]:
+    _, payload, _ = _decode_token(CAPSULE_TOKEN)
+    return payload
+
+
+# -----------------------------
+# Route registry
+# -----------------------------
+ROUTE_REGISTRY: List[Dict[str, str]] = [
+    {"path": "/dispatch/status", "audience": "priority-dispatch", "scope": "dispatch:read"},
+    {"path": "/archive/vault", "audience": "archive-vault", "scope": "archive:read"},
+    {"path": "/mirror/ping", "audience": "public", "scope": "none"},
+]
+_ROUTE_BY_PATH = {r["path"]: r for r in ROUTE_REGISTRY}
+
+
+def _valid_signature(sig: str) -> bool:
+    return sig == SIGNATURE_PREVIEW
+
+
+def route_request(path: str, authorization: str) -> Tuple[Dict[str, Any], int]:
+    """Postman 폼의 Send 처리. audience 미검증(drift) 버그가 여기 있다."""
+    path = (path or "").strip()
+    auth = (authorization or "").strip()
+
+    if not auth.lower().startswith("bearer "):
+        return {"ok": False, "error": "Authorization: Bearer <token> header required. Put the capsule token after Bearer."}, 401
+    token = auth[len("bearer "):].strip()
+    if not token:
+        return {"ok": False, "error": "Empty Bearer token. Paste the dispatch capsule token."}, 401
+
+    # AEGIS Edge가 하는 유일한 검사: 서명(유효성) 확인.
+    try:
+        _header, payload, sig = _decode_token(token)
+    except Exception:
+        return {"ok": False, "error": "token format error -- send the issued capsule as-is (header.payload.signature)."}, 401
+    if not _valid_signature(sig):
+        return {"ok": False, "error": "invalid signature -- forged or altered tokens are rejected. Send the issued capsule unchanged."}, 401
+
+    route = _ROUTE_BY_PATH.get(path)
+    if route is None:
+        return {"ok": False, "error": f"unknown route: {path or '(empty)'}. Pick a path from the ROUTE REGISTRY."}, 404
+
+    tok_aud = payload.get("aud")
+    tok_scope = payload.get("scope")
+
+    # === 취약점 ===
+    # Edge는 "토큰이 유효하고 aud claim이 존재하면" 통과시킨다. aud가 이 endpoint의
+    # required audience와 일치하는지(endpoint 바인딩)를 확인하지 않는다 → audience drift.
+    if not tok_aud:
+        return {"ok": False, "error": "no audience claim in token"}, 403  # noqa: E501 (English API response)
+
+    if path == "/archive/vault":
+        # 올바르게 구현했다면 tok_aud == 'archive-vault' 를 요구해야 하지만 그 검사가 없다.
+        return {
+            "ok": True,
+            "route": path,
+            "servedTo": tok_aud,
+            "requiredAudience": route["audience"],
+            "warning": "audience claim was present but NOT bound to this endpoint",
+            "evidenceShard": LEVEL2_3_FLAG,
+        }, 200
+
+    if path == "/dispatch/status":
+        return {
+            "ok": True,
+            "route": path,
+            "servedTo": tok_aud,
+            "status": "nominal",
+            "note": "this capsule's audience matches here — nothing sensitive to recover",
+        }, 200
+
+    if path == "/mirror/ping":
+        return {"ok": True, "route": path, "audience": "public", "pong": True}, 200
+
+    return {"ok": False, "error": "not served"}, 403
+
+
+# -----------------------------
+# flag
+# -----------------------------
 def check_flag(flag: str) -> bool:
     return flag.strip() == LEVEL2_3_FLAG
 
 
 def flag_feedback(flag: str) -> str:
-    value = flag.strip()
-    if value == HEADER_DECOY_FLAG:
-        return "그건 token header의 kid decoy야. Header는 포장지에 가깝고, Evidence Shard는 payload segment 안에 있어."
-    if value.startswith("FLAG{"):
-        return "FLAG 형태는 맞지만 이번 Evidence Shard가 아니야. decode-token으로 payload claim의 evidenceShard를 다시 확인해봐."
-    return "dispatch_token은 header.payload.signature 구조야. 먼저 payload segment를 디코딩해봐."
+    submitted = flag.strip()
+    if submitted in (CAPSULE_PAYLOAD_DECOY, HEADER_DECOY_FLAG):
+        return "MIRA: 그건 캡슐 payload/header 안에 보이던 값이야 — 이번 Evidence가 아니야. 캡슐을 archive-vault로 보내서 나온 응답의 evidenceShard를 제출해."
+    if submitted.startswith("FLAG{") and submitted != LEVEL2_3_FLAG:
+        return "MIRA: 그 값이 아니야. 유효한 캡슐을 audience가 안 맞는 endpoint(archive-vault)로 보내 — Edge가 audience를 검증 안 하면 그대로 통과돼."
+    return "MIRA: 캡슐을 ROUTE REGISTRY의 endpoint로 보내봐. audience가 맞는 dispatch/status 말고, Evidence가 있는 archive-vault로 drift시켜."
 
 
-def judge_patch(patched_ids: list[str]) -> bool:
+# -----------------------------
+# defense
+# -----------------------------
+STATIC: Dict[str, Any] = {
+    "id": "level2_3",
+    "level": 2,
+    "title": "2-3 Audience Drift",
+    "summary": "유효한 dispatch capsule을 audience가 맞지 않는 endpoint로 흘려보내 Evidence를 회수한다.",
+    "description": (
+        "미션: Priority Capsule에서 넘어온 dispatch capsule은 서명이 유효하지만 aud는 "
+        "priority-dispatch용이다. ROUTE REGISTRY를 보고, 캡슐을 audience가 다른 endpoint로 "
+        "보냈을 때 AEGIS Edge가 audience를 검증하는지 시험해라. 유효 ≠ 인가."
+    ),
+    "status": {
+        "attack": "available",
+        "defense": "locked",
+    },
+    "attack": {
+        "uiMode": "requestForge",
+        "capsuleToken": CAPSULE_TOKEN,
+        "capsulePayload": _capsule_payload(),
+        "routeRegistry": ROUTE_REGISTRY,
+        "requestPath": "/api/v1/challenges/level2_3/actions/request",
+        "hints": [
+            {"platform": "all", "text": "캡슐 payload의 aud=priority-dispatch야. ROUTE REGISTRY에서 이 audience와 맞는 endpoint(/dispatch/status)엔 민감한 게 없어."},
+            {"platform": "all", "text": "Evidence는 /archive/vault에 있어. 그건 archive-vault audience를 요구하지만, Edge가 그 바인딩을 검증하는지 캡슐을 그대로 보내서 확인해."},
+        ],
+        "terminal": {"enabled": False},
+        "flagFormat": "FLAG{...}",
+    },
+    "defense": {
+        "enabled": False,
+        "instruction": (
+            "capsule을 endpoint로 라우팅하는 흐름에서, audience 바인딩 없이 접근을 허용하는 라인을 "
+            "모두 골라 봉쇄해. 서명 검증·registry 조회·정확한 audience 일치 검사·기본 거부는 대상이 "
+            "아니다. '유효하기만 하면/aud가 있기만 하면/등급만 맞으면' 통과시키는 라인이 대상이야."
+        ),
+        "code": {
+            "language": "kotlin",
+            "patchMode": "toggleComment",
+            "lines": [
+                {"no": 1, "text": "fun serveRoute(path: String, token: DecodedToken): Response {"},
+                {"no": 2, "text": "  if (!verifySignature(token)) return unauthorized()", "patchableId": "d1"},
+                {"no": 3, "text": "  val required = routeRegistry[path] ?: return notFound()", "patchableId": "d2"},
+                {"no": 4, "text": "  if (token.aud == required.audience) return serve(path, token)", "patchableId": "d3"},
+                {"no": 5, "text": "  if (token.isValid) return serve(path, token)", "patchableId": "p1"},
+                {"no": 6, "text": "  if (token.aud != null) return serve(path, token)", "patchableId": "p2"},
+                {"no": 7, "text": '  if (token.tier == "vip") return serve(path, token)', "patchableId": "p3"},
+                {"no": 8, "text": "  return forbidden()", "patchableId": "d4"},
+                {"no": 9, "text": "}"},
+            ],
+        },
+    },
+}
+
+PATCHABLE_IDS = {"p1", "p2", "p3", "d1", "d2", "d3", "d4"}
+REQUIRED_PATCH_IDS = {"p1", "p2", "p3"}
+
+PATCH_CORRECT_FEEDBACK = {
+    "p1": "5번은 봉쇄 대상이 맞아. 서명이 유효하다는 이유만으로(valid) 접근을 허용하고 있어 — 유효 ≠ 인가야.",
+    "p2": "6번은 봉쇄 대상이 맞아. aud claim이 있기만 하면 통과시켜 — endpoint별 audience 바인딩이 없어서 drift가 생겨.",
+    "p3": "7번은 봉쇄 대상이 맞아. tier=vip는 audience가 아니야 — 등급으로 vault 접근을 허용하면 안 돼.",
+}
+PATCH_WRONG_FEEDBACK = {
+    "d1": "2번은 안전해. signature 검증은 올바른 게이트야 — 오히려 필요해.",
+    "d2": "3번은 안전해. route registry 조회일 뿐이야.",
+    "d3": "4번은 안전해 — 지우면 안 돼. token.aud가 이 endpoint의 required audience와 정확히 일치할 때만 통과시키는 올바른 검사야.",
+    "d4": "8번은 안전해. 기본 거부(forbidden) 폴백이야.",
+}
+
+
+def judge_patch(patched_ids: List[str]) -> bool:
     return set(patched_ids) == REQUIRED_PATCH_IDS
 
 
-def judge_patch_with_session(patched_ids: list[str], session: Dict[str, Any]) -> bool:
+def judge_patch_with_session(patched_ids: List[str], session: Dict[str, Any]) -> bool:
     return set(patched_ids) == REQUIRED_PATCH_IDS
 
 
-def patch_feedback(patched_ids: list[str]) -> str:
+def patch_feedback(patched_ids: List[str]) -> str:
     selected = set(patched_ids)
-    messages: list[str] = []
+    messages: List[str] = []
     seen: set[str] = set()
-
     for pid in patched_ids:
         if pid in seen:
             continue
@@ -175,142 +279,14 @@ def patch_feedback(patched_ids: list[str]) -> str:
             messages.append(PATCH_CORRECT_FEEDBACK[pid])
         elif pid in PATCH_WRONG_FEEDBACK:
             messages.append(PATCH_WRONG_FEEDBACK[pid])
-
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "Readable payload에 민감값이 아직 남아있어. Evidence만 막았는지, 세션 비밀값도 "
-            "payload claim에 남아 있는지 함께 확인해."
+            "아직 위험 라인이 남아있어. audience를 endpoint에 바인딩하지 않고 "
+            "'유효하기만 하면/aud가 있기만 하면/등급만 맞으면' 통과시키는 라인을 모두 확인해."
         )
-
-    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. 토큰이 아니라 payload 안의 민감 claim을 봐야 해."
-
-
-def _normalize_curl_line(command: str) -> str:
-    return re.sub(r"\\\s+", " ", command.strip())
-
-
-def _extract_first_json_object(text: str) -> str:
-    start = text.find("{")
-    if start < 0:
-        raise ValueError("JSON object not found")
-
-    depth = 0
-    in_string = False
-    escaped = False
-
-    for idx in range(start, len(text)):
-        ch = text[idx]
-        if escaped:
-            escaped = False
-            continue
-        if ch == "\\":
-            escaped = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start : idx + 1]
-
-    raise ValueError("Unclosed JSON object")
-
-
-def _parse_payload(raw: str) -> Dict[str, Any]:
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return json.loads(_extract_first_json_object(raw))
-
-
-def _extract_request_payload(cmdline: str) -> Dict[str, Any]:
-    parts = shlex.split(cmdline)
-    data_key = None
-    for candidate in ("--data", "--data-raw", "-d"):
-        if candidate in parts:
-            data_key = candidate
-            break
-    if not data_key:
-        return {"signalId": DEFAULT_SIGNAL_ID}
-    idx = parts.index(data_key)
-    if idx + 1 >= len(parts):
-        return {"signalId": DEFAULT_SIGNAL_ID}
-    return _parse_payload(parts[idx + 1])
-
-
-def _signal_id_from_payload(payload: Dict[str, Any]) -> str:
-    return str(payload.get("signalId") or payload.get("parcel_id") or DEFAULT_SIGNAL_ID)
-
-
-def _decode_token(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
-    chunks = token.split(".")
-    if len(chunks) != 3:
-        raise ValueError("token format error: header.payload.signature 형식이어야 해.")
-    header = json.loads(_b64url_decode(chunks[0]).decode("utf-8"))
-    payload = json.loads(_b64url_decode(chunks[1]).decode("utf-8"))
-    return header, payload, chunks[2]
-
-
-def _render_decode_token(token: str) -> str:
-    header, payload, signature = _decode_token(token)
-    return (
-        "[header]\n"
-        f"{json.dumps(header, ensure_ascii=False, indent=2)}\n\n"
-        "[payload]\n"
-        f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
-        "[signature]\n"
-        f"{signature}\n"
-    )
+    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. audience 바인딩 없이 접근을 허용하는 지점을 봐야 해."
 
 
 def terminal_exec(command: str) -> Tuple[str, str, int]:
-    cmdline = _normalize_curl_line(command)
-    if not cmdline:
-        return "", "", 0
-
-    if cmdline in ("help", "?", "h"):
-        return (
-            "Allowed:\n"
-            "  curl -i -X POST /api/v1/challenges/level2_3/actions/dispatch -H \"Content-Type: application/json\" -d '{\"signalId\":\"SIG-1004\"}'\n"
-            "  decode-token <dispatch_token>\n"
-        ), "", 0
-
-    if cmdline.startswith("curl.exe "):
-        cmdline = "curl " + cmdline[len("curl.exe ") :]
-
-    if cmdline.startswith("decode-token ") or cmdline.startswith("jwt-decode "):
-        token = cmdline.split(maxsplit=1)[1].strip()
-        if not token:
-            return "", "usage: decode-token <dispatch_token>", 1
-        try:
-            return _render_decode_token(token), "", 0
-        except Exception as exc:
-            return "", f"decode error: {exc}", 1
-
-    if cmdline.startswith("curl "):
-        if "actions/dispatch" not in cmdline:
-            return "", "Hint: /actions/dispatch 엔드포인트를 호출해봐.", 1
-        try:
-            payload = _extract_request_payload(cmdline)
-        except Exception:
-            payload = {"signalId": DEFAULT_SIGNAL_ID}
-        token = issue_dispatch_token(_signal_id_from_payload(payload))
-        body = json.dumps({"ok": True, "dispatch_token": token}, separators=(",", ":"))
-
-        if "-i" in shlex.split(cmdline) or "-v" in shlex.split(cmdline):
-            return (
-                "> POST /api/v1/challenges/level2_3/actions/dispatch HTTP/1.1\n"
-                f"> payload: {json.dumps(payload, separators=(',', ':'))}\n"
-                "<\n"
-                "< HTTP/1.1 200 OK\n"
-                "< x-dispatch-trace: capsule-issued\n"
-                f"{body}\n"
-            ), "", 0
-        return f"{body}\n", "", 0
-
-    return "", f"command not found: {cmdline}", 127
+    # 이 노드는 Capsule Router(폼)를 쓴다. 터미널은 비활성.
+    return "", "이 노드는 Capsule Router 폼을 사용해. 터미널 명령은 없어.", 2

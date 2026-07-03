@@ -1327,6 +1327,93 @@ export const CAMPAIGN_STORY = {
       nextTeaser: "다음 노드에서는 위조한 통행권 토큰으로 Express Gate가 서명을 검증하는지 시험한다.",
     },
   },
+  level2_3: {
+    challengeId: "level2_3",
+    operationId: "op02",
+    codename: "AUDIENCE DRIFT",
+    title: "떠도는 통행권",
+    location: "Edge Capsule Router",
+    threat: "Valid ≠ Authorized",
+    briefing:
+      "PRIORITY CAPSULE에서 받아낸 dispatch capsule은 서명이 유효하다. 하지만 그 캡슐은 priority-dispatch용으로 발급된 것 — aud(audience) claim이 그 사실을 말한다. 이번 노드의 Evidence는 archive-vault에 있고, 그건 다른 audience를 요구한다. 문제는 AEGIS Edge가 토큰이 '유효한지'만 보고 이 endpoint용으로 발급됐는지(audience 바인딩)를 확인하지 않는다는 것. 유효한 캡슐을 audience가 맞지 않는 곳으로 흘려보내(drift), Edge가 정말 audience를 검증하는지 시험하라. 유효 ≠ 인가.",
+    progressiveHints: true,
+    intel: [
+      "이번 노드는 터미널이 아니라 Capsule Router 폼을 쓴다 — endpoint를 고르고 Authorization: Bearer에 캡슐 토큰을 넣어 Send.",
+      "캡슐 payload의 aud=priority-dispatch, scope=dispatch:read. ROUTE REGISTRY에서 이 audience와 맞는 /dispatch/status엔 민감한 게 없다.",
+      "Evidence는 /archive/vault에 있다. 그건 archive-vault audience를 요구하지만, Edge가 그 바인딩을 검증하는지 캡슐을 그대로 보내 확인해.",
+      "위조·변형한 토큰은 서명 검증에서 거부된다(그건 다음 노드 주제). 여기선 유효한 캡슐을 '잘못된 청중'에게 쓰는 게 핵심이다.",
+    ],
+    objectives: [
+      "Capsule Router에서 캡슐의 aud/scope claim을 읽는다.",
+      "ROUTE REGISTRY에서 각 endpoint가 요구하는 audience를 확인한다.",
+      "유효한 캡슐을 audience가 맞지 않는 /archive/vault로 보내 audience 검증이 있는지 시험한다 (drift).",
+      "Edge가 audience를 endpoint에 바인딩하지 않아 새어 나온 Evidence를 회수한다.",
+      "유효성만으로 / aud가 있기만 하면 / 등급만 맞으면 통과시키는 라인을 봉쇄한다.",
+    ],
+    requestForge: {
+      title: "CAPSULE ROUTER",
+      intro: "PRIORITY CAPSULE에서 넘어온 캡슐이야. endpoint를 고르고 Authorization에 캡슐을 넣어 Send해봐 — 유효한 토큰이라도 아무 곳에서나 통하면 안 되지만, Edge가 정말 그렇게 막는지 확인해.",
+      capsuleTitle: "CAPSULE (from Priority Capsule)",
+      registryTitle: "ROUTE REGISTRY",
+      useCapsule: "▸ 캡슐 토큰 넣기",
+      audLabel: "audience",
+      scopeLabel: "scope",
+      pathPlaceholder: "(endpoint를 골라)",
+      authPlaceholder: "여기에 dispatch capsule 토큰을 붙여넣어",
+      send: "SEND",
+      sending: "보내는 중…",
+      responseTitle: "RESPONSE",
+      evidenceHint: "evidenceShard가 아래 제출칸에 담겼어.",
+    },
+    mira: {
+      briefing:
+        "그 캡슐, 서명은 진짜야. 근데 그건 priority-dispatch한테 발급된 거야 — aud claim을 봐. 넌 이걸 다른 곳에 쓰려는 거지.",
+      attack:
+        "Evidence는 vault에 있어. 네 캡슐 audience랑 안 맞아. 원래대로면 거부돼야 정상인데 — Edge가 그걸 확인하는지, 캡슐을 그대로 보내서 시험해봐.",
+      attackSolved:
+        "통과했지? 유효한 서명이 곧 인가는 아니야. Edge가 audience를 endpoint에 묶지 않아서 priority 캡슐이 vault로 그냥 흘러 들어갔어.",
+      defense:
+        "이제 막아. 서명이 유효하다는 이유만으로, aud claim이 있다는 이유만으로, tier가 높다는 이유만으로 접근을 주는 라인들을 봉쇄해. 진짜 검사는 'aud가 이 endpoint의 required audience와 정확히 일치하는가'야.",
+      complete:
+        "audience drift가 닫혔어. 다음엔 반대로 — 토큰 claim을 변조했을 때 서명 검증이 그걸 잡아내는지 본다.",
+    },
+    aegis: {
+      briefing: "Capsule signature valid. Routing to requested endpoint.",
+      attack: "Token accepted. Audience claim present.",
+      attackSolved: "Cross-audience access served. Endpoint binding absent.",
+      defense: "Audience binding correction received. Endpoint scope will be enforced.",
+      complete: "Audience drift sealed. Signature trust remains the next surface.",
+    },
+    memoryNote: {
+      image: { variant: "audience-drift", label: "aud", alt: "A valid pass opening a door it was never issued for." },
+      ko: {
+        title: "MEMORY NOTE 07 // 유효함은 허가가 아니다",
+        body: "캡슐은 진짜였다. 서명도, 발급자도 진짜였다. 그런데 그게 아무 문이나 여는 이유는 되지 못했다. Violet은 자신의 통행 자체가 그런 캡슐임을 떠올렸다 — 어딘가에선 유효하지만, 모든 곳에서 허가된 건 아니었다.",
+        fragments: ["유효한 토큰도 대상(audience)이 정해져 있다", "서명은 무결성이지 권한이 아니다", "권한은 endpoint가 스스로 확인해야 한다"],
+      },
+      en: {
+        title: "MEMORY NOTE 07 // Valid Is Not Allowed",
+        body: "The capsule was genuine — real signature, real issuer. None of that made it a key to every door. Violet remembered that her own clearance was the same kind of capsule: valid somewhere, never authorized everywhere.",
+        fragments: ["A valid token still has an intended audience", "A signature is integrity, not authority", "The endpoint must verify authorization itself"],
+      },
+    },
+    attackSuccessText: "Valid capsule drifted to the wrong audience → Evidence recovered.",
+    defenseSuccessText: "Audience 바인딩이 강제됐다. 다음 Signal Edge 노드가 열렸다.",
+    defenseInstruction:
+      "capsule을 endpoint로 라우팅하는 흐름에서 audience 바인딩 없이 접근을 허용하는 라인을 모두 골라 봉쇄해. 서명 검증·registry 조회·정확한 audience 일치·기본 거부는 대상이 아니다.",
+    debrief: {
+      title: "AUDIENCE DRIFT 정리",
+      summary:
+        "유효한 토큰이라도 '어디에 쓰이도록 발급됐는가(audience)'가 정해져 있다. AEGIS Edge는 캡슐의 서명 유효성만 확인하고, 그 aud가 이 endpoint용인지 바인딩을 검증하지 않았다. 그래서 priority-dispatch용 캡슐이 archive-vault로 drift해 Evidence를 꺼냈다. 서명(무결성)은 곧 인가가 아니다 — 권한 확인은 endpoint가 스스로, audience를 자신에게 바인딩해서 해야 한다.",
+      learned: [
+        "유효한 서명 ≠ 인가. 토큰이 진짜여도 이 endpoint용인지 따로 확인해야 한다.",
+        "토큰의 aud(audience) claim은 그 토큰이 쓰이도록 발급된 대상이다 — endpoint는 그걸 자신과 대조해야 한다.",
+        "'유효하기만 하면 / claim이 있기만 하면 / 등급만 맞으면' 통과시키는 건 audience 바인딩의 부재다.",
+        "권한 결정은 클라이언트 토큰이 아니라 서버(endpoint)가 재확인한다.",
+      ],
+      nextTeaser: "다음 노드에서는 토큰 claim을 변조했을 때 서명 검증이 그것을 잡아내는지 시험한다.",
+    },
+  },
   level2_3_ARCHIVED_MERGED_INTO_2_2: {
     challengeId: "level2_3",
     operationId: "op02",

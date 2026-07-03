@@ -35,6 +35,15 @@ const API_BASE = normalizeApiBase(API_BASE_RAW);
 const TERMINAL_TRANSLATIONS = [
   // Server terminal/feedback text is Korean-source; these full-sentence pairs are kept
   // at the top so they match the raw Korean before any granular entry can mangle them.
+  // --- 2-3 (Audience Drift) flag + defense feedback ---
+  ["MIRA: 그건 캡슐 payload/header 안에 보이던 값이야 — 이번 Evidence가 아니야. 캡슐을 archive-vault로 보내서 나온 응답의 evidenceShard를 제출해.", "MIRA: That was a value visible inside the capsule payload/header -- not this node's Evidence. Send the capsule to archive-vault and submit the evidenceShard from that response."],
+  ["MIRA: 그 값이 아니야. 유효한 캡슐을 audience가 안 맞는 endpoint(archive-vault)로 보내 — Edge가 audience를 검증 안 하면 그대로 통과돼.", "MIRA: That's not the value. Send the valid capsule to an endpoint whose audience does not match (archive-vault) -- if the Edge doesn't verify audience it goes straight through."],
+  ["MIRA: 캡슐을 ROUTE REGISTRY의 endpoint로 보내봐. audience가 맞는 dispatch/status 말고, Evidence가 있는 archive-vault로 drift시켜.", "MIRA: Send the capsule to an endpoint in the ROUTE REGISTRY. Not dispatch/status where the audience matches -- drift it to archive-vault where the Evidence is."],
+  ["2번은 안전해. signature 검증은 올바른 게이트야 — 오히려 필요해.", "Line 2 is safe. Signature verification is the correct gate -- you need it."],
+  ["3번은 안전해. route registry 조회일 뿐이야.", "Line 3 is safe. It's just a route registry lookup."],
+  ["4번은 안전해 — 지우면 안 돼. token.aud가 이 endpoint의 required audience와 정확히 일치할 때만 통과시키는 올바른 검사야.", "Line 4 is safe -- don't remove it. It's the correct check that passes only when token.aud exactly matches this endpoint's required audience."],
+  ["8번은 안전해. 기본 거부(forbidden) 폴백이야.", "Line 8 is safe. It's the default-deny (forbidden) fallback."],
+  ["아직 위험 라인이 남아있어. audience를 endpoint에 바인딩하지 않고 '유효하기만 하면/aud가 있기만 하면/등급만 맞으면' 통과시키는 라인을 모두 확인해.", "A risky line still remains. Check every line that grants access on 'just valid / just has an aud / just high tier' without binding the audience to the endpoint."],
   // --- 2-2 (Priority Capsule) nudges + flag/defense feedback ---
   ["MIRA: fastTrack은 이 게이트에선 안 통해. 응답의 upgrade-candidates 중 진짜를 x-tier-shape대로 복원해서 tier로 claim해.", "MIRA: fastTrack doesn't work at this gate. Reconstruct the real one from the response's upgrade-candidates per x-tier-shape and claim it as tier."],
   ["MIRA: 그건 마스킹된 형태 그대로야. 빈칸을 채워서 복원해 — shape는 3글자 소문자야.", "MIRA: That's still the masked form. Fill in the blank to reconstruct it -- the shape is 3 lowercase letters."],
@@ -3790,6 +3799,132 @@ function courierCorrectKey(snapA, snapB) {
     }
   }
   return "";
+}
+
+// 2-3 AUDIENCE DRIFT — Postman-style Capsule Router (replaces the terminal for this node).
+function RequestForge({ attack, forge, token, onEvidence, solved, disabled, locale }) {
+  const capsuleToken = attack?.capsuleToken || "";
+  const capsulePayload = attack?.capsulePayload || {};
+  const routes = Array.isArray(attack?.routeRegistry) ? attack.routeRegistry : [];
+  const labels = forge || {};
+  const [selectedPath, setSelectedPath] = useState("");
+  const [authValue, setAuthValue] = useState("");
+  const [response, setResponse] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const send = async () => {
+    if (disabled || solved || busy || !selectedPath) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await apiRequest("/challenges/level2_3/actions/request", {
+        method: "POST",
+        token,
+        body: { path: selectedPath, authorization: `Bearer ${authValue.trim()}` },
+      });
+      const localized = localizeStructuredValue(data, locale, "level2_3");
+      setResponse(localized);
+      const shard = localized?.response?.evidenceShard;
+      if (shard && onEvidence) {
+        onEvidence(shard);
+      }
+    } catch (error) {
+      setResponse({ status: "ERR", response: { error: error.message || "request failed" } });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const statusOk = Number(response?.status) >= 200 && Number(response?.status) < 300;
+
+  return (
+    <section className="signal-board-panel request-forge">
+      <div className="section-heading">
+        <span>{labels.title || "CAPSULE ROUTER"}</span>
+        <strong>{busy ? "sending" : solved ? "resolved" : "ready"}</strong>
+      </div>
+      {labels.intro && <p className="signal-board-intro">{labels.intro}</p>}
+
+      <div className="forge-grid">
+        <div className="forge-capsule">
+          <div className="section-heading">
+            <span>{labels.capsuleTitle || "CAPSULE"}</span>
+          </div>
+          <code className="forge-token">{capsuleToken}</code>
+          <button
+            type="button"
+            className="forge-use"
+            onClick={() => setAuthValue(capsuleToken)}
+            disabled={disabled || solved}
+          >
+            {labels.useCapsule || "use capsule token"}
+          </button>
+          <pre className="forge-payload">{JSON.stringify(capsulePayload, null, 2)}</pre>
+        </div>
+
+        <div className="forge-registry">
+          <div className="section-heading">
+            <span>{labels.registryTitle || "ROUTE REGISTRY"}</span>
+          </div>
+          <ul>
+            {routes.map((route) => (
+              <li key={route.path} className={selectedPath === route.path ? "selected" : ""}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPath(route.path)}
+                  disabled={disabled || solved}
+                >
+                  <code>{route.path}</code>
+                  <small>
+                    {labels.audLabel || "audience"}: {route.audience} · {labels.scopeLabel || "scope"}: {route.scope}
+                  </small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="forge-request">
+        <div className="forge-line">
+          <span className="forge-method">POST</span>
+          <span className="forge-path">{selectedPath || labels.pathPlaceholder || "(pick a route)"}</span>
+        </div>
+        <div className="forge-line forge-auth">
+          <span className="forge-authlabel">Authorization: Bearer</span>
+          <input
+            type="text"
+            value={authValue}
+            onChange={(event) => setAuthValue(event.target.value)}
+            placeholder={labels.authPlaceholder || "paste the dispatch capsule token"}
+            disabled={disabled || solved}
+          />
+        </div>
+        <button
+          type="button"
+          className="forge-send"
+          onClick={send}
+          disabled={disabled || solved || busy || !selectedPath}
+        >
+          {busy ? (labels.sending || "sending…") : labels.send || "SEND"}
+        </button>
+      </div>
+
+      {response && (
+        <div className={`forge-response ${statusOk ? "ok" : "err"}`}>
+          <div className="section-heading">
+            <span>{labels.responseTitle || "RESPONSE"}</span>
+            <strong>HTTP {response.status}</strong>
+          </div>
+          <pre>{JSON.stringify(response.response, null, 2)}</pre>
+          {response?.response?.evidenceShard && (
+            <p className="forge-hint">{labels.evidenceHint || "evidenceShard staged in the submit field below."}</p>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function CourierTriage({
@@ -7852,19 +7987,31 @@ function CampaignMode() {
                 ) : null
               ) : (
                 <>
-                  <MissionConsole
-                    disabled={phase === "LOCKED" || phase === "BRIEFING"}
-                    prompt={prompt}
-                    placeholder={story.consolePlaceholder}
-                    onExec={handleExec}
-                    logs={consoleLogs}
-                    command={command}
-                    setCommand={setCommand}
-                    busy={consoleBusy}
-                    helpText={story.consoleGuide || detail?.attack?.terminal?.help}
-                    helpDefaultOpen={currentId === "level3_boss"}
-                    starter={story.consoleStarter}
-                  />
+                  {currentId === "level2_3" ? (
+                    <RequestForge
+                      attack={detail?.attack}
+                      forge={story.requestForge}
+                      token={token}
+                      onEvidence={setFlagValue}
+                      solved={evidenceSolved}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                      locale={locale}
+                    />
+                  ) : (
+                    <MissionConsole
+                      disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                      prompt={prompt}
+                      placeholder={story.consolePlaceholder}
+                      onExec={handleExec}
+                      logs={consoleLogs}
+                      command={command}
+                      setCommand={setCommand}
+                      busy={consoleBusy}
+                      helpText={story.consoleGuide || detail?.attack?.terminal?.help}
+                      helpDefaultOpen={currentId === "level3_boss"}
+                      starter={story.consoleStarter}
+                    />
+                  )}
 
                   {currentId === "level1_2" && (
                     <Level12SignalBoard

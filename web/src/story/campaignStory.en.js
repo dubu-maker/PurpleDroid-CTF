@@ -1006,6 +1006,87 @@ export const CAMPAIGN_STORY_EN = {
         "The next node forges that capsule into a VIP pass to test whether the Express Gate verifies its signature.",
     },
   },
+  level2_3: {
+    title: "Drifting Clearance",
+    briefing:
+      "The dispatch capsule you carried from PRIORITY CAPSULE has a valid signature. But it was issued for priority-dispatch — its aud (audience) claim says so. This node's Evidence sits in the archive-vault, which requires a different audience. The flaw: AEGIS Edge only checks whether a token is valid, not whether it was issued for this endpoint (audience binding). Drift the valid capsule to an endpoint whose audience it does not match and see whether the Edge really enforces it. Valid is not authorized.",
+    intel: [
+      "This node uses a Capsule Router form, not a terminal — pick an endpoint and put the capsule token in Authorization: Bearer, then Send.",
+      "The capsule payload has aud=priority-dispatch, scope=dispatch:read. In the ROUTE REGISTRY, /dispatch/status matches that audience and holds nothing sensitive.",
+      "The Evidence is at /archive/vault. It requires the archive-vault audience — send the capsule as-is to check whether the Edge binds that audience.",
+      "Forged or altered tokens are rejected at signature verification (that's the next node). Here the point is using a valid capsule on the wrong audience.",
+    ],
+    objectives: [
+      "Read the capsule's aud/scope claims in the Capsule Router.",
+      "Check the audience each endpoint requires in the ROUTE REGISTRY.",
+      "Send the valid capsule to /archive/vault whose audience it does not match to test for audience validation (drift).",
+      "Recover the Evidence that leaks because the Edge never binds the audience to the endpoint.",
+      "Seal every line that grants access on mere validity / a present aud / a high tier.",
+    ],
+    requestForge: {
+      title: "CAPSULE ROUTER",
+      intro: "This is the capsule carried from PRIORITY CAPSULE. Pick an endpoint, put the capsule in Authorization, and Send — a valid token shouldn't work everywhere, but check whether the Edge actually enforces that.",
+      capsuleTitle: "CAPSULE (from Priority Capsule)",
+      registryTitle: "ROUTE REGISTRY",
+      useCapsule: "▸ insert capsule token",
+      audLabel: "audience",
+      scopeLabel: "scope",
+      pathPlaceholder: "(pick an endpoint)",
+      authPlaceholder: "paste the dispatch capsule token here",
+      send: "SEND",
+      sending: "sending…",
+      responseTitle: "RESPONSE",
+      evidenceHint: "evidenceShard staged in the submit field below.",
+    },
+    mira: {
+      briefing:
+        "That capsule's signature is real. But it was issued for priority-dispatch — look at the aud claim. You're about to use it somewhere else.",
+      attack:
+        "The Evidence is in the vault. Its audience doesn't match yours. It should be rejected — send the capsule as-is and see whether the Edge actually checks.",
+      attackSolved:
+        "It went through, didn't it. A valid signature is not authorization. The Edge never bound audience to the endpoint, so the priority capsule drifted straight into the vault.",
+      defense:
+        "Now seal it. Remove the lines that grant access just because the token is valid, just because an aud claim exists, or just because the tier is high. The real check is whether aud exactly matches this endpoint's required audience.",
+      complete:
+        "Audience drift is closed. Next we flip it — whether signature verification catches a tampered token claim.",
+    },
+    aegis: {
+      briefing: "Capsule signature valid. Routing to requested endpoint.",
+      attack: "Token accepted. Audience claim present.",
+      attackSolved: "Cross-audience access served. Endpoint binding absent.",
+      defense: "Audience binding correction received. Endpoint scope will be enforced.",
+      complete: "Audience drift sealed. Signature trust remains the next surface.",
+    },
+    memoryNote: {
+      image: { variant: "audience-drift", label: "aud", alt: "A valid pass opening a door it was never issued for." },
+      ko: {
+        title: "MEMORY NOTE 07 // 유효함은 허가가 아니다",
+        body: "캡슐은 진짜였다. 서명도, 발급자도 진짜였다. 그런데 그게 아무 문이나 여는 이유는 되지 못했다. Violet은 자신의 통행 자체가 그런 캡슐임을 떠올렸다 — 어딘가에선 유효하지만, 모든 곳에서 허가된 건 아니었다.",
+        fragments: ["유효한 토큰도 대상(audience)이 정해져 있다", "서명은 무결성이지 권한이 아니다", "권한은 endpoint가 스스로 확인해야 한다"],
+      },
+      en: {
+        title: "MEMORY NOTE 07 // Valid Is Not Allowed",
+        body: "The capsule was genuine — real signature, real issuer. None of that made it a key to every door. Violet remembered that her own clearance was the same kind of capsule: valid somewhere, never authorized everywhere.",
+        fragments: ["A valid token still has an intended audience", "A signature is integrity, not authority", "The endpoint must verify authorization itself"],
+      },
+    },
+    attackSuccessText: "Valid capsule drifted to the wrong audience → Evidence recovered.",
+    defenseSuccessText: "Audience binding is enforced. The next Signal Edge node is open.",
+    defenseInstruction:
+      "In the capsule routing flow, select every line that grants access without binding audience to the endpoint. Signature verification, registry lookup, the exact audience match, and the default deny are not targets.",
+    debrief: {
+      title: "AUDIENCE DRIFT Debrief",
+      summary:
+        "Even a valid token has an intended audience — where it was issued to be used. AEGIS Edge only verified the capsule's signature and never checked that its aud was meant for this endpoint. So a priority-dispatch capsule drifted into the archive-vault and leaked the Evidence. A signature is integrity, not authorization — the endpoint itself must verify authority by binding the audience to itself.",
+      learned: [
+        "Valid signature ≠ authorized. A genuine token still must be checked as intended for this endpoint.",
+        "A token's aud (audience) claim is who it was issued for — the endpoint must compare it to itself.",
+        "Granting on 'just valid / just has a claim / just high tier' is the absence of audience binding.",
+        "Authorization is re-verified by the server (endpoint), not trusted from the client token.",
+      ],
+      nextTeaser: "The next node tests whether signature verification catches a tampered token claim.",
+    },
+  },
   level2_3_ARCHIVED_MERGED_INTO_2_2: {
     title: "Decode The Dispatch Capsule",
     briefing:
