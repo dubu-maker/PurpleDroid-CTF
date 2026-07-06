@@ -911,7 +911,8 @@ def enter_express_lane(authorization: Optional[str] = Header(None)):
     return {
         "status": "denied",
         "lane": "standard",
-        "message": "VIP token required",
+        "reason": detail.get("reason"),
+        "message": detail.get("message", "access denied"),
         "claims": detail["payload"],
     }
 

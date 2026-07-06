@@ -3802,60 +3802,39 @@ function courierCorrectKey(snapA, snapB) {
 }
 
 // 2-3 AUDIENCE DRIFT — Postman-style Capsule Router (replaces the terminal for this node).
-const PREFLIGHT_STATUSES = [
-  { code: "200", labelKey: "status200", fallback: "200 OK" },
-  { code: "401", labelKey: "status401", fallback: "401 Unauthorized" },
-  { code: "403", labelKey: "status403", fallback: "403 Forbidden" },
-];
-const PREFLIGHT_REASONS = [
-  { id: "sig", labelKey: "reasonSig", fallback: "signature invalid" },
-  { id: "exp", labelKey: "reasonExp", fallback: "token expired" },
-  { id: "aud", labelKey: "reasonAud", fallback: "audience mismatch" },
-  { id: "scope", labelKey: "reasonScope", fallback: "scope mismatch" },
-  { id: "tier", labelKey: "reasonTier", fallback: "tier too low" },
-];
+function decodeCapsule(raw) {
+  try {
+    const parts = (raw || "").trim().split(".");
+    if (parts.length < 2) throw new Error("not a token");
+    const b64 = (s) => {
+      let t = s.replace(/-/g, "+").replace(/_/g, "/");
+      while (t.length % 4) t += "=";
+      return atob(t);
+    };
+    return { header: JSON.parse(b64(parts[0])), payload: JSON.parse(b64(parts[1])) };
+  } catch (err) {
+    return { error: "decode failed — not a valid capsule token" };
+  }
+}
 
 function RequestForge({ attack, forge, token, onEvidence, solved, disabled, locale }) {
-  const capsuleToken = attack?.capsuleToken || "";
-  const capsulePayload = attack?.capsulePayload || {};
+  const wallet = Array.isArray(attack?.capsuleWallet) ? attack.capsuleWallet : [];
   const routes = Array.isArray(attack?.routeRegistry) ? attack.routeRegistry : [];
   const labels = forge || {};
   const [selectedPath, setSelectedPath] = useState("");
   const [authValue, setAuthValue] = useState("");
   const [response, setResponse] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [statusChoice, setStatusChoice] = useState("");
-  const [reasonIds, setReasonIds] = useState([]);
+  const [decodeInput, setDecodeInput] = useState("");
+  const [decoded, setDecoded] = useState(null);
 
-  // PREFLIGHT: before Send, predict what a CORRECT Edge should return (status) and
-  // why (the failing check), by comparing the token's aud/scope with what the
-  // endpoint requires. The drift is that the real Edge returns 200 anyway.
-  const selectedRoute = routes.find((route) => route.path === selectedPath) || null;
-  const tokenAud = capsulePayload?.aud || "";
-  const tokenScope = capsulePayload?.scope || "";
-  const reqAud = selectedRoute?.audience || "";
-  const reqScope = selectedRoute?.scope || "";
-  const audMismatch = Boolean(reqAud) && reqAud !== "public" && tokenAud !== reqAud;
-  const scopeMismatch = Boolean(reqScope) && reqScope !== "none" && tokenScope !== reqScope;
-  const correctStatus = audMismatch || scopeMismatch ? "403" : "200";
-  const correctReasons = [audMismatch ? "aud" : null, scopeMismatch ? "scope" : null].filter(Boolean);
-  const reasonsOk =
-    reasonIds.length === correctReasons.length &&
-    correctReasons.every((id) => reasonIds.includes(id));
-  const preflightReady = Boolean(selectedPath && statusChoice === correctStatus && reasonsOk);
-
-  const toggleReason = (id) =>
-    setReasonIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
-
-  const pickRoute = (path) => {
-    setSelectedPath(path);
-    setStatusChoice("");
-    setReasonIds([]);
-    setResponse(null);
+  const runDecode = (raw) => {
+    setDecodeInput(raw);
+    setDecoded(raw.trim() ? decodeCapsule(raw) : null);
   };
 
   const send = async () => {
-    if (disabled || solved || busy || !selectedPath || !preflightReady) {
+    if (disabled || solved || busy || !selectedPath || !authValue.trim()) {
       return;
     }
     setBusy(true);
@@ -3889,20 +3868,36 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
       {labels.intro && <p className="signal-board-intro">{labels.intro}</p>}
 
       <div className="forge-grid">
-        <div className="forge-capsule">
+        <div className="forge-wallet">
           <div className="section-heading">
-            <span>{labels.capsuleTitle || "CAPSULE"}</span>
+            <span>{labels.walletTitle || "CAPSULE WALLET"}</span>
           </div>
-          <code className="forge-token">{capsuleToken}</code>
-          <button
-            type="button"
-            className="forge-use"
-            onClick={() => setAuthValue(capsuleToken)}
-            disabled={disabled || solved}
-          >
-            {labels.useCapsule || "use capsule token"}
-          </button>
-          <pre className="forge-payload">{JSON.stringify(capsulePayload, null, 2)}</pre>
+          <ul>
+            {wallet.map((cap) => (
+              <li key={cap.id}>
+                <div className="forge-wallet-head">
+                  <strong>{cap.label || cap.id}</strong>
+                </div>
+                <code className="forge-token">{cap.token}</code>
+                <div className="forge-wallet-actions">
+                  <button
+                    type="button"
+                    onClick={() => runDecode(cap.token)}
+                    disabled={disabled || solved}
+                  >
+                    {labels.decodeBtn || "decode"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthValue(cap.token)}
+                    disabled={disabled || solved}
+                  >
+                    {labels.useCapsule || "use"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="forge-registry">
@@ -3914,18 +3909,35 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
               <li key={route.path} className={selectedPath === route.path ? "selected" : ""}>
                 <button
                   type="button"
-                  onClick={() => pickRoute(route.path)}
+                  onClick={() => {
+                    setSelectedPath(route.path);
+                    setResponse(null);
+                  }}
                   disabled={disabled || solved}
                 >
                   <code>{route.path}</code>
-                  <small>
-                    {labels.audLabel || "audience"}: {route.audience} · {labels.scopeLabel || "scope"}: {route.scope}
-                  </small>
                 </button>
               </li>
             ))}
           </ul>
         </div>
+      </div>
+
+      <div className="forge-decode">
+        <div className="section-heading">
+          <span>{labels.decodeTitle || "DECODE"}</span>
+        </div>
+        <input
+          type="text"
+          value={decodeInput}
+          onChange={(event) => runDecode(event.target.value)}
+          placeholder={labels.decodePlaceholder || "paste a capsule token to read its claims"}
+          disabled={disabled || solved}
+        />
+        {decoded && decoded.error && <p className="forge-hint err">{decoded.error}</p>}
+        {decoded && !decoded.error && (
+          <pre className="forge-payload">{JSON.stringify(decoded.payload, null, 2)}</pre>
+        )}
       </div>
 
       <div className="forge-request">
@@ -3939,76 +3951,24 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
             type="text"
             value={authValue}
             onChange={(event) => setAuthValue(event.target.value)}
-            placeholder={labels.authPlaceholder || "paste the dispatch capsule token"}
+            placeholder={labels.authPlaceholder || "paste a capsule token"}
             disabled={disabled || solved}
           />
         </div>
-
-        {selectedPath && !solved && (
-          <div className="forge-preflight">
-            <div className="section-heading">
-              <span>{labels.preflightTitle || "PREFLIGHT — predict the policy"}</span>
-              <strong className={preflightReady ? "ready" : ""}>
-                {preflightReady ? (labels.preReady || "ready to send") : (labels.preReason || "reason first")}
-              </strong>
-            </div>
-            <div className="preflight-compare">
-              <div className="preflight-row">
-                <span>{labels.preEndpoint || "endpoint"}</span>
-                <code>{selectedPath}</code>
-              </div>
-              <div className="preflight-row">
-                <span>{labels.preTokenSays || "token says"}</span>
-                <code>aud = {tokenAud || "—"} · scope = {tokenScope || "—"}</code>
-              </div>
-              <div className="preflight-row">
-                <span>{labels.preRequires || "endpoint requires"}</span>
-                <code>aud = {reqAud || "—"} · scope = {reqScope || "—"}</code>
-              </div>
-            </div>
-            <div className="preflight-predict">
-              <p className="preflight-prompt">{labels.preStatusPrompt || "A correct Edge should return:"}</p>
-              <div className="preflight-choices">
-                {PREFLIGHT_STATUSES.map((option) => (
-                  <button
-                    key={option.code}
-                    type="button"
-                    className={statusChoice === option.code ? "picked" : ""}
-                    onClick={() => setStatusChoice(option.code)}
-                    disabled={disabled || solved}
-                  >
-                    {labels[option.labelKey] || option.fallback}
-                  </button>
-                ))}
-              </div>
-              <p className="preflight-prompt">{labels.preBecause || "because:"}</p>
-              <div className="preflight-choices">
-                {PREFLIGHT_REASONS.map((reason) => (
-                  <button
-                    key={reason.id}
-                    type="button"
-                    className={reasonIds.includes(reason.id) ? "picked" : ""}
-                    onClick={() => toggleReason(reason.id)}
-                    disabled={disabled || solved}
-                  >
-                    {labels[reason.labelKey] || reason.fallback}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         <button
           type="button"
           className="forge-send"
           onClick={send}
-          disabled={disabled || solved || busy || !selectedPath || !preflightReady}
+          disabled={disabled || solved || busy || !selectedPath || !authValue.trim()}
         >
           {busy ? (labels.sending || "sending…") : labels.send || "SEND"}
         </button>
-        {selectedPath && !preflightReady && !solved && (
-          <p className="forge-preflight-hint">{labels.preGate || "Complete the preflight prediction to unlock Send."}</p>
+        {!response && !solved && (
+          <p className="forge-preflight-hint">
+            {labels.probeNudge ||
+              "Decode each capsule, send them, and read why each is rejected. The reason that never appears is the one that isn't enforced."}
+          </p>
         )}
       </div>
 

@@ -36,7 +36,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다."},
             {"platform": "all", "text": "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해."},
             {"platform": "all", "text": "jwt-decode로 token payload의 warehouse_path와 gate 값을 확인해."},
-            {"platform": "all", "text": "원본 token은 standard/user다. 2-4의 signature 검증 누락 흐름을 다시 떠올려."},
+            {"platform": "all", "text": "원본 token은 standard/user다. payload만 바꾸면 서명이 깨져 거부돼 — 2-4의 alg=none 우회를 다시 떠올려."},
             {"platform": "all", "text": "권한을 올려도 integrity_blocked가 남는다면 Body가 아니라 Header 쪽을 봐."},
             {"platform": "all", "text": "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다."},
             {"platform": "all", "text": "AEGIS가 실수로 신뢰하는 개발용 우회 Header가 남아 있다. Header 이름은 X-Integrity 계열이다."},
@@ -174,6 +174,26 @@ def forge_none_token(base_token: str) -> str:
     return f"{h}.{p}."
 
 
+def _verify_boss_signature(token: str) -> Tuple[bool, str]:
+    parts = token.split(".")
+    if len(parts) != 3:
+        return False, "malformed"
+    try:
+        header = json.loads(_b64url_decode(parts[0]).decode("utf-8"))
+    except Exception:
+        return False, "malformed"
+    alg = str(header.get("alg", "")).strip().lower()
+    # === 의도적 취약점 (2-4와 동일한 축) ===
+    # alg가 "none"이면 서명 검증을 통째로 건너뛴다. 그 외에는 실제로 HS256 검증한다.
+    if alg == "none":
+        return True, "alg-none-accepted"
+    signing_input = f"{parts[0]}.{parts[1]}".encode("utf-8")
+    expected = _b64url_encode(hmac.new(LEVEL2_5_SECRET.encode("utf-8"), signing_input, hashlib.sha256).digest())
+    if hmac.compare_digest(parts[2], expected):
+        return True, "signature-valid"
+    return False, "signature-invalid"
+
+
 def evaluate_open_request(
     token: str,
     warehouse_path: str,
@@ -181,6 +201,10 @@ def evaluate_open_request(
     integrity_bypass: Optional[str],
 ) -> Tuple[bool, Dict[str, Any]]:
     header, payload = decode_jwt_unsafe(token)
+    # 서명 검증(2-4와 일치): payload를 바꾸면 서명이 깨져 거부된다. alg=none만 검증을 우회한다.
+    sig_ok, _sig_reason = _verify_boss_signature(token)
+    if not sig_ok:
+        return False, {"reason": "signature_invalid", "header": header, "payload": payload}
     required_path = str(payload.get("warehouse_path", "")).strip()
     effective_tier = (tier or payload.get("tier", "") or "").strip().lower()
     role = str(payload.get("role", "")).strip().lower()
@@ -378,6 +402,8 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                         out["hint"] = "권한 claim은 올라갔지만 integrity gate가 남아있어. gate는 단서고, 실제로는 개발용 우회 Header를 추가해야 해."
                 else:
                     out["hint"] = "Archive path는 맞지만 integrity gate가 먼저 막고 있어. 먼저 token claim을 올리고, 그 다음 개발용 우회 Header를 확인해."
+            elif detail["reason"] == "signature_invalid":
+                out["hint"] = "서명 검증에 걸렸어. payload를 바꾸면 서명이 깨져 — 비밀키 없이는 재서명 못 해. 2-4처럼 alg=none으로 검증을 건너뛰게 만들어."
             elif detail["reason"] == "vip_required":
                 out["hint"] = "Archive path는 맞지만 token claim이 standard/user 상태야."
             elif detail["reason"] == "path_mismatch":
