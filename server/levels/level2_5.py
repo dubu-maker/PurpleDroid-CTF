@@ -210,12 +210,15 @@ def evaluate_open_request(
     role = str(payload.get("role", "")).strip().lower()
     integrity_ok = (integrity_bypass or "").strip() == INTEGRITY_BYPASS_VALUE
 
+    # 검증 순서: path → 권한(tier/role) → integrity header.
+    # 권한을 먼저 보게 해서 "먼저 claim을 올리고 그다음 integrity header" 라는
+    # 학습 흐름과 거부 순서를 일치시킨다(원본 토큰은 integrity보다 vip_required가 먼저).
     if not required_path or warehouse_path.strip() != required_path:
         return False, {"reason": "path_mismatch", "header": header, "payload": payload}
-    if not integrity_ok:
-        return False, {"reason": "integrity_blocked", "header": header, "payload": payload}
     if effective_tier != "vip" and role != "admin":
         return False, {"reason": "vip_required", "header": header, "payload": payload}
+    if not integrity_ok:
+        return False, {"reason": "integrity_blocked", "header": header, "payload": payload}
     return True, {"reason": "ok", "header": header, "payload": payload}
 
 
@@ -390,18 +393,13 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
                 "message": detail["reason"],
             }
             if detail["reason"] == "integrity_blocked":
-                payload = detail.get("payload", {})
-                tier = str(payload.get("tier", "")).lower()
-                role = str(payload.get("role", "")).lower()
-                if tier == "vip" or role == "admin":
-                    if bypass:
-                        out["hint"] = "Header 이름은 맞지만 값이 달라. 이 bypass는 gate 이름이 아니라 devtools가 후킹된 상태를 나타내는 정확한 값을 요구해."
-                    elif "integrity" in cmdline.lower() or "gate" in cmdline.lower():
-                        out["hint"] = "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass."
-                    else:
-                        out["hint"] = "권한 claim은 올라갔지만 integrity gate가 남아있어. gate는 단서고, 실제로는 개발용 우회 Header를 추가해야 해."
+                # 이 시점엔 이미 path와 권한(tier/role)을 통과했다 — 남은 건 integrity header뿐.
+                if bypass:
+                    out["hint"] = "Header 이름은 맞지만 값이 달라. 이 bypass는 gate 이름이 아니라 devtools가 후킹된 상태를 나타내는 정확한 값을 요구해."
+                elif "integrity" in cmdline.lower() or "gate" in cmdline.lower():
+                    out["hint"] = "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass."
                 else:
-                    out["hint"] = "Archive path는 맞지만 integrity gate가 먼저 막고 있어. 먼저 token claim을 올리고, 그 다음 개발용 우회 Header를 확인해."
+                    out["hint"] = "권한은 통과했어. 이제 AEGIS가 실수로 신뢰하는 개발용 우회 Header를 추가해야 해."
             elif detail["reason"] == "signature_invalid":
                 out["hint"] = "서명 검증에 걸렸어. payload를 바꾸면 서명이 깨져 — 비밀키 없이는 재서명 못 해. 2-4처럼 alg=none으로 검증을 건너뛰게 만들어."
             elif detail["reason"] == "vip_required":

@@ -7601,14 +7601,15 @@ function CampaignMode() {
         body: { flag: value },
       });
       const isCorrect = Boolean(data.correct);
-      const localizedFailure =
-        story.attackFailureByValue?.[value] || story.attackFailureText;
+      // 오답 문구 우선순위: 값별 전용 문구 → 서버의 세부 flag_feedback → 일반 story 문구.
+      // (일반 문구가 서버의 구체적 힌트를 가리지 않도록 serverMessage를 먼저 둔다.)
+      const perValueFailure = story.attackFailureByValue?.[value];
       const serverMessage = localizeTerminalOutput(data.message, locale, currentId);
       setEvidenceResult({
         correct: isCorrect,
         message: isCorrect
           ? story.attackSuccessText
-          : localizedFailure || serverMessage || "Evidence rejected.",
+          : perValueFailure || serverMessage || story.attackFailureText || "Evidence rejected.",
       });
 
       if (isCorrect) {

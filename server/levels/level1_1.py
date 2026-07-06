@@ -325,11 +325,13 @@ def _select_logcat_lines(options: Dict[str, Any]) -> Tuple[List[str], str, int]:
     uses_all_buffers = "all" in buffers
 
     if not options.get("dump"):
+        # live 스트림은 "성공했지만 불완전"하다. 불완전 신호는 exit code가 아니라 출력 내용
+        # (오염 경고 + 버퍼 덤프 안내)으로 주고, exit 0으로 둔다 — exit 2면 UI가 실패처럼 빨갛게 렌더된다.
         lines = _filter_logcat_tags(LIVE_LOGCAT_LINES, tags)
         return (
             lines,
-            "AEGIS: live log stream is polluted; buffered snapshot acquisition required\n",
-            2,
+            "AEGIS: live log stream is polluted; retained buffer dump (-d) required\n",
+            0,
         )
 
     if uses_all_buffers:
