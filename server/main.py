@@ -316,7 +316,7 @@ def _status_for(session: Dict[str, Any], level_id: str) -> Dict[str, str]:
         )
         return {"attack": attack, "defense": defense}
 
-    boss_prereqs = ("level2_1", "level2_2", "level2_4")
+    boss_prereqs = ("level2_1", "level2_2", "level2_3", "level2_4")
     level3_boss_prereqs = ("level3_1", "level3_2", "level3_3", "level3_4", "level3_5")
     level4_prereqs = ("level3_boss",)
     level4_2_prereqs = ("level4_1",)
