@@ -3917,7 +3917,7 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
       let display;
       let kind;
       if (status >= 200 && status < 300 && body.evidenceShard) {
-        display = "served — audience never checked";
+        display = "served despite audience mismatch";
         kind = "flag";
         if (onEvidence) onEvidence(body.evidenceShard);
       } else if (status >= 200 && status < 300) {
@@ -3944,10 +3944,10 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
 
   const showTell = ledger.length >= 2 && !solved;
   const checks = [
-    { label: "SIGNATURE", tag: seen.sig ? "enforced" : "not yet", on: seen.sig },
-    { label: "EXPIRY", tag: seen.exp ? "enforced" : "not yet", on: seen.exp },
-    { label: "SCOPE", tag: seen.scope ? "enforced" : "not yet", on: seen.scope },
-    { label: "AUDIENCE", tag: showTell ? "never seen ⚠" : "not yet", tell: true },
+    { label: "SIGNATURE", tag: seen.sig ? "observed" : "not yet", on: seen.sig },
+    { label: "EXPIRY", tag: seen.exp ? "observed" : "not yet", on: seen.exp },
+    { label: "SCOPE", tag: seen.scope ? "observed" : "not yet", on: seen.scope },
+    { label: "AUDIENCE", tag: showTell ? "missing" : "not yet", tell: true },
   ];
 
   return (
@@ -3985,7 +3985,7 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
                     <div className="ad-chips">
                       <span className="ad-chip"><i>aud</i> {claims.aud || "—"}</span>
                       <span className="ad-chip"><i>scope</i> {claims.scope || "—"}</span>
-                      <span className={`ad-chip ${claims.expOk ? "ok" : "bad"}`}><i>exp</i> {claims.expOk ? "valid" : "expired"}</span>
+                      <span className={`ad-chip ${claims.expOk ? "" : "bad"}`}><i>exp</i> {claims.expOk ? "valid" : "expired"}</span>
                     </div>
                   ) : (
                     <div className="ad-sealed">claims sealed <span>— decode to read aud / scope / exp</span></div>
@@ -4037,7 +4037,7 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
               <div className="ad-ledger-rows">
                 {ledger.map((row, i) => (
                   <div key={i} className={`ad-ledger-row ${row.kind}`}>
-                    <div className="ad-ledger-top"><span className="route">{row.route}</span><span className="code">HTTP {row.code}</span></div>
+                    <div className="ad-ledger-top"><span className="route">{row.route}</span><span className="code">HTTP {row.code}{row.kind === "flag" ? " · ANOMALY" : ""}</span></div>
                     <div className="ad-ledger-reason">{row.cap} · {row.display}</div>
                   </div>
                 ))}

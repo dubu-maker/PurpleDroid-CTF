@@ -6901,8 +6901,9 @@ button:disabled {
   --ad-violet-bd: oklch(0.69 0.17 300 / 0.5);
   --ad-violet-bg: oklch(0.69 0.17 300 / 0.16);
   --ad-green: oklch(0.74 0.16 158);
+  --ad-cyan: oklch(0.8 0.11 205);
   --ad-red: oklch(0.66 0.2 22);
-  --ad-amber: oklch(0.84 0.14 90);
+  --ad-amber: oklch(0.82 0.14 78);
   --ad-panel: #0f0f15;
   --ad-inset: #14141c;
   --ad-line: rgba(150, 150, 180, 0.13);
@@ -7017,7 +7018,7 @@ button:disabled {
 .ad-forge .ad-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
 .ad-forge .ad-chip { font-size: 11px; color: var(--ad-t2); border: 1px solid var(--ad-line); border-radius: 6px; padding: 3px 8px; }
 .ad-forge .ad-chip i { opacity: 0.55; font-style: normal; margin-right: 4px; }
-.ad-forge .ad-chip.ok { color: var(--ad-green); border-color: oklch(0.74 0.16 158 / 0.4); }
+.ad-forge .ad-chip.ok { color: var(--ad-t2); border-color: var(--ad-line); }
 .ad-forge .ad-chip.bad { color: var(--ad-red); border-color: oklch(0.66 0.2 22 / 0.45); }
 .ad-forge .ad-sealed { margin-top: 10px; font-size: 11.5px; color: var(--ad-t5); }
 .ad-forge .ad-sealed span { color: #3f3f48; }
@@ -7030,7 +7031,7 @@ button:disabled {
 .ad-forge .ad-routes button.sel { border-color: var(--ad-violet-bd); background: var(--ad-violet-bg); color: #e6ddff; }
 .ad-forge .ad-routes button:disabled { opacity: 0.45; cursor: default; }
 .ad-forge .ad-request-line { margin-top: 13px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--ad-line); background: var(--ad-inset); border-radius: 10px; padding: 11px 14px; flex-wrap: wrap; }
-.ad-forge .ad-method { font-size: 12px; font-weight: 600; color: var(--ad-green); }
+.ad-forge .ad-method { font-size: 12px; font-weight: 600; color: var(--ad-t3); }
 .ad-forge .ad-route { font-size: 12.5px; color: var(--ad-t4); }
 .ad-forge .ad-route.set { color: var(--ad-t1); }
 .ad-forge .ad-sep { width: 1px; height: 18px; background: rgba(150, 150, 180, 0.18); }
@@ -7051,22 +7052,22 @@ button:disabled {
 .ad-forge .ad-check.on .ad-check-label { color: var(--ad-t2); }
 .ad-forge .ad-check.tell .ad-check-label { color: var(--ad-amber); }
 .ad-forge .ad-check-tag { font-size: 11px; letter-spacing: 0.08em; color: var(--ad-t5); }
-.ad-forge .ad-check.on .ad-check-tag { color: var(--ad-green); }
+.ad-forge .ad-check.on .ad-check-tag { color: var(--ad-cyan); }
 .ad-forge .ad-check.tell .ad-check-tag { color: var(--ad-amber); }
 .ad-forge .ad-tell-note { margin-top: 11px; border-top: 1px dashed oklch(0.84 0.14 90 / 0.35); padding-top: 10px; font-size: 11.5px; line-height: 1.5; color: var(--ad-amber); }
 .ad-forge .ad-ledger-empty { margin: 11px 0 0; font-size: 11px; color: var(--ad-t5); line-height: 1.5; }
 .ad-forge .ad-ledger-rows { display: flex; flex-direction: column; gap: 7px; margin-top: 11px; }
 .ad-forge .ad-ledger-row { border: 1px solid var(--ad-line); border-radius: 8px; padding: 8px 10px; }
 .ad-forge .ad-ledger-row.reject { border-color: oklch(0.66 0.2 22 / 0.28); background: oklch(0.66 0.2 22 / 0.06); }
-.ad-forge .ad-ledger-row.flag { border-color: oklch(0.74 0.16 158 / 0.35); background: oklch(0.74 0.16 158 / 0.08); }
+.ad-forge .ad-ledger-row.flag { border-color: oklch(0.82 0.14 78 / 0.45); background: oklch(0.82 0.14 78 / 0.09); }
 .ad-forge .ad-ledger-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .ad-forge .ad-ledger-top .route { font-size: 11px; color: var(--ad-t2); }
 .ad-forge .ad-ledger-top .code { font-size: 11px; color: var(--ad-t4); }
 .ad-forge .ad-ledger-row.reject .code { color: var(--ad-red); }
-.ad-forge .ad-ledger-row.flag .code { color: var(--ad-green); }
+.ad-forge .ad-ledger-row.flag .code { color: var(--ad-amber); font-weight: 700; }
 .ad-forge .ad-ledger-reason { font-size: 10.5px; margin-top: 3px; color: var(--ad-t4); }
 .ad-forge .ad-ledger-row.reject .ad-ledger-reason { color: oklch(0.72 0.14 22); }
-.ad-forge .ad-ledger-row.flag .ad-ledger-reason { color: var(--ad-green); }
+.ad-forge .ad-ledger-row.flag .ad-ledger-reason { color: var(--ad-amber); }
 
 @media (max-width: 820px) {
   .ad-forge .ad-side { max-width: none; }
