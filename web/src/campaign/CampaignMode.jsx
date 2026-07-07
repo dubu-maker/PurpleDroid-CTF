@@ -6822,7 +6822,7 @@ function CampaignMode() {
   const [me, setMe] = useState(null);
   const [challenges, setChallenges] = useState([]);
   const [currentId, setCurrentId] = useState("");
-  const [adStage, setAdStage] = useState(null); // 2-3 stage tabs: null (landing) | "brief" | "infiltrate"
+  const [adStage, setAdStage] = useState("brief"); // 2-3 stage tabs: "brief" (default) | "infiltrate"
   const [detail, setDetail] = useState(null);
   const [briefingSeenById, setBriefingSeenById] = useState({});
   const [consoleLogs, setConsoleLogs] = useState([]);
@@ -7272,9 +7272,9 @@ function CampaignMode() {
     }
   }, [currentId, phase]);
 
-  // Land on the mission with no stage tab pre-selected (just scene + dialogue + tabs).
+  // Land on the mission with the BRIEF tab pre-selected (objectives + field intel visible).
   useEffect(() => {
-    setAdStage(null);
+    setAdStage("brief");
   }, [currentId]);
 
   const handleSelectMapNode = useCallback(
