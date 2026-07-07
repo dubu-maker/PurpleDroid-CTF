@@ -3399,8 +3399,8 @@ function localizedBlock(block, locale) {
   return block?.[locale] || block?.ko || block || null;
 }
 
-function DialoguePanel({ story, phase, attackNotice, locale }) {
-  const key = phaseStoryKey(phase, attackNotice);
+function DialoguePanel({ story, phase, attackNotice, locale, dialogueKey }) {
+  const key = dialogueKey || phaseStoryKey(phase, attackNotice);
   const residue = localizedBlock(story.residue, locale)?.[key];
   const residueSpeaker = story.residue?.speaker || "mira";
   const residueClass = residueSpeaker === "aegis" ? "aegis-residue" : "mira-residue";
@@ -6822,7 +6822,7 @@ function CampaignMode() {
   const [me, setMe] = useState(null);
   const [challenges, setChallenges] = useState([]);
   const [currentId, setCurrentId] = useState("");
-  const [adStage, setAdStage] = useState("infiltrate"); // 2-3 stage tabs: "brief" | "infiltrate"
+  const [adStage, setAdStage] = useState(null); // 2-3 stage tabs: null (landing) | "brief" | "infiltrate"
   const [detail, setDetail] = useState(null);
   const [briefingSeenById, setBriefingSeenById] = useState({});
   const [consoleLogs, setConsoleLogs] = useState([]);
@@ -7262,6 +7262,19 @@ function CampaignMode() {
       return;
     }
     setBriefingSeenById((prev) => ({ ...prev, [currentId]: true }));
+  }, [currentId]);
+
+  // 2-3 Audience Drift has no manual briefing gate: auto-advance past BRIEFING so the
+  // BRIEF / INFILTRATE tabs are always available and there is no "Begin Infiltration" button.
+  useEffect(() => {
+    if (currentId === "level2_3" && phase === "BRIEFING") {
+      setBriefingSeenById((prev) => (prev.level2_3 ? prev : { ...prev, level2_3: true }));
+    }
+  }, [currentId, phase]);
+
+  // Land on the mission with no stage tab pre-selected (just scene + dialogue + tabs).
+  useEffect(() => {
+    setAdStage(null);
   }, [currentId]);
 
   const handleSelectMapNode = useCallback(
@@ -8190,33 +8203,54 @@ function CampaignMode() {
 
               {currentId === "level2_3" ? (
                 <div className="dialogue-tabs-sticky">
-                  <DialoguePanel story={story} phase={phase} attackNotice={attackNotice} locale={locale} />
-                  {phase !== "BRIEFING" && (
-                    <div className="ad-stepper mission-stage-tabs">
-                      <button
-                        type="button"
-                        className={`ad-step step-brief ${adStage === "brief" ? "active" : ""}`}
-                        onClick={() => setAdStage("brief")}
-                      >
-                        <span className="ad-step-num">01</span>
-                        <div className="ad-step-txt"><strong>BRIEF</strong><span>read the target</span></div>
-                      </button>
-                      <button
-                        type="button"
-                        className={`ad-step step-infiltrate ${adStage === "infiltrate" ? "active" : ""}`}
-                        onClick={() => setAdStage("infiltrate")}
-                      >
-                        <span className="ad-step-num">02</span>
-                        <div className="ad-step-txt"><strong>INFILTRATE</strong><span>route the capsule</span></div>
-                      </button>
-                    </div>
-                  )}
+                  <DialoguePanel
+                    story={story}
+                    phase={phase}
+                    attackNotice={attackNotice}
+                    locale={locale}
+                    dialogueKey={attackNotice ? undefined : "briefing"}
+                  />
+                  <div className="ad-stepper mission-stage-tabs">
+                    <button
+                      type="button"
+                      className={`ad-step step-brief ${adStage === "brief" ? "active" : ""}`}
+                      onClick={() => setAdStage("brief")}
+                    >
+                      <span className="ad-step-num">01</span>
+                      <div className="ad-step-txt"><strong>BRIEF</strong><span>read the target</span></div>
+                    </button>
+                    <button
+                      type="button"
+                      className={`ad-step step-infiltrate ${adStage === "infiltrate" ? "active" : ""}`}
+                      onClick={() => setAdStage("infiltrate")}
+                    >
+                      <span className="ad-step-num">02</span>
+                      <div className="ad-step-txt"><strong>INFILTRATE</strong><span>route the capsule</span></div>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <DialoguePanel story={story} phase={phase} attackNotice={attackNotice} locale={locale} />
               )}
 
-              {(currentId !== "level2_3" || phase === "BRIEFING" || adStage === "brief") && (
+              {currentId === "level2_3" ? (
+                adStage === "brief" && (
+                  <div className="ad-brief">
+                    <ObjectivePanel
+                      story={story}
+                      phase={phase}
+                      hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
+                    />
+
+                    <IntelPanel
+                      key={activeChallengeId}
+                      items={story.intel}
+                      progressive={story.progressiveHints}
+                      locale={locale}
+                    />
+                  </div>
+                )
+              ) : (
                 <div className="mission-duo">
                   <ObjectivePanel
                     story={story}

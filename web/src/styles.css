@@ -6954,6 +6954,43 @@ button:disabled {
 .mission-stage-tabs .ad-step.step-infiltrate .ad-step-txt strong { color: oklch(0.88 0.1 300); }
 .mission-stage-tabs .ad-step-txt span { font-size: 11px; color: #9a9aa8; }
 
+/* 2-3 BRIEF tab: OBJECTIVES (numbered) stacked full-width over FIELD INTEL (green, H-hints) */
+.ad-brief { display: flex; flex-direction: column; gap: 14px; }
+.ad-brief .objective-panel,
+.ad-brief .intel-panel { width: 100%; }
+/* numbered objectives */
+.ad-brief .objective-panel ol { counter-reset: adobj; gap: 12px; }
+.ad-brief .objective-panel li { counter-increment: adobj; grid-template-columns: 30px 1fr; gap: 14px; align-items: baseline; color: #d6def0; }
+.ad-brief .objective-panel li span { font-size: 0; line-height: 0; }
+.ad-brief .objective-panel li span::before {
+  content: counter(adobj, decimal-leading-zero);
+  font-family: "Share Tech Mono", "Consolas", "Menlo", monospace;
+  font-size: 13px; letter-spacing: 0.06em; color: #6b7285;
+}
+.ad-brief .objective-panel li.done span::before { color: oklch(0.82 0.13 160); }
+/* field intel as green H-labelled hint boxes + full-width reveal */
+.ad-brief .intel-panel { border-color: oklch(0.72 0.15 160 / 0.32); }
+.ad-brief .intel-panel .section-heading span,
+.ad-brief .intel-panel .section-heading strong { color: oklch(0.82 0.14 160); }
+.ad-brief .intel-panel ul { counter-reset: adhint; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.ad-brief .intel-panel li {
+  counter-increment: adhint; display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start;
+  background: oklch(0.72 0.15 160 / 0.05); border-left: 2px solid oklch(0.72 0.15 160 / 0.6);
+  border-radius: 8px; padding: 12px 14px; color: #cdd6e6; line-height: 1.55;
+}
+.ad-brief .intel-panel li + li { margin-top: 0; }
+.ad-brief .intel-panel li::before {
+  content: "H" counter(adhint); font-family: "Share Tech Mono", "Consolas", "Menlo", monospace;
+  font-size: 13px; font-weight: 700; color: oklch(0.83 0.14 160); letter-spacing: 0.04em;
+}
+.ad-brief .intel-panel .hint-toggle {
+  display: block; width: 100%; margin-top: 12px; text-align: center;
+  border: 1px solid oklch(0.72 0.15 160 / 0.4); background: oklch(0.72 0.15 160 / 0.08);
+  color: oklch(0.86 0.14 160); border-radius: 10px; padding: 12px 14px;
+  font-family: "Share Tech Mono", "Consolas", "Menlo", monospace; letter-spacing: 0.06em; cursor: pointer;
+}
+.ad-brief .intel-panel .hint-toggle:hover { background: oklch(0.72 0.15 160 / 0.16); border-color: oklch(0.72 0.15 160 / 0.6); }
+
 .ad-forge .ad-zone { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
 .ad-forge .ad-router { flex: 1 1 440px; min-width: 0; border: 1px solid oklch(0.69 0.17 300 / 0.3); background: var(--ad-panel); border-radius: 14px; padding: 18px 20px; box-shadow: 0 0 0 1px oklch(0.69 0.17 300 / 0.08), 0 18px 40px rgba(0, 0, 0, 0.35); }
 .ad-forge .ad-panel-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; letter-spacing: 0.2em; color: var(--ad-t1); }
