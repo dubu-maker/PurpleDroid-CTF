@@ -3869,173 +3869,198 @@ function decodeCapsule(raw) {
   }
 }
 
+function capsuleClaims(token) {
+  const d = decodeCapsule(token);
+  if (!d || d.error) return null;
+  const p = d.payload || {};
+  let expOk = true;
+  if (p.exp) {
+    const t = Date.parse(String(p.exp).replace(" ", "T"));
+    if (!Number.isNaN(t)) expOk = t > Date.now();
+  }
+  return { aud: p.aud, scope: p.scope, exp: p.exp, expOk };
+}
+
+// 2-3 Audience Drift — redesigned Capsule Router (checks observed + rejection ledger).
 function RequestForge({ attack, forge, token, onEvidence, solved, disabled, locale }) {
   const wallet = Array.isArray(attack?.capsuleWallet) ? attack.capsuleWallet : [];
   const routes = Array.isArray(attack?.routeRegistry) ? attack.routeRegistry : [];
   const labels = forge || {};
+  const [decodedIds, setDecodedIds] = useState({});
+  const [loadedId, setLoadedId] = useState(null);
   const [selectedPath, setSelectedPath] = useState("");
-  const [authValue, setAuthValue] = useState("");
-  const [response, setResponse] = useState(null);
+  const [ledger, setLedger] = useState([]);
+  const [seen, setSeen] = useState({ sig: true, exp: false, scope: false });
   const [busy, setBusy] = useState(false);
-  const [decodeInput, setDecodeInput] = useState("");
-  const [decoded, setDecoded] = useState(null);
 
-  const runDecode = (raw) => {
-    setDecodeInput(raw);
-    setDecoded(raw.trim() ? decodeCapsule(raw) : null);
-  };
+  const loadedCap = wallet.find((c) => c.id === loadedId) || null;
+  const canSend = Boolean(loadedCap && selectedPath && !busy && !disabled && !solved);
+  const locked = disabled || solved;
+
+  const toggleDecode = (id) => setDecodedIds((m) => ({ ...m, [id]: !m[id] }));
 
   const send = async () => {
-    if (disabled || solved || busy || !selectedPath || !authValue.trim()) {
-      return;
-    }
+    if (!canSend) return;
     setBusy(true);
+    const capName = loadedCap.label || loadedCap.id;
     try {
       const data = await apiRequest("/challenges/level2_3/actions/request", {
         method: "POST",
         token,
-        body: { path: selectedPath, authorization: `Bearer ${authValue.trim()}` },
+        body: { path: selectedPath, authorization: `Bearer ${loadedCap.token.trim()}` },
       });
       const localized = localizeStructuredValue(data, locale, "level2_3");
-      setResponse(localized);
-      const shard = localized?.response?.evidenceShard;
-      if (shard && onEvidence) {
-        onEvidence(shard);
+      const status = Number(localized?.status) || 0;
+      const body = localized?.response || {};
+      const reasonKey = body.reason || (status === 401 ? "exp" : status === 403 ? "scope" : "ok");
+      let display;
+      let kind;
+      if (status >= 200 && status < 300 && body.evidenceShard) {
+        display = "served — audience never checked";
+        kind = "flag";
+        if (onEvidence) onEvidence(body.evidenceShard);
+      } else if (status >= 200 && status < 300) {
+        display = "served — nothing sensitive here";
+        kind = "ok";
+      } else if (reasonKey === "exp") {
+        display = "token expired (exp)";
+        kind = "reject";
+      } else if (reasonKey === "scope") {
+        display = "scope mismatch — needs archive:read";
+        kind = "reject";
+      } else {
+        display = body.error || "denied";
+        kind = "reject";
       }
+      setSeen((sv) => ({ ...sv, exp: sv.exp || reasonKey === "exp", scope: sv.scope || reasonKey === "scope" }));
+      setLedger((L) => [{ cap: capName, route: selectedPath, code: status || "ERR", display, kind }, ...L].slice(0, 6));
     } catch (error) {
-      setResponse({ status: "ERR", response: { error: error.message || "request failed" } });
+      setLedger((L) => [{ cap: capName, route: selectedPath, code: "ERR", display: error.message || "request failed", kind: "reject" }, ...L].slice(0, 6));
     } finally {
       setBusy(false);
     }
   };
 
-  const statusOk = Number(response?.status) >= 200 && Number(response?.status) < 300;
+  const showTell = ledger.length >= 2 && !solved;
+  const checks = [
+    { label: "SIGNATURE", tag: seen.sig ? "enforced" : "not yet", on: seen.sig },
+    { label: "EXPIRY", tag: seen.exp ? "enforced" : "not yet", on: seen.exp },
+    { label: "SCOPE", tag: seen.scope ? "enforced" : "not yet", on: seen.scope },
+    { label: "AUDIENCE", tag: showTell ? "never seen ⚠" : "not yet", tell: true },
+  ];
+
+  const steps = [
+    { key: "brief", num: "01", label: "BRIEF", sub: "read the target" },
+    { key: "infiltrate", num: "02", label: "INFILTRATE", sub: "route the capsule" },
+    { key: "patch", num: "03", label: "PATCH", sub: "seal the leak" },
+  ];
+  const activeStep = solved ? "patch" : "infiltrate";
+  const stepIdx = solved ? 2 : 1;
 
   return (
-    <section className="signal-board-panel request-forge">
-      <div className="section-heading">
-        <span>{labels.title || "CAPSULE ROUTER"}</span>
-        <strong>{busy ? "sending" : solved ? "resolved" : "ready"}</strong>
-      </div>
-      {labels.intro && <p className="signal-board-intro">{labels.intro}</p>}
-
-      <div className="forge-grid">
-        <div className="forge-wallet">
-          <div className="section-heading">
-            <span>{labels.walletTitle || "CAPSULE WALLET"}</span>
+    <section className="request-forge ad-forge">
+      <div className="ad-stepper">
+        {steps.map((st, i) => (
+          <div key={st.key} className={`ad-step step-${st.key} ${st.key === activeStep ? "active" : ""} ${i < stepIdx ? "done" : ""}`}>
+            <span className="ad-step-num">{st.num}</span>
+            <div className="ad-step-txt"><strong>{st.label}</strong><span>{st.sub}</span></div>
           </div>
-          <ul>
-            {wallet.map((cap) => (
-              <li key={cap.id}>
-                <div className="forge-wallet-head">
-                  <strong>{cap.label || cap.id}</strong>
-                </div>
-                <code className="forge-token">{cap.token}</code>
-                <div className="forge-wallet-actions">
-                  <button
-                    type="button"
-                    onClick={() => runDecode(cap.token)}
-                    disabled={disabled || solved}
-                  >
-                    {labels.decodeBtn || "decode"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthValue(cap.token)}
-                    disabled={disabled || solved}
-                  >
-                    {labels.useCapsule || "use"}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        ))}
+      </div>
 
-        <div className="forge-registry">
-          <div className="section-heading">
-            <span>{labels.registryTitle || "ROUTE REGISTRY"}</span>
+      <div className="ad-zone">
+        <div className="ad-router">
+          <div className="ad-panel-head">
+            <span>{labels.title || "CAPSULE ROUTER"}</span>
+            <strong className={busy ? "busy" : solved ? "ok" : ""}>{busy ? "sending" : solved ? "resolved" : "ready"}</strong>
           </div>
-          <ul>
-            {routes.map((route) => (
-              <li key={route.path} className={selectedPath === route.path ? "selected" : ""}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedPath(route.path);
-                    setResponse(null);
-                  }}
-                  disabled={disabled || solved}
-                >
-                  <code>{route.path}</code>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="forge-decode">
-        <div className="section-heading">
-          <span>{labels.decodeTitle || "DECODE"}</span>
-        </div>
-        <input
-          type="text"
-          value={decodeInput}
-          onChange={(event) => runDecode(event.target.value)}
-          placeholder={labels.decodePlaceholder || "paste a capsule token to read its claims"}
-          disabled={disabled || solved}
-        />
-        {decoded && decoded.error && <p className="forge-hint err">{decoded.error}</p>}
-        {decoded && !decoded.error && (
-          <pre className="forge-payload">{JSON.stringify(decoded.payload, null, 2)}</pre>
-        )}
-      </div>
-
-      <div className="forge-request">
-        <div className="forge-line">
-          <span className="forge-method">POST</span>
-          <span className="forge-path">{selectedPath || labels.pathPlaceholder || "(pick a route)"}</span>
-        </div>
-        <div className="forge-line forge-auth">
-          <span className="forge-authlabel">Authorization: Bearer</span>
-          <input
-            type="text"
-            value={authValue}
-            onChange={(event) => setAuthValue(event.target.value)}
-            placeholder={labels.authPlaceholder || "paste a capsule token"}
-            disabled={disabled || solved}
-          />
-        </div>
-
-        <button
-          type="button"
-          className="forge-send"
-          onClick={send}
-          disabled={disabled || solved || busy || !selectedPath || !authValue.trim()}
-        >
-          {busy ? (labels.sending || "sending…") : labels.send || "SEND"}
-        </button>
-        {!response && !solved && (
-          <p className="forge-preflight-hint">
-            {labels.probeNudge ||
-              "Decode each capsule, send them, and read why each is rejected. The reason that never appears is the one that isn't enforced."}
+          <p className="ad-router-desc">
+            {labels.intro || "Decode a capsule to read its claims, load it, pick a route, and send. Each rejection is logged on the right."}
           </p>
-        )}
-      </div>
 
-      {response && (
-        <div className={`forge-response ${statusOk ? "ok" : "err"}`}>
-          <div className="section-heading">
-            <span>{labels.responseTitle || "RESPONSE"}</span>
-            <strong>HTTP {response.status}</strong>
+          <div className="ad-capsules">
+            {wallet.map((cap) => {
+              const dec = decodedIds[cap.id];
+              const claims = dec ? capsuleClaims(cap.token) : null;
+              const loaded = loadedId === cap.id;
+              return (
+                <div key={cap.id} className={`ad-capsule ${loaded ? "loaded" : ""}`}>
+                  <div className="ad-capsule-head">
+                    <div className="ad-capsule-name">
+                      <span className="ad-dot" />
+                      <strong>{cap.label || cap.id}</strong>
+                      {loaded && <span className="ad-loaded">LOADED</span>}
+                    </div>
+                    <div className="ad-capsule-actions">
+                      <button type="button" onClick={() => toggleDecode(cap.id)} disabled={locked}>{dec ? "hide" : "decode"}</button>
+                      <button type="button" className="use" onClick={() => setLoadedId(cap.id)} disabled={locked}>use</button>
+                    </div>
+                  </div>
+                  {dec && claims ? (
+                    <div className="ad-chips">
+                      <span className="ad-chip"><i>aud</i> {claims.aud || "—"}</span>
+                      <span className="ad-chip"><i>scope</i> {claims.scope || "—"}</span>
+                      <span className={`ad-chip ${claims.expOk ? "ok" : "bad"}`}><i>exp</i> {claims.expOk ? "valid" : "expired"}</span>
+                    </div>
+                  ) : (
+                    <div className="ad-sealed">claims sealed <span>— decode to read aud / scope / exp</span></div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <pre>{JSON.stringify(response.response, null, 2)}</pre>
-          {response?.response?.evidenceShard && (
-            <p className="forge-hint">{labels.evidenceHint || "evidenceShard staged in the submit field below."}</p>
-          )}
+
+          <div className="ad-send-bar">
+            <div className="ad-registry-label">{labels.registryTitle || "ROUTE REGISTRY"}</div>
+            <div className="ad-routes">
+              {routes.map((r) => (
+                <button key={r.path} type="button" className={selectedPath === r.path ? "sel" : ""} onClick={() => setSelectedPath(r.path)} disabled={locked}>{r.path}</button>
+              ))}
+            </div>
+            <div className="ad-request-line">
+              <span className="ad-method">POST</span>
+              <span className={`ad-route ${selectedPath ? "set" : ""}`}>{selectedPath || "(pick a route)"}</span>
+              <span className="ad-sep" />
+              <span className="ad-bearer">Bearer</span>
+              <span className={`ad-loaded-label ${loadedCap ? "set" : ""}`}>{loadedCap ? (loadedCap.label || loadedCap.id) : "load a capsule"}</span>
+              <button type="button" className="ad-send" onClick={send} disabled={!canSend}>{busy ? "…" : "SEND"}</button>
+            </div>
+          </div>
         </div>
-      )}
+
+        <div className="ad-side">
+          <div className="ad-checks">
+            <div className="ad-side-label">CHECKS OBSERVED</div>
+            <div className="ad-checks-list">
+              {checks.map((c) => (
+                <div key={c.label} className={`ad-check ${c.on ? "on" : ""} ${c.tell && showTell ? "tell" : ""}`}>
+                  <span className="ad-check-label">{c.label}</span>
+                  <span className="ad-check-tag">{c.tag}</span>
+                </div>
+              ))}
+            </div>
+            {showTell && (
+              <div className="ad-tell-note">audience is never a rejection reason — it isn't bound. Drift a capsule whose scope/exp fit.</div>
+            )}
+          </div>
+
+          <div className="ad-ledger">
+            <div className="ad-side-label">REJECTION LEDGER {ledger.length > 0 && <em>{ledger.length} logged</em>}</div>
+            {ledger.length === 0 ? (
+              <p className="ad-ledger-empty">no sends yet. try each capsule against /archive/vault.</p>
+            ) : (
+              <div className="ad-ledger-rows">
+                {ledger.map((row, i) => (
+                  <div key={i} className={`ad-ledger-row ${row.kind}`}>
+                    <div className="ad-ledger-top"><span className="route">{row.route}</span><span className="code">HTTP {row.code}</span></div>
+                    <div className="ad-ledger-reason">{row.cap} · {row.display}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -6442,6 +6467,283 @@ function MemoryNoteVisual({ image }) {
   );
 }
 
+function fmtTraceClock() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function traceLogKind(tone) {
+  if (tone === "mira") return "mira";
+  if (tone === "warn") return "sys";
+  return "aegis";
+}
+
+// Mirror Trace — designed intermission (log typing -> alert flash -> TRACE LOCK popup).
+function TraceSweepIntermission({ intermission, busy, onContinue }) {
+  const logs = intermission.logs || [];
+  const metrics = intermission.metrics || [];
+  const initLink = parseInt(metrics[0]?.value, 10) || 39;
+  const initHandler = parseInt(metrics[1]?.value, 10) || 67;
+
+  const [typing, setTyping] = useState({ line: 0, ch: 0, pause: 5, done: false });
+  const [phase, setPhase] = useState("log"); // "log" | "alert" | "popup"
+  const [countdown, setCountdown] = useState(45);
+  const [clock, setClock] = useState(fmtTraceClock);
+  const [link, setLink] = useState(initLink);
+  const [handler, setHandler] = useState(initHandler);
+  const [nodes, setNodes] = useState(3);
+  const [pressed, setPressed] = useState(false);
+  const logRef = useRef(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  const step = 5;
+  const stepPause = 5;
+
+  // reset on intermission change
+  useEffect(() => {
+    setTyping({ line: 0, ch: 0, pause: 5, done: false });
+    setPhase("log");
+    setCountdown(45);
+    setLink(initLink);
+    setHandler(initHandler);
+    setNodes(3);
+  }, [intermission.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // typing tick
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setTyping((s) => {
+        if (s.done) return s;
+        if (s.pause > 0) return { ...s, pause: s.pause - 1 };
+        const line = logs[s.line];
+        if (!line) return { ...s, done: true };
+        const text = line.text || "";
+        if (s.ch < text.length) return { ...s, ch: Math.min(text.length, s.ch + step) };
+        const next = s.line + 1;
+        if (next >= logs.length) return { ...s, done: true };
+        return { line: next, ch: 0, pause: stepPause, done: false };
+      });
+    }, 24);
+    return () => window.clearInterval(t);
+  }, [logs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // done -> alert -> popup
+  useEffect(() => {
+    if (!typing.done) return undefined;
+    const a = window.setTimeout(() => setPhase("alert"), 1500);
+    const p = window.setTimeout(() => setPhase("popup"), 2800);
+    return () => {
+      window.clearTimeout(a);
+      window.clearTimeout(p);
+    };
+  }, [typing.done]);
+
+  // clock + popup countdown
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setClock(fmtTraceClock());
+      setCountdown((c) => (phaseRef.current === "popup" && c > 0 ? c - 1 : c));
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // metric jitter
+  useEffect(() => {
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const drift = () => (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.65 ? 1 : 2);
+    const t = window.setInterval(() => {
+      const alerting = phaseRef.current !== "log";
+      setLink((v) => (alerting ? clamp(v - (Math.random() < 0.7 ? 1 : 2), 14, 45) : clamp(v + drift(), 33, 45)));
+      setHandler((v) =>
+        alerting
+          ? clamp(v + (Math.random() < 0.7 ? 1 : 2), 58, 96)
+          : clamp(v + Math.abs(drift()) * (Math.random() < 0.62 ? 1 : -1), 58, 78)
+      );
+      setNodes((n) => (Math.random() < 0.4 ? Math.min(n + 1, 14) : n));
+    }, 1500);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // auto-scroll log
+  useEffect(() => {
+    if (!typing.done && logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [typing]);
+
+  const handleContinue = useCallback(() => {
+    if (busy) return;
+    setPressed(true);
+    onContinue();
+  }, [busy, onContinue]);
+
+  // ENTER to continue (only in popup)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Enter" && phaseRef.current === "popup") handleContinue();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleContinue]);
+
+  const upto = Math.min(typing.line, logs.length - 1);
+  const visibleLines = [];
+  for (let i = 0; i <= upto && i < logs.length; i += 1) {
+    const L = logs[i];
+    const active = i === typing.line && !typing.done;
+    const text = active ? (L.text || "").slice(0, typing.ch) : L.text;
+    visibleLines.push({ id: i, num: String(i + 1).padStart(2, "0"), src: L.source, text, active, kind: traceLogKind(L.tone) });
+  }
+
+  const alertOn = phase === "alert" || phase === "popup";
+  const countdownLabel = `T–${String(Math.floor(countdown / 60)).padStart(2, "0")}:${String(countdown % 60).padStart(2, "0")}`;
+  const traceNetLabel = metrics[2]?.value || "EXPANDING";
+
+  return (
+    <div className={`campaign-page trace-sweep phase-${phase}`}>
+      <div className="ts-scanlines" aria-hidden="true" />
+      <div className="ts-vignette" aria-hidden="true" />
+
+      <div className="ts-inner">
+        <div className="ts-chrome">
+          <div className="ts-chrome-left">
+            <span className="ts-diamond" />
+            <span className="ts-grid-name">AEGIS · SENTINEL GRID</span>
+            <span className="ts-ver">v4.19</span>
+          </div>
+          <div className="ts-chrome-right">
+            <span>SESSION 7F–ARC</span>
+            <span>UTC <b>{clock}</b></span>
+            <span className="ts-leds">
+              <span className="ts-led on" />LINK
+              <span className="ts-led" />AUDIT
+              <span className="ts-led on d2" />TRACE
+            </span>
+          </div>
+        </div>
+
+        <div className="ts-header">
+          <div className="ts-header-main">
+            <div className="ts-kicker">
+              <span className="accent">INTERMISSION 01</span>
+              <span className="ts-rule" />
+              <span>TRACE SWEEP</span>
+            </div>
+            <h1 className="ts-title">{intermission.title}</h1>
+            <p className="ts-subtitle">{intermission.subtitle}</p>
+          </div>
+          <div className="ts-status-wrap">
+            <div className="ts-status-label">CONTAINMENT STATUS</div>
+            <div className="ts-status-chip">
+              <span className="ts-led on" />
+              <span>IDENTITY UNRESOLVED</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="ts-telemetry">
+          <div className="ts-card">
+            <div className="ts-card-head"><span>{metrics[0]?.label || "LINK STABILITY"}</span><span className="down">▼ 2.1/min</span></div>
+            <div className="ts-card-value"><strong>{link}</strong><span className="pct">%</span><span className="ts-tag">DEGRADED</span></div>
+            <div className="ts-bar"><div className="ts-fill" style={{ width: `${link}%` }} /></div>
+          </div>
+          <div className="ts-card">
+            <div className="ts-card-head"><span>{metrics[1]?.label || "HANDLER PROBABILITY"}</span><span className="up">▲ 3.4/min</span></div>
+            <div className="ts-card-value"><strong>{handler}</strong><span className="pct">%</span><span className="ts-tag up">ELEVATED</span></div>
+            <div className="ts-bar"><div className="ts-fill" style={{ width: `${handler}%` }} /></div>
+          </div>
+          <div className="ts-card">
+            <div className="ts-card-head"><span>{metrics[2]?.label || "TRACE NET"}</span><span className="up">△ LIVE</span></div>
+            <div className="ts-card-value"><strong className="word">{traceNetLabel}</strong><span className="ts-tag mut">{nodes} CLUSTERS</span></div>
+            <div className="ts-bar"><div className="ts-fill-indet" /></div>
+          </div>
+        </div>
+
+        <div className="ts-main">
+          <div className="ts-log-panel">
+            <div className="ts-log-head">
+              <div className="ts-log-title"><span className="accent">▮</span> AEGIS TRACE SWEEP</div>
+              <div className="ts-log-live">STREAM · LIVE <span className="ts-led on" /></div>
+            </div>
+            <div className="ts-log-body" ref={logRef}>
+              {visibleLines.map((line) => (
+                <div key={line.id} className={`ts-log-line ${line.kind}`}>
+                  <span className="ts-log-num">{line.num}</span>
+                  <span className="ts-log-src">[{line.src}]</span>
+                  <span className="ts-log-msg">{line.text}{line.active && <span className="ts-cursor" />}</span>
+                </div>
+              ))}
+              <div className="ts-await">
+                <span className="ts-log-num" />
+                <span className="accent">&gt;</span>
+                <span>awaiting operator<span className="ts-cursor slow" /></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="ts-rail">
+            <div className="ts-entity mira">
+              <div className="ts-entity-head">
+                <div className="ts-entity-name"><span className="name">MIRA</span><span className="ts-role">ALLY · GUIDE</span></div>
+                <span className="ts-led on" />
+              </div>
+              <p className="ts-entity-body">{intermission.mira}</p>
+            </div>
+            <div className="ts-entity aegis">
+              <div className="ts-entity-head">
+                <div className="ts-entity-name"><span className="name">AEGIS</span><span className="ts-role">WARDEN · HOSTILE</span></div>
+                <span className="ts-quar">QUARANTINE PENDING</span>
+              </div>
+              <p className="ts-entity-body">{intermission.aegis}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="ts-ticker">
+          <div className="ts-marquee-wrap">
+            <div className="ts-marquee">
+              <span>containment protocol engaged &nbsp;·&nbsp; advisory relays under quarantine review &nbsp;·&nbsp; operator guidance signature unresolved &nbsp;·&nbsp; mirror-instance residue flagged &nbsp;·&nbsp; edge nodes reporting mirrored output &nbsp;·&nbsp;</span>
+              <span>containment protocol engaged &nbsp;·&nbsp; advisory relays under quarantine review &nbsp;·&nbsp; operator guidance signature unresolved &nbsp;·&nbsp; mirror-instance residue flagged &nbsp;·&nbsp; edge nodes reporting mirrored output &nbsp;·&nbsp;</span>
+            </div>
+          </div>
+          <div className="ts-ticker-right">
+            <span>{intermission.nextOperation || "NEXT ▸ ENCRYPTED"}</span>
+            <span className="ts-enter-hint">CONTINUE&nbsp;&nbsp;[ ENTER ]</span>
+          </div>
+        </div>
+      </div>
+
+      {alertOn && (
+        <>
+          <div className="ts-alert-sweep" aria-hidden="true" />
+          <div className="ts-alert-tint" aria-hidden="true" />
+          <div className="ts-alert-vignette" aria-hidden="true" />
+        </>
+      )}
+
+      {phase === "popup" && (
+        <div className="ts-popup-backdrop">
+          <div className="ts-popup">
+            <div className="ts-popup-kicker">AEGIS // PRIORITY OVERRIDE</div>
+            <div className="ts-popup-title">TRACE LOCK IMMINENT</div>
+            <div className="ts-popup-net">
+              <span>NET CLOSURE</span>
+              <span className="ts-countdown">{countdownLabel}</span>
+            </div>
+            <p className="ts-popup-body">The containment net reaches the first relay when the counter hits zero. The window closes with it.</p>
+            <button className="ts-popup-btn" onClick={handleContinue} disabled={busy}>
+              {busy || pressed ? (intermission.openingLabel || "LINKING …") : (intermission.readyLabel || "CONTINUE ▸")}
+            </button>
+            <div className="ts-popup-enter">or press [ ENTER ]</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OperationIntermission({ intermission, busy, onContinue }) {
   const [visibleCount, setVisibleCount] = useState(0);
   const [relayMasked, setRelayMasked] = useState(false);
@@ -6518,100 +6820,7 @@ function OperationIntermission({ intermission, busy, onContinue }) {
     );
   }
 
-  return (
-    <div
-      className={`campaign-page intermission-page ${
-        sweepComplete ? "trace-complete" : "trace-running"
-      } ${relayMasked ? "relay-masked" : ""} ${
-        isCinematic ? "intermission-cinematic" : ""
-      } ${videoEnded ? "video-ended" : ""}`}
-    >
-      {isCinematic && (
-        <>
-          <video
-            className="intermission-video"
-            autoPlay
-            muted
-            playsInline
-            preload="auto"
-            loop={intermission.videoLoop === true}
-            onEnded={() => setVideoEnded(true)}
-            onError={() => setVideoEnded(true)}
-            aria-hidden="true"
-          >
-            <source src={intermission.videoSrc} type="video/mp4" />
-          </video>
-          <div className="intermission-video-vignette" aria-hidden="true" />
-        </>
-      )}
-      <div className="intermission-noise" aria-hidden="true" />
-      <main className="intermission-stage">
-        <section
-          className="intermission-hero"
-          data-watermark={intermission.watermark || "AEGIS TRACE SWEEP"}
-        >
-          <p className="campaign-kicker">{intermission.kicker}</p>
-          <h1>{intermission.title}</h1>
-          <p>{intermission.subtitle}</p>
-        </section>
-
-        <section className="intermission-metrics" aria-label={intermission.metricsLabel || "Trace metrics"}>
-          {intermission.metrics.map((metric) => (
-            <div key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </div>
-          ))}
-        </section>
-
-        <section className="intermission-console">
-          <div className="section-heading">
-            <span>{intermission.consoleTitle || "AEGIS TRACE SWEEP"}</span>
-            <strong>
-              {sweepComplete
-                ? intermission.completeStatus || "identity unresolved"
-                : intermission.runningStatus || "correlating"}
-            </strong>
-          </div>
-          <div className="intermission-log-list">
-            {visibleLogs.map((log, index) => (
-              <div key={`${log.source}-${index}`} className={`intermission-log ${log.tone}`}>
-                <span>[{log.source}]</span>
-                <p>{log.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="intermission-dialogue">
-          <div className="dialogue-line mira">
-            <span>MIRA</span>
-            <p>{intermission.mira}</p>
-          </div>
-          <div className="dialogue-line aegis">
-            <span>AEGIS</span>
-            <p>{intermission.aegis}</p>
-          </div>
-        </section>
-
-        <section className="intermission-brief">
-          <div>
-            <p className="campaign-kicker">{intermission.nextOperation}</p>
-            <p>{intermission.summary}</p>
-          </div>
-          {!sweepComplete ? (
-            <button disabled>{intermission.pendingLabel || "Trace sweep running..."}</button>
-          ) : !relayMasked ? (
-            <button onClick={() => setRelayMasked(true)}>{intermission.actionLabel}</button>
-          ) : (
-            <button onClick={onContinue} disabled={busy}>
-              {busy ? intermission.openingLabel || "Opening..." : intermission.readyLabel}
-            </button>
-          )}
-        </section>
-      </main>
-    </div>
-  );
+  return <TraceSweepIntermission intermission={intermission} busy={busy} onContinue={onContinue} />;
 }
 
 function CampaignMode() {
