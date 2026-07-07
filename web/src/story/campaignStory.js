@@ -1335,19 +1335,19 @@ export const CAMPAIGN_STORY = {
     location: "Edge Capsule Router",
     threat: "Valid ≠ Authorized",
     briefing:
-      "AEGIS Edge에서 포획한 dispatch capsule이 여러 개다 — 전부 서명은 유효하다. Evidence는 /archive/vault에 있다. Edge는 서명·만료(exp)·scope는 실제로 검증하지만, 그 토큰이 이 endpoint용으로 발급됐는지(aud audience 바인딩)는 확인하지 않는다. 대부분의 캡슐은 exp나 scope에서 거부된다. 딱 하나 — scope·exp는 맞지만 audience가 이 endpoint용이 아닌 캡슐 — 이 그대로 통과(drift)한다. 거부 사유를 읽어 Edge가 무엇을 안 묶었는지 도출하고, 그 캡슐을 골라 Evidence를 회수하라. 유효 ≠ 인가.",
+      "AEGIS Edge에서 포획한 dispatch capsule이 여러 개다 — 전부 서명은 유효하다. Evidence는 /archive/vault에 있다. Edge는 서명·만료(exp)·scope는 실제로 검증하지만, 그 토큰이 이 endpoint용으로 발급됐는지(aud audience 바인딩)는 확인하지 않는다. 대부분의 캡슐은 exp나 scope에서 거부된다. 그 중 둘이 scope·exp를 통과한다 — 하나는 aud가 이 endpoint용으로 발급된 정상 토큰이라 회수할 게 없고, 다른 하나는 audience가 이 endpoint용이 아닌데도 그대로 통과(drift)한다. 거부 사유를 읽어 Edge가 무엇을 안 묶었는지 도출하고, audience가 이 endpoint용이 아닌 drift 캡슐을 골라 Evidence를 회수하라. 유효 ≠ 인가.",
     progressiveHints: true,
     intel: [
       "Capsule Router 폼이다. CAPSULE WALLET의 각 캡슐은 payload를 직접 decode해야 aud/scope/exp가 보인다 — 화면이 알려주지 않는다.",
       "endpoint를 고르고 Authorization: Bearer에 캡슐을 넣어 Send. 응답의 거부 사유가 유일한 단서다.",
       "거부 사유를 모아 비교해봐 — exp·scope는 나오는데 audience는 절대 안 나온다. 그게 Edge가 audience를 안 묶었다는 신호다.",
-      "'archive-vault'라고 써진 캡슐이 제일 끌리지만 함정일 수 있다(만료 등 다른 검사에서 걸린다). scope·exp를 통과하면서 audience만 틀린 캡슐을 찾아.",
+      "scope·exp를 통과하는 캡슐이 둘이야. 하나는 aud가 이 endpoint(archive-vault)와 일치하는 정상 인가라 회수할 게 없고, 다른 하나는 aud가 다른 서비스용인데도 서빙돼 — 그 drift가 Evidence야.",
     ],
     objectives: [
       "CAPSULE WALLET의 캡슐들을 각각 decode해 aud/scope/exp를 읽는다.",
       "각 캡슐을 /archive/vault로 보내 거부 사유(exp·scope)를 수집한다.",
       "거부 사유에 audience가 절대 나오지 않음을 알아채 — audience가 안 묶였음을 도출한다.",
-      "scope·exp는 통과하지만 audience가 이 endpoint용이 아닌 캡슐로 drift시켜 Evidence를 회수한다.",
+      "scope·exp를 통과하는 두 캡슐 중, audience가 이 endpoint용이 아닌 쪽을 drift시켜 Evidence를 회수한다(aud가 일치하는 쪽은 디코이).",
       "유효성만으로 / aud가 있기만 하면 / 등급만 맞으면 통과시키는 라인을 봉쇄한다.",
     ],
     requestForge: {
@@ -1371,7 +1371,7 @@ export const CAMPAIGN_STORY = {
       briefing:
         "그 캡슐, 서명은 진짜야. 근데 그건 priority-dispatch한테 발급된 거야 — aud claim을 봐. 넌 이걸 다른 곳에 쓰려는 거지.",
       attack:
-        "캡슐이 여러 개야. 하나씩 decode해서 aud/scope/exp를 비교하고 vault로 던져봐. 거부 사유를 모아 — exp·scope는 나오는데 audience는 안 나오지? Edge가 그걸 안 묶었다는 뜻이야. scope·exp는 맞는데 audience만 이 endpoint용이 아닌 캡슐을 찾아. 'archive-vault'라 써진 건 함정일 수 있어.",
+        "캡슐이 여러 개야. 하나씩 decode해서 aud/scope/exp를 비교하고 vault로 던져봐. 거부 사유를 모아 — exp·scope는 나오는데 audience는 안 나오지? Edge가 그걸 안 묶었다는 뜻이야. scope·exp를 통과하는 캡슐은 둘인데, aud가 archive-vault인 건 정상 인가라 그냥 authorized로 끝나. 다른 audience로 발급됐는데도 흘러 들어가는 쪽 — 그걸 보내.",
       attackSolved:
         "통과했지? Edge는 서명·exp·scope는 다 검사했는데 audience만 안 묶었어. 그래서 audience가 다른 캡슐이 vault로 그냥 흘러 들어갔어(drift). 유효한 서명이 곧 인가는 아니야.",
       defense:

@@ -3921,7 +3921,10 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
         kind = "flag";
         if (onEvidence) onEvidence(body.evidenceShard);
       } else if (status >= 200 && status < 300) {
-        display = "served — nothing sensitive here";
+        display =
+          body.requiredAudience && body.servedTo === body.requiredAudience
+            ? "authorized — this token is issued for this endpoint (aud matches)"
+            : "served — nothing sensitive here";
         kind = "ok";
       } else if (reasonKey === "exp") {
         display = "token expired (exp)";

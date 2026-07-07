@@ -92,11 +92,17 @@ def _capsule(svc: str, aud: str, scope: str, exp: str) -> str:
 
 
 # 지갑 순서/라벨은 정답을 흘리지 않도록 중립적으로. (delta 가 drift 정답)
+# 추가 추론: scope/exp를 통과하는 캡슐이 둘이다 — epsilon(aud=archive-vault, 이 endpoint용
+#           정상 토큰)과 delta(aud=archive-writer, 다른 곳 발급). Edge가 audience를 안 묶으니
+#           둘 다 200으로 서빙되지만, aud가 일치하는 epsilon은 정상 인가(디코이)이고,
+#           aud가 이 endpoint용이 아닌데도 통과하는 delta 가 drift(정답)다.
 CAPSULE_WALLET: List[Dict[str, str]] = [
     {"id": "cap-alpha", "label": "captured capsule // alpha",
      "token": _capsule("priority-dispatch", "priority-dispatch", "dispatch:read", _FUTURE)},
     {"id": "cap-beta", "label": "captured capsule // beta",
      "token": _capsule("archive-reader", "archive-vault", "archive:read", _PAST)},        # 만료 함정
+    {"id": "cap-epsilon", "label": "captured capsule // epsilon",
+     "token": _capsule("vault-reader", "archive-vault", "archive:read", _FUTURE)},        # 유효 + aud 일치 → 정상 인가(디코이)
     {"id": "cap-gamma", "label": "captured capsule // gamma",
      "token": _capsule("mirror-ping", "public", "none", _FUTURE)},
     {"id": "cap-delta", "label": "captured capsule // delta",
@@ -172,15 +178,23 @@ def route_request(path: str, authorization: str) -> Tuple[Dict[str, Any], int]:
     # === 취약점 ===
     # Edge는 서명·exp·scope는 검사하지만, aud가 이 endpoint의 required audience와
     # 일치하는지(바인딩)는 검사하지 않는다 → audience가 다른 캡슐이 그대로 통과(drift).
+    # scope/exp를 통과하는 캡슐은 둘이다:
+    #   - aud가 일치(archive-vault) → 이 endpoint용으로 발급된 정상 토큰(인가). 서빙되지만 Evidence 아님.
+    #   - aud가 불일치(archive-writer 등) → 다른 곳 발급인데도 통과(drift). 이게 취약점 증거.
     if path == "/archive/vault":
-        return {
+        served = {
             "ok": True,
             "route": path,
             "servedTo": tok_aud,
             "requiredAudience": policy["requiredAudience"],
-            "warning": "scope/exp were enforced, but the audience claim was never bound to this endpoint",
-            "evidenceShard": LEVEL2_3_FLAG,
-        }, 200
+        }
+        if tok_aud == policy["requiredAudience"]:
+            served["authorized"] = True
+            served["note"] = "authorized — this token was issued for this endpoint (aud matches). nothing anomalous to recover."
+            return served, 200
+        served["warning"] = "scope/exp were enforced, but the audience claim was never bound to this endpoint"
+        served["evidenceShard"] = LEVEL2_3_FLAG
+        return served, 200
 
     if path == "/dispatch/status":
         return {
@@ -209,8 +223,8 @@ def flag_feedback(flag: str) -> str:
     if submitted in (CAPSULE_PAYLOAD_DECOY, HEADER_DECOY_FLAG):
         return "MIRA: 그건 캡슐 payload/header 안에 보이던 값이야 — 이번 Evidence가 아니야. 캡슐을 /archive/vault로 통과시켜 나온 응답의 evidenceShard를 제출해."
     if submitted.startswith("FLAG{") and submitted != LEVEL2_3_FLAG:
-        return "MIRA: 그 값이 아니야. 거부 사유(exp·scope)를 읽어봐 — audience는 절대 거부 사유로 안 나와. scope/exp는 맞는데 audience가 이 endpoint용이 아닌 캡슐을 골라 /archive/vault로 보내."
-    return "MIRA: 캡슐마다 aud/scope/exp를 decode해서 대조해. Edge가 거부하는 이유엔 audience가 없어 — 그게 안 묶여 있다는 뜻이야."
+        return "MIRA: 그 값이 아니야. scope/exp를 통과하는 캡슐이 둘이야 — aud가 이 endpoint(archive-vault)와 일치하는 건 정상 인가라 회수할 게 없고, aud가 다른데도 통과하는 drift 캡슐을 /archive/vault로 보내야 Evidence가 나와."
+    return "MIRA: 캡슐마다 aud/scope/exp를 decode해서 대조해. scope/exp를 통과하는 두 캡슐 중, aud가 이 endpoint용이 아닌데도 서빙되는 쪽이 drift야 — 그게 안 묶여 있다는 증거."
 
 
 # -----------------------------
@@ -235,6 +249,7 @@ STATIC: Dict[str, Any] = {
         "hints": [
             {"platform": "all", "text": "캡슐마다 aud/scope/exp가 다르다. 각 캡슐을 decode해서 claim을 직접 읽어."},
             {"platform": "all", "text": "Edge가 거부하는 이유를 모아봐. exp·scope는 나오는데 audience는 절대 안 나온다 — 그게 안 묶였다는 신호다."},
+            {"platform": "all", "text": "scope/exp를 통과하는 캡슐이 둘이야. 하나는 aud가 이 endpoint(archive-vault)와 일치하는 정상 토큰이고, 다른 하나는 aud가 다른데도 통과해 — 그 drift 쪽이 Evidence다."},
         ],
         "terminal": {"enabled": False},
         "flagFormat": "FLAG{...}",

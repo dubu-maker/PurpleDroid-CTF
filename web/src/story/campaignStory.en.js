@@ -1009,18 +1009,18 @@ export const CAMPAIGN_STORY_EN = {
   level2_3: {
     title: "Drifting Clearance",
     briefing:
-      "You captured several dispatch capsules from the AEGIS Edge — all with valid signatures. The Evidence sits in the /archive/vault. The Edge really does verify signature, expiry (exp), and scope — but it never checks whether a token was issued for this endpoint (its aud, the audience binding). Most capsules are rejected on exp or scope. Exactly one — whose scope and exp fit but whose audience is not for this endpoint — drifts straight through. Read the rejection reasons to deduce what the Edge failed to bind, then pick that capsule and recover the Evidence. Valid is not authorized.",
+      "You captured several dispatch capsules from the AEGIS Edge — all with valid signatures. The Evidence sits in the /archive/vault. The Edge really does verify signature, expiry (exp), and scope — but it never checks whether a token was issued for this endpoint (its aud, the audience binding). Most capsules are rejected on exp or scope. Two of them pass scope and exp: one was legitimately issued for this endpoint (its aud matches) and returns nothing to recover, while the other was issued for a different audience yet still drifts straight through. Read the rejection reasons to deduce what the Edge failed to bind, then pick the drifting capsule — the one whose audience isn't for this endpoint — and recover the Evidence. Valid is not authorized.",
     intel: [
       "Capsule Router form. Each capsule in the wallet must be decoded to reveal its aud/scope/exp — the UI does not tell you.",
       "Pick an endpoint, put a capsule in Authorization: Bearer, and Send. The rejection reason is your only clue.",
       "Collect and compare the rejection reasons — exp and scope appear, but audience never does. That's the signal the Edge doesn't bind audience.",
-      "The capsule that literally says 'archive-vault' is tempting but may be a trap (it fails another check, e.g. expiry). Find the one that passes scope/exp but has the wrong audience.",
+      "Two capsules pass scope/exp. One's aud matches this endpoint (archive-vault) — that one is authorized and returns nothing to recover. The other's aud is for a different service yet still gets served: that drift is the Evidence.",
     ],
     objectives: [
       "Decode each capsule in the CAPSULE WALLET to read its aud/scope/exp.",
       "Send each capsule to /archive/vault and collect the rejection reasons (exp/scope).",
       "Notice audience is never a rejection reason — deduce that audience is not bound.",
-      "Drift the capsule that passes scope/exp but whose audience is not for this endpoint, and recover the Evidence.",
+      "Two capsules pass scope/exp: send the one whose audience is NOT for this endpoint (the aud-matching one is only a decoy) and recover the Evidence.",
       "Seal every line that grants access on mere validity / a present aud / a high tier.",
     ],
     requestForge: {
@@ -1044,7 +1044,7 @@ export const CAMPAIGN_STORY_EN = {
       briefing:
         "That capsule's signature is real. But it was issued for priority-dispatch — look at the aud claim. You're about to use it somewhere else.",
       attack:
-        "You have several capsules. Decode each, compare aud/scope/exp, and throw them at the vault. Collect the rejection reasons — exp and scope show up, but audience never does. That means the Edge doesn't bind it. Find the capsule that passes scope/exp but whose audience isn't for this endpoint. The one that says 'archive-vault' may be a trap.",
+        "You have several capsules. Decode each, compare aud/scope/exp, and throw them at the vault. Collect the rejection reasons — exp and scope show up, but audience never does. That means the Edge doesn't bind it. Two capsules pass scope/exp: one's aud is archive-vault — that one's legit, it just gets authorized. The other was issued for a different audience yet still drifts in. Send that one.",
       attackSolved:
         "It went through, didn't it. The Edge checked signature, exp, and scope — but never bound audience. So a capsule issued for a different audience drifted straight into the vault. A valid signature is not authorization.",
       defense:
