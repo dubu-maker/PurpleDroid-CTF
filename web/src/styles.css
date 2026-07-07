@@ -1616,6 +1616,17 @@ button:disabled {
   gap: 10px;
 }
 
+/* 2-3: pin MIRA/AEGIS so it stays visible while working the capsule router */
+.dialogue-panel.dialogue-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #070d1e;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.8);
+}
+
 .dialogue-line {
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 12px;

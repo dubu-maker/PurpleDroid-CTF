@@ -3399,7 +3399,7 @@ function localizedBlock(block, locale) {
   return block?.[locale] || block?.ko || block || null;
 }
 
-function DialoguePanel({ story, phase, attackNotice, locale }) {
+function DialoguePanel({ story, phase, attackNotice, locale, sticky = false }) {
   const key = phaseStoryKey(phase, attackNotice);
   const residue = localizedBlock(story.residue, locale)?.[key];
   const residueSpeaker = story.residue?.speaker || "mira";
@@ -3407,7 +3407,7 @@ function DialoguePanel({ story, phase, attackNotice, locale }) {
   const residueLabel = residueSpeaker === "aegis" ? "AEGIS ECHO" : "MIRA RESIDUE";
 
   return (
-    <section className="dialogue-panel">
+    <section className={`dialogue-panel ${sticky ? "dialogue-pinned" : ""}`}>
       <div className="dialogue-line mira">
         <span>MIRA</span>
         <p>{story.mira[key]}</p>
@@ -8213,6 +8213,7 @@ function CampaignMode() {
                 phase={phase}
                 attackNotice={attackNotice}
                 locale={locale}
+                sticky={currentId === "level2_3"}
               />
 
               <div className="mission-duo">
