@@ -3399,7 +3399,7 @@ function localizedBlock(block, locale) {
   return block?.[locale] || block?.ko || block || null;
 }
 
-function DialoguePanel({ story, phase, attackNotice, locale, sticky = false }) {
+function DialoguePanel({ story, phase, attackNotice, locale }) {
   const key = phaseStoryKey(phase, attackNotice);
   const residue = localizedBlock(story.residue, locale)?.[key];
   const residueSpeaker = story.residue?.speaker || "mira";
@@ -3407,7 +3407,7 @@ function DialoguePanel({ story, phase, attackNotice, locale, sticky = false }) {
   const residueLabel = residueSpeaker === "aegis" ? "AEGIS ECHO" : "MIRA RESIDUE";
 
   return (
-    <section className={`dialogue-panel ${sticky ? "dialogue-pinned" : ""}`}>
+    <section className="dialogue-panel">
       <div className="dialogue-line mira">
         <span>MIRA</span>
         <p>{story.mira[key]}</p>
@@ -3950,29 +3950,8 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
     { label: "AUDIENCE", tag: showTell ? "never seen ⚠" : "not yet", tell: true },
   ];
 
-  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
-  const scrollToZone = () => zoneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  const steps = [
-    { key: "brief", num: "01", label: "BRIEF", sub: "read the target", onClick: scrollToTop },
-    { key: "infiltrate", num: "02", label: "INFILTRATE", sub: "route the capsule", onClick: scrollToZone },
-  ];
-  const activeStep = solved ? "brief" : "infiltrate";
-
   return (
     <section className="request-forge ad-forge">
-      <div className="ad-stepper">
-        {steps.map((st) => (
-          <button
-            key={st.key}
-            type="button"
-            className={`ad-step step-${st.key} ${st.key === activeStep ? "active" : ""}`}
-            onClick={st.onClick}
-          >
-            <span className="ad-step-num">{st.num}</span>
-            <div className="ad-step-txt"><strong>{st.label}</strong><span>{st.sub}</span></div>
-          </button>
-        ))}
-      </div>
 
       <div className="ad-zone" ref={zoneRef}>
         <div className="ad-router">
@@ -6843,6 +6822,7 @@ function CampaignMode() {
   const [me, setMe] = useState(null);
   const [challenges, setChallenges] = useState([]);
   const [currentId, setCurrentId] = useState("");
+  const [adStage, setAdStage] = useState("infiltrate"); // 2-3 stage tabs: "brief" | "infiltrate"
   const [detail, setDetail] = useState(null);
   const [briefingSeenById, setBriefingSeenById] = useState({});
   const [consoleLogs, setConsoleLogs] = useState([]);
@@ -8208,28 +8188,50 @@ function CampaignMode() {
                 </div>
               </section>
 
-              <DialoguePanel
-                story={story}
-                phase={phase}
-                attackNotice={attackNotice}
-                locale={locale}
-                sticky={currentId === "level2_3"}
-              />
+              {currentId === "level2_3" ? (
+                <div className="dialogue-tabs-sticky">
+                  <DialoguePanel story={story} phase={phase} attackNotice={attackNotice} locale={locale} />
+                  {phase !== "BRIEFING" && (
+                    <div className="ad-stepper mission-stage-tabs">
+                      <button
+                        type="button"
+                        className={`ad-step step-brief ${adStage === "brief" ? "active" : ""}`}
+                        onClick={() => setAdStage("brief")}
+                      >
+                        <span className="ad-step-num">01</span>
+                        <div className="ad-step-txt"><strong>BRIEF</strong><span>read the target</span></div>
+                      </button>
+                      <button
+                        type="button"
+                        className={`ad-step step-infiltrate ${adStage === "infiltrate" ? "active" : ""}`}
+                        onClick={() => setAdStage("infiltrate")}
+                      >
+                        <span className="ad-step-num">02</span>
+                        <div className="ad-step-txt"><strong>INFILTRATE</strong><span>route the capsule</span></div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <DialoguePanel story={story} phase={phase} attackNotice={attackNotice} locale={locale} />
+              )}
 
-              <div className="mission-duo">
-                <ObjectivePanel
-                  story={story}
-                  phase={phase}
-                  hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
-                />
+              {(currentId !== "level2_3" || phase === "BRIEFING" || adStage === "brief") && (
+                <div className="mission-duo">
+                  <ObjectivePanel
+                    story={story}
+                    phase={phase}
+                    hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
+                  />
 
-                <IntelPanel
-                  key={activeChallengeId}
-                  items={story.intel}
-                  progressive={story.progressiveHints}
-                  locale={locale}
-                />
-              </div>
+                  <IntelPanel
+                    key={activeChallengeId}
+                    items={story.intel}
+                    progressive={story.progressiveHints}
+                    locale={locale}
+                  />
+                </div>
+              )}
 
               {!usesMemoryVault && (
                 <NetworkTracePanel
@@ -8318,6 +8320,7 @@ function CampaignMode() {
               ) : (
                 <>
                   {currentId === "level2_3" ? (
+                    phase !== "BRIEFING" && adStage === "infiltrate" ? (
                     <RequestForge
                       attack={detail?.attack}
                       forge={story.requestForge}
@@ -8327,6 +8330,7 @@ function CampaignMode() {
                       disabled={phase === "LOCKED" || phase === "BRIEFING"}
                       locale={locale}
                     />
+                    ) : null
                   ) : (
                     <MissionConsole
                       disabled={phase === "LOCKED" || phase === "BRIEFING"}
@@ -8388,14 +8392,16 @@ function CampaignMode() {
                     />
                   )}
 
-                  <EvidenceSubmit
-                    disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
-                    value={flagValue}
-                    onChange={setFlagValue}
-                    onSubmit={handleSubmitEvidence}
-                    result={evidenceResult}
-                    solved={evidenceSolved}
-                  />
+                  {(currentId !== "level2_3" || adStage === "infiltrate") && (
+                    <EvidenceSubmit
+                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                      value={flagValue}
+                      onChange={setFlagValue}
+                      onSubmit={handleSubmitEvidence}
+                      result={evidenceResult}
+                      solved={evidenceSolved}
+                    />
+                  )}
                 </>
               )}
 
