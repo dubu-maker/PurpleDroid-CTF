@@ -271,22 +271,69 @@ def _expand_env(cmdline: str, token: str) -> str:
     return cmdline.replace("${DISPATCH_TOKEN}", token).replace("$DISPATCH_TOKEN", token)
 
 
+_HEADER_FIELDS = {"alg", "typ", "kid"}
+
+
 def _parse_edit_args(args: List[str]) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """관대한 파서. 아래 형식을 모두 받는다:
+      key=value                         (payload; --header 뒤엔 header)
+      --header key=value / --payload    (모드 전환)
+      --header '{...}' / --payload '{...}'  (JSON 통째로 병합)
+      --tier vip / --alg none / --field=value  (flag 형식; alg/typ/kid는 header)
+    """
     payload_edits: Dict[str, str] = {}
     header_edits: Dict[str, str] = {}
     mode = "payload"
-    for a in args:
-        if a == "--header":
-            mode = "header"
+    i = 0
+    n = len(args)
+
+    def _set(field: str, value: Any) -> None:
+        field = str(field).strip()
+        if not field:
+            return
+        dst = header_edits if field in _HEADER_FIELDS else payload_edits
+        dst[field] = value if isinstance(value, str) else json.dumps(value)
+
+    while i < n:
+        a = args[i]
+        if a in ("--payload", "--header"):
+            section = a[2:]
+            nxt = args[i + 1] if i + 1 < n else ""
+            if nxt.lstrip().startswith("{"):
+                try:
+                    obj = json.loads(nxt)
+                    dst = header_edits if section == "header" else payload_edits
+                    for k, v in obj.items():
+                        dst[str(k)] = v if isinstance(v, str) else json.dumps(v)
+                    i += 2
+                    continue
+                except Exception:
+                    pass
+            mode = section
+            i += 1
             continue
-        if a == "--payload":
-            mode = "payload"
+        if a.startswith("--") and len(a) > 2:
+            field = a[2:]
+            if "=" in field:
+                key, value = field.split("=", 1)
+                i += 1
+            elif i + 1 < n and not args[i + 1].startswith("--") and "=" not in args[i + 1]:
+                key, value = field, args[i + 1]
+                i += 2
+            else:
+                i += 1
+                continue
+            _set(key, value.strip() if isinstance(value, str) else value)
             continue
-        if "=" not in a:
-            continue
-        key, value = a.split("=", 1)
-        target = header_edits if mode == "header" else payload_edits
-        target[key.strip()] = value.strip()
+        if "=" in a:
+            key, value = a.split("=", 1)
+            key = key.strip()
+            # alg/typ/kid는 명백한 header 필드라 bare key=value로 써도 header로 보낸다.
+            if key in _HEADER_FIELDS or mode == "header":
+                header_edits[key] = value.strip()
+            else:
+                payload_edits[key] = value.strip()
+        i += 1
     return payload_edits, header_edits
 
 
@@ -294,9 +341,12 @@ def _apply_edits(token: str, payload_edits: Dict[str, str], header_edits: Dict[s
     header, payload, sig = decode_jwt(token)
     payload.update(payload_edits)
     header.update(header_edits)
+    # alg=none이면 서명 없는 토큰(trailing dot)이 정석 — 서명 자리를 비운다.
+    # 그 외에는 원본 서명을 유지 → payload를 바꾸면 서명이 깨진 채 남는다(그게 핵심).
+    if str(header.get("alg", "")).strip().lower() == "none":
+        sig = ""
     head = _json_b64(header)
     body = _json_b64(payload)
-    # 서명은 원본 그대로 유지 → payload를 바꾸면 서명이 깨진 채로 남는다(그게 핵심).
     return f"{head}.{body}.{sig}"
 
 
@@ -371,6 +421,12 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
             return "", "usage: jwt-edit <token> [key=value ...] [--header key=value ...]", 1
         token = args[0]
         payload_edits, header_edits = _parse_edit_args(args[1:])
+        if not payload_edits and not header_edits:
+            return "", (
+                "jwt-edit: 적용된 편집이 없어. 바꿀 필드를 지정해줘.\n"
+                "형식: jwt-edit <token> tier=vip --header alg=none\n"
+                "예) jwt-edit <token> tier=vip  |  jwt-edit <token> --header alg=none  |  jwt-edit <token> --tier vip"
+            ), 1
         try:
             new_token = _apply_edits(token, payload_edits, header_edits)
         except Exception as exc:

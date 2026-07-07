@@ -1259,12 +1259,12 @@ export const CAMPAIGN_STORY_EN = {
       "This is the final Signal Edge node. AEGIS placed every assumption exposed so far behind the Sealed Archive. The standard Open button always fails, but a button is only interface behavior—not a security boundary. Obtain a dispatch token, recover the archive path, forge privileged claims, and compose the integrity-bypass request the server should never trust.",
     intel: [
       "This final node combines the techniques from 2-1 through 2-4.",
-      "This training terminal accepts one command at a time. It does not support export, variable assignment, or command chaining with semicolons. Pass the full token directly: jwt-forge-none <token>.",
+      "This training terminal accepts one command at a time. It does not support export, variable assignment, or command chaining with semicolons. Paste the full token directly into each command.",
       "The browser button is expected to fail. A blocked interface does not prove a protected API.",
       "Obtain a sealed dispatch_token from /api/v1/challenges/level2_5/actions/dispatch.",
       "Decode the token payload to recover the archive path and gate clue.",
       "The original token is standard/user and cannot open the archive.",
-      "Reuse the signature-verification failure explored in 2-4.",
+      "Use jwt-edit to change payload and header fields yourself. Don't change everything at once — change only tier first and send it to confirm whether the server verifies the signature, then, based on that result, touch the header's alg. The editor does not know the server secret, so it cannot recompute the signature.",
       "The open request requires a Bearer token, a JSON body, and an integrity header.",
       "The gate claim is only a clue; sending that value directly will not open the archive.",
       "The bypass value is not a generic true or 1 flag. It describes devtools in a hooked state.",
@@ -1302,7 +1302,7 @@ export const CAMPAIGN_STORY_EN = {
       attackSolved:
         "Archive opened. AEGIS blocked an interface while the server trusted a composed request—and leaked the final Evidence in a header.",
       defense:
-        "This is not one bug. An unverified token, client-controlled tier, client-provided integrity bypass, and UI-only gate collapsed together.",
+        "Trace the open request you reconstructed and only three gates remain open: TOKEN, AUTHORITY, and INTEGRITY. Seal those and the Archive cannot reopen.",
       complete:
         "Signal Edge is sealed. The next operation enters the AEGIS Trust Layer.",
     },
@@ -1319,11 +1319,11 @@ export const CAMPAIGN_STORY_EN = {
         "Signal Edge anomaly sealed. Trust Layer exposure remains controlled.",
     },
     defenseInstruction:
-      "Select every line that turns client-controlled input into archive authority: decode without verification, algorithm trust, body-tier override, client integrity bypass, and the final authorization branch.",
+      "Seal the three gates still open in the Archive Open path: TOKEN, AUTHORITY, and INTEGRITY. Path checks and deny fallbacks are stable circuits.",
     attackFailureText:
       "Evidence rejected. Reconstruct the full request chain and inspect the successful response headers for the final Evidence Shard.",
     defenseFailureText:
-      "Containment is incomplete. One or more client-controlled token, body, header, or final authorization paths still grant archive access.",
+      "The Archive breach is still active. One of TOKEN, AUTHORITY, or INTEGRITY remains open.",
     attackSuccessText: "Sealed Archive opened. The composite Signal Edge trust boundary collapsed.",
     defenseSuccessText: "Composite Edge trust sealed. OPERATION 03 // TRUST LAYER is open.",
     debrief: {

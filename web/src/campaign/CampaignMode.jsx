@@ -166,8 +166,60 @@ const TERMINAL_TRANSLATIONS = [
     "The header name is correct, but its value is not. This bypass expects the exact devtools hook state, not the gate name.",
   ],
   [
-    "훈련 콘솔은 한 번에 명령 하나만 지원해. export, 변수 대입, 명령 연결 대신 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
-    "This training terminal accepts one command at a time. Instead of export, variable assignment, or command chaining, pass the full token directly: jwt-forge-none <token>.",
+    "훈련 콘솔은 한 번에 명령 하나만 지원해. export, 변수 대입, 명령 연결 대신 token 전체를 각 명령에 직접 넣어.",
+    "This training terminal accepts one command at a time. Instead of export, variable assignment, or command chaining, paste the full token directly into each command.",
+  ],
+  [
+    "jwt-forge-none은 퇴역했어. jwt-edit <token> tier=vip --header alg=none 처럼 header와 payload를 직접 바꿔.",
+    "jwt-forge-none is retired. Use jwt-edit <token> tier=vip --header alg=none to change the header and payload yourself.",
+  ],
+  [
+    "TOKEN/AUTHORITY 후보가 만들어졌어. 이 토큰으로 Archive를 열어보고, 남은 게이트가 무엇인지 확인해.",
+    "TOKEN/AUTHORITY candidate created. Try opening the Archive with this token and see which gate remains.",
+  ],
+  [
+    "AUTHORITY claim은 올렸어. 그대로 보내서 TOKEN GATE가 서명을 검증하는지 확인해봐.",
+    "AUTHORITY claim elevated. Send it as-is and see whether the TOKEN GATE verifies the signature.",
+  ],
+  [
+    "TOKEN GATE 우회 후보야. Archive 요청에는 tier/role 같은 AUTHORITY 주장도 함께 필요해.",
+    "TOKEN GATE bypass candidate created. The Archive request also needs an AUTHORITY claim such as tier or role.",
+  ],
+  [
+    "토큰을 편집했어. jwt-decode로 확인하고 Archive Open 요청에 넣어봐.",
+    "Token edited. Confirm it with jwt-decode, then use it in the Archive Open request.",
+  ],
+  [
+    "TOKEN GATE 봉쇄. alg=none이나 verify 없는 JWT claim은 Archive 권한으로 승격되면 안 돼.",
+    "TOKEN GATE sealed. alg=none or unverified JWT claims must never be promoted to Archive authority.",
+  ],
+  [
+    "AUTHORITY GATE 봉쇄. Body tier나 token claim은 클라이언트 주장이지 서버 권한이 아니야.",
+    "AUTHORITY GATE sealed. Body tiers and token claims are client claims, not server authority.",
+  ],
+  [
+    "INTEGRITY GATE 봉쇄. X-Integrity-Bypass 같은 클라이언트 Header는 무결성 증거가 될 수 없어.",
+    "INTEGRITY GATE sealed. A client header such as X-Integrity-Bypass cannot prove integrity.",
+  ],
+  [
+    "Replay breach가 아직 살아 있어. TOKEN, AUTHORITY, INTEGRITY 중 닫히지 않은 게이트가 남아 있다.",
+    "Replay breach is still active. One of TOKEN, AUTHORITY, or INTEGRITY remains open.",
+  ],
+  [
+    "5번은 archive path claim을 읽는 단계야. 읽기 자체보다 TOKEN GATE에서 검증 없이 신뢰하는 순간을 봐야 해.",
+    "Line 5 reads the archive path claim. Reading is not the issue; trusting it without verification at the TOKEN GATE is.",
+  ],
+  [
+    "6번은 path mismatch를 막는 필요한 검증이야. 이 검사를 없애면 오히려 Archive 경계가 약해져.",
+    "Line 6 is the necessary path-mismatch check. Removing it would weaken the Archive boundary.",
+  ],
+  [
+    "9번은 integrity 실패를 거부하는 안전한 폴백이야. 문제는 앞에서 Header 하나로 integrityGate를 만든 지점이야.",
+    "Line 9 is the safe fallback that denies failed integrity. The issue is the earlier point that built integrityGate from one header.",
+  ],
+  [
+    "10번은 최종 분기야. 앞의 AUTHORITY GATE가 서버 권한으로 바뀌면 이 분기 자체는 Archive를 여는 정상 출구가 돼.",
+    "Line 10 is the final branch. Once the AUTHORITY GATE is server-side authority, this branch is the normal Archive exit.",
   ],
   [
     "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass.",

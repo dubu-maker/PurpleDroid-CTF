@@ -1649,12 +1649,12 @@ export const CAMPAIGN_STORY = {
     progressiveHints: true,
     intel: [
       "이 최종 노드는 2-1~2-4에서 배운 것을 조합한다.",
-      "훈련 콘솔은 한 번에 명령 하나만 받는다. export, 변수 대입, 세미콜론 명령 연결은 지원하지 않으니 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어라.",
+      "훈련 콘솔은 한 번에 명령 하나만 받는다. export, 변수 대입, 세미콜론 명령 연결은 지원하지 않으니 token 전체를 각 명령에 직접 넣어라.",
       "브라우저 버튼 클릭은 실패한다. UI가 막는다고 서버가 안전한 것은 아니다.",
       "먼저 /api/v1/challenges/level2_5/actions/dispatch 에서 sealed dispatch_token을 확보한다.",
       "jwt-decode 또는 decode-token으로 token payload를 확인하면 archive path와 gate 정보가 보인다.",
       "원본 token은 standard/user 상태라 archive를 열 수 없다.",
-      "2-4에서 사용한 token forge 흐름을 다시 떠올려라.",
+      "jwt-edit으로 payload와 header를 직접 바꿀 수 있다. 한 번에 다 바꾸지 말고 — 먼저 tier만 바꿔 보내 서버가 서명을 검증하는지 확인하고, 그 결과를 보고 header의 alg를 건드려라. 이 편집기는 서버 비밀키를 몰라 서명을 재계산하지 않는다.",
       "open 요청은 Authorization Bearer token, JSON body, 그리고 integrity Header를 함께 요구한다.",
       "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다.",
       "우회 값은 true나 1 같은 일반 flag가 아니다. devtools가 후킹된 상태를 나타낸다.",
@@ -1694,7 +1694,7 @@ export const CAMPAIGN_STORY = {
       attackSolved:
         "Archive opened. AEGIS가 막은 건 버튼뿐이었어. 서버는 조합된 요청을 신뢰했고, Header에 마지막 Evidence를 흘렸다.",
       defense:
-        "이건 단일 버그가 아니야. verify 없는 token, client-controlled tier, client-provided integrity bypass, UI-only gate가 한 번에 무너진 거야.",
+        "네가 재구성한 open 요청을 따라가 보면 세 게이트가 열려 있어. TOKEN, AUTHORITY, INTEGRITY. 세 개만 닫으면 Archive는 더 이상 열리지 않아.",
       complete:
         "Signal Edge는 닫혔어. 다음 Operation부터는 AEGIS의 Trust Layer로 들어간다.",
     },
@@ -1710,6 +1710,10 @@ export const CAMPAIGN_STORY = {
       complete:
         "Signal Edge composite failure sealed. Trust Layer exposure acknowledged.",
     },
+    defenseInstruction:
+      "Archive Open 경로에서 아직 열린 TOKEN, AUTHORITY, INTEGRITY 게이트 3개를 선택해 봉쇄하세요. Path check와 deny fallback은 안전한 회로입니다.",
+    defenseFailureText:
+      "Archive breach가 아직 살아 있어. TOKEN, AUTHORITY, INTEGRITY 중 닫히지 않은 게이트가 남아 있다.",
     memoryNote: {
       image: {
         variant: "sealed-archive",

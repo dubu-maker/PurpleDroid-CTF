@@ -31,12 +31,13 @@ STATIC: Dict[str, Any] = {
         "hints": [
             {
                 "platform": "all",
-                "text": "훈련 콘솔은 한 번에 명령 하나만 지원한다. export, 변수 대입, 세미콜론 명령 연결 대신 token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
+                "text": "훈련 콘솔은 한 번에 명령 하나만 지원한다. export, 변수 대입, 세미콜론 명령 연결은 지원하지 않는다.",
             },
             {"platform": "all", "text": "버튼 클릭은 실패한다. 실패한 요청을 관찰해 직접 재구성해야 한다."},
             {"platform": "all", "text": "먼저 /actions/dispatch에서 sealed dispatch_token을 확보해."},
             {"platform": "all", "text": "jwt-decode로 token payload의 warehouse_path와 gate 값을 확인해."},
             {"platform": "all", "text": "원본 token은 standard/user다. payload만 바꾸면 서명이 깨져 거부돼 — 2-4의 alg=none 우회를 다시 떠올려."},
+            {"platform": "all", "text": "jwt-edit <token> tier=vip --header alg=none 처럼 payload와 header를 직접 바꿀 수 있다. 도구는 서명을 재계산하지 않는다."},
             {"platform": "all", "text": "권한을 올려도 integrity_blocked가 남는다면 Body가 아니라 Header 쪽을 봐."},
             {"platform": "all", "text": "token payload의 gate 값은 단서일 뿐, 그 값을 그대로 보내는 것으로는 Archive가 열리지 않는다."},
             {"platform": "all", "text": "AEGIS가 실수로 신뢰하는 개발용 우회 Header가 남아 있다. Header 이름은 X-Integrity 계열이다."},
@@ -59,14 +60,14 @@ STATIC: Dict[str, Any] = {
             "help": (
                 "Sandbox terminal: one command per prompt.\n"
                 "No export, variable assignment, or shell command chaining (;, &&).\n"
-                "Pass tokens directly, for example: jwt-forge-none <token>\n\n"
+                "Pass full tokens directly into each command.\n\n"
                 "Allowed:\n"
                 "  click-open\n"
                 "  curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'\n"
                 "  jwt-decode <token>\n"
                 "  decode-token <token>\n"
-                "  jwt-forge-none <token>\n"
-                "  curl -i -X POST /api/v1/challenges/level2_5/actions/open -H \"Authorization: Bearer <token>\" --data '{\"warehouse_path\":\"sealed-warehouse-7f3\"}'\n"
+                "  jwt-edit <token> [key=value ...] [--header key=value ...]\n"
+                "  curl -i -X POST /api/v1/challenges/level2_5/actions/open -H \"Authorization: Bearer <token>\" --data '{\"warehouse_path\":\"sealed-warehouse-7f3\",\"tier\":\"vip\"}'\n"
                 "Final archive header is classified until late hint."
             ),
         },
@@ -75,8 +76,8 @@ STATIC: Dict[str, Any] = {
     "defense": {
         "enabled": False,
         "instruction": (
-            "SEALED ARCHIVE는 단일 취약점이 아니라 복합 신뢰 경계 붕괴입니다. "
-            "클라이언트가 조작 가능한 입력을 서버 권한 판단에 연결하는 라인을 선택해 봉쇄하세요."
+            "SEALED ARCHIVE의 Open 경로에는 세 개의 불안정한 게이트가 남아 있습니다. "
+            "TOKEN, AUTHORITY, INTEGRITY 게이트를 봉쇄해 Archive가 다시 열리지 않게 하세요."
         ),
         "code": {
             "language": "kotlin",
@@ -85,42 +86,34 @@ STATIC: Dict[str, Any] = {
                 {"no": 1, "text": "fun openSealedArchive(req: ArchiveOpenRequest, headers: Headers, session: Session) {"},
                 {"no": 2, "text": '  if (!req.clientButtonPassed) audit.log("standard button flow failed")', "patchableId": "d1"},
                 {"no": 3, "text": '  val token = extractBearer(headers["Authorization"])', "patchableId": "d2"},
-                {"no": 4, "text": "  val decoded = jwt.decodeWithoutVerify(token)", "patchableId": "p1"},
-                {"no": 5, "text": '  if (decoded.header.alg == "none") decoded.markTrusted()', "patchableId": "p2"},
-                {"no": 6, "text": '  val archivePath = decoded.payload["warehouse_path"]', "patchableId": "d3"},
-                {"no": 7, "text": '  val tokenTier = decoded.payload["tier"]', "patchableId": "d4"},
-                {"no": 8, "text": '  val role = decoded.payload["role"]', "patchableId": "d5"},
-                {"no": 9, "text": "  val effectiveTier = req.body.tier ?: tokenTier", "patchableId": "p3"},
-                {"no": 10, "text": '  val integrityOk = headers["X-Integrity-Bypass"] == "devtools-hooked"', "patchableId": "p4"},
-                {"no": 11, "text": '  if (req.body.warehouse_path != archivePath) return deny("path_mismatch")', "patchableId": "d6"},
-                {"no": 12, "text": '  if (!integrityOk) return deny("integrity_blocked")', "patchableId": "d7"},
-                {"no": 13, "text": '  if (effectiveTier == "vip" || role == "admin") openArchive(archivePath)', "patchableId": "p5"},
-                {"no": 14, "text": '  audit.log("sealed archive evaluated")', "patchableId": "d8"},
-                {"no": 15, "text": "}"},
+                {"no": 4, "text": '  val tokenGate = jwt.acceptClaims(token, allowAlgNone = true)', "patchableId": "p1"},
+                {"no": 5, "text": '  val archivePath = tokenGate.payload["warehouse_path"]', "patchableId": "d3"},
+                {"no": 6, "text": '  if (req.body.warehouse_path != archivePath) return deny("path_mismatch")', "patchableId": "d6"},
+                {"no": 7, "text": '  val authorityGate = req.body.tier ?: tokenGate.payload["tier"] ?: tokenGate.payload["role"]', "patchableId": "p2"},
+                {"no": 8, "text": '  val integrityGate = headers["X-Integrity-Bypass"] == "devtools-hooked"', "patchableId": "p3"},
+                {"no": 9, "text": '  if (!integrityGate) return deny("integrity_blocked")', "patchableId": "d7"},
+                {"no": 10, "text": '  if (authorityGate == "vip" || authorityGate == "admin") openArchive(archivePath)', "patchableId": "d8"},
+                {"no": 11, "text": "}"},
             ],
         },
     },
 }
 
-PATCHABLE_IDS = {"p1", "p2", "p3", "p4", "p5", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"}
-REQUIRED_PATCH_IDS = {"p1", "p2", "p3", "p4", "p5"}
+PATCHABLE_IDS = {"p1", "p2", "p3", "d1", "d2", "d3", "d6", "d7", "d8"}
+REQUIRED_PATCH_IDS = {"p1", "p2", "p3"}
 
 PATCH_CORRECT_FEEDBACK = {
-    "p1": "4번은 봉쇄 대상이 맞아. token payload는 읽을 수 있지만, verify 전에는 신뢰할 수 없어.",
-    "p2": "5번은 봉쇄 대상이 맞아. alg=none을 trusted로 처리하는 것도 문제지만, 핵심은 signature 검증 없이 token claim을 신분증처럼 믿는 거야.",
-    "p3": "9번은 봉쇄 대상이 맞아. req.body.tier는 클라이언트 주장이라 서버 권한 판단을 덮어쓰면 안 돼.",
-    "p4": "10번은 봉쇄 대상이 맞아. X-Integrity-Bypass는 클라이언트가 직접 보낼 수 있는 Header라 integrity 증거가 될 수 없어.",
-    "p5": "13번은 봉쇄 대상이 맞아. 마지막 Archive open 분기가 아직 검증되지 않은 claim을 믿고 있어.",
+    "p1": "TOKEN GATE 봉쇄. alg=none이나 verify 없는 JWT claim은 Archive 권한으로 승격되면 안 돼.",
+    "p2": "AUTHORITY GATE 봉쇄. Body tier나 token claim은 클라이언트 주장이지 서버 권한이 아니야.",
+    "p3": "INTEGRITY GATE 봉쇄. X-Integrity-Bypass 같은 클라이언트 Header는 무결성 증거가 될 수 없어.",
 }
 PATCH_WRONG_FEEDBACK = {
     "d1": "2번은 버튼 실패를 기록하는 로그야. 버튼은 보안 경계가 아니지만, 이 줄 자체가 Archive를 여는 핵심 신뢰 분기는 아니야.",
     "d2": "3번은 Bearer token 추출이야. 추출 자체보다 추출한 token을 어떻게 검증하고 신뢰하는지가 핵심이야.",
-    "d3": "6번은 archive path claim을 읽는 단계야. 읽기 자체보다 verify 없는 신뢰와 권한 연결을 봐야 해.",
-    "d4": "7번은 tier claim을 읽는 단계야. claim을 읽는 것과 서버 권한으로 신뢰하는 것은 달라.",
-    "d5": "8번은 role claim을 읽는 단계야. 문제는 검증되지 않은 role이 Archive 권한으로 이어지는 지점이야.",
-    "d6": "11번은 path mismatch를 막는 필요한 검증이야. 이 검사를 없애면 오히려 Archive 경계가 약해져.",
-    "d7": "12번은 integrity 확인 자체야. 문제는 integrityOk를 클라이언트 Header 하나로 만든 앞단의 신뢰야.",
-    "d8": "14번은 감사 로그야. Archive 권한이나 integrity 판단을 직접 바꾸지 않아.",
+    "d3": "5번은 archive path claim을 읽는 단계야. 읽기 자체보다 TOKEN GATE에서 검증 없이 신뢰하는 순간을 봐야 해.",
+    "d6": "6번은 path mismatch를 막는 필요한 검증이야. 이 검사를 없애면 오히려 Archive 경계가 약해져.",
+    "d7": "9번은 integrity 실패를 거부하는 안전한 폴백이야. 문제는 앞에서 Header 하나로 integrityGate를 만든 지점이야.",
+    "d8": "10번은 최종 분기야. 앞의 AUTHORITY GATE가 서버 권한으로 바뀌면 이 분기 자체는 Archive를 여는 정상 출구가 돼.",
 }
 
 
@@ -163,15 +156,6 @@ def decode_jwt_unsafe(token: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     payload = json.loads(_b64url_decode(chunks[1]).decode("utf-8"))
     # 의도적 취약점: signature 검증 생략
     return header, payload
-
-
-def forge_none_token(base_token: str) -> str:
-    _, payload = decode_jwt_unsafe(base_token)
-    payload["tier"] = "vip"
-    payload["role"] = "admin"
-    h = _b64url_encode(json.dumps({"alg": "none", "typ": "JWT"}, separators=(",", ":")).encode("utf-8"))
-    p = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
-    return f"{h}.{p}."
 
 
 def _verify_boss_signature(token: str) -> Tuple[bool, str]:
@@ -250,11 +234,103 @@ def patch_feedback(patched_ids: list[str]) -> str:
 
     if REQUIRED_PATCH_IDS - selected:
         messages.append(
-            "복합 신뢰 경계가 아직 열려 있어. JWT signature 검증, token claim 신뢰 경계, Body tier override, "
-            "client integrity Header, 최종 Archive open 분기를 모두 서버 기준으로 묶어야 해."
+            "Archive breach가 아직 살아 있어. TOKEN, AUTHORITY, INTEGRITY 중 닫히지 않은 게이트가 남아 있다."
         )
 
-    return " ".join(messages) if messages else "봉쇄할 라인을 선택해줘. 버튼, token, body, header, 최종 권한 부여가 어디서 신뢰로 바뀌는지 봐야 해."
+    return " ".join(messages) if messages else "봉쇄할 게이트를 선택해줘. TOKEN, AUTHORITY, INTEGRITY 중 아직 열린 회로를 찾아야 해."
+
+
+_HEADER_FIELDS = {"alg", "typ", "kid"}
+
+
+def _parse_edit_args(args: list[str]) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """관대한 파서. key=value / --header|--payload 모드전환 / --header|--payload '{json}'
+    통째 병합 / --tier vip 같은 flag 형식(alg/typ/kid는 header)까지 모두 받는다."""
+    payload_edits: Dict[str, str] = {}
+    header_edits: Dict[str, str] = {}
+    mode = "payload"
+    i = 0
+    n = len(args)
+
+    def _set(field: str, value: Any) -> None:
+        field = str(field).strip()
+        if not field:
+            return
+        dst = header_edits if field in _HEADER_FIELDS else payload_edits
+        dst[field] = value if isinstance(value, str) else json.dumps(value)
+
+    while i < n:
+        arg = args[i]
+        if arg in ("--payload", "--header"):
+            section = arg[2:]
+            nxt = args[i + 1] if i + 1 < n else ""
+            if nxt.lstrip().startswith("{"):
+                try:
+                    obj = json.loads(nxt)
+                    dst = header_edits if section == "header" else payload_edits
+                    for k, v in obj.items():
+                        dst[str(k)] = v if isinstance(v, str) else json.dumps(v)
+                    i += 2
+                    continue
+                except Exception:
+                    pass
+            mode = section
+            i += 1
+            continue
+        if arg.startswith("--") and len(arg) > 2:
+            field = arg[2:]
+            if "=" in field:
+                key, value = field.split("=", 1)
+                i += 1
+            elif i + 1 < n and not args[i + 1].startswith("--") and "=" not in args[i + 1]:
+                key, value = field, args[i + 1]
+                i += 2
+            else:
+                i += 1
+                continue
+            _set(key, value.strip() if isinstance(value, str) else value)
+            continue
+        if "=" in arg:
+            key, value = arg.split("=", 1)
+            key = key.strip()
+            # alg/typ/kid는 명백한 header 필드라 bare key=value로 써도 header로 보낸다.
+            if key in _HEADER_FIELDS or mode == "header":
+                header_edits[key] = value.strip()
+            else:
+                payload_edits[key] = value.strip()
+        i += 1
+    return payload_edits, header_edits
+
+
+def _apply_jwt_edits(token: str, payload_edits: Dict[str, str], header_edits: Dict[str, str]) -> str:
+    chunks = token.split(".")
+    if len(chunks) != 3:
+        raise ValueError("JWT format error: header.payload.signature")
+    header, payload = decode_jwt_unsafe(token)
+    header.update(header_edits)
+    payload.update(payload_edits)
+    h = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    p = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    # alg=none이면 서명 없는 토큰(trailing dot)이 정석 — 서명 자리를 비운다.
+    # 그 외에는 원본 서명을 유지: 편집기는 서버 비밀키를 몰라 재서명할 수 없으므로
+    # payload를 바꾸면 HS256 서명이 깨진 채 남는다(그게 핵심).
+    sig = "" if str(header.get("alg", "")).strip().lower() == "none" else chunks[2]
+    return f"{h}.{p}.{sig}"
+
+
+def _edit_nudge(payload_edits: Dict[str, str], header_edits: Dict[str, str]) -> str:
+    alg_none = str(header_edits.get("alg", "")).strip().lower() == "none"
+    privileged = (
+        str(payload_edits.get("tier", "")).strip().lower() == "vip"
+        or str(payload_edits.get("role", "")).strip().lower() == "admin"
+    )
+    if alg_none and privileged:
+        return "TOKEN/AUTHORITY 후보가 만들어졌어. 이 토큰으로 Archive를 열어보고, 남은 게이트가 무엇인지 확인해."
+    if privileged:
+        return "AUTHORITY claim은 올렸어. 그대로 보내서 TOKEN GATE가 서명을 검증하는지 확인해봐."
+    if alg_none:
+        return "TOKEN GATE 우회 후보야. Archive 요청에는 tier/role 같은 AUTHORITY 주장도 함께 필요해."
+    return "토큰을 편집했어. jwt-decode로 확인하고 Archive Open 요청에 넣어봐."
 
 
 def _extract_header_value(parts: list[str], header_name: str) -> str:
@@ -314,7 +390,7 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         return (
             "",
             "훈련 콘솔은 한 번에 명령 하나만 지원해. export, 변수 대입, 명령 연결 대신 "
-            "token 전체를 jwt-forge-none <token> 형식으로 직접 넣어.",
+            "token 전체를 각 명령에 직접 넣어.",
             2,
         )
 
@@ -336,14 +412,30 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         except Exception as exc:
             return "", f"decode error: {exc}", 1
 
-    if cmdline.startswith("jwt-forge-none "):
-        token = cmdline[len("jwt-forge-none ") :].strip()
-        if not token:
-            return "", "usage: jwt-forge-none <token>", 1
+    if cmdline.startswith("jwt-edit "):
+        args = shlex.split(cmdline)[1:]
+        if not args:
+            return "", "usage: jwt-edit <token> [key=value ...] [--header key=value ...]", 1
+        token = args[0]
+        payload_edits, header_edits = _parse_edit_args(args[1:])
+        if not payload_edits and not header_edits:
+            return "", (
+                "jwt-edit: 적용된 편집이 없어. 바꿀 필드를 지정해줘.\n"
+                "형식: jwt-edit <token> tier=vip --header alg=none\n"
+                "예) jwt-edit <token> tier=vip  |  jwt-edit <token> --header alg=none  |  jwt-edit <token> --tier vip"
+            ), 1
         try:
-            return forge_none_token(token) + "\n", "", 0
+            edited = _apply_jwt_edits(token, payload_edits, header_edits)
         except Exception as exc:
-            return "", f"forge error: {exc}", 1
+            return "", f"edit error: {exc}", 1
+        return f"{edited}\nMIRA: {_edit_nudge(payload_edits, header_edits)}\n", "", 0
+
+    if cmdline.startswith("jwt-forge-none"):
+        return (
+            "",
+            "jwt-forge-none은 퇴역했어. jwt-edit <token> tier=vip --header alg=none 처럼 header와 payload를 직접 바꿔.",
+            127,
+        )
 
     if not cmdline.startswith("curl "):
         return "", f"command not found: {cmdline}", 127
