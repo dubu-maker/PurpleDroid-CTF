@@ -6907,7 +6907,8 @@ button:disabled {
   display: flex; flex-direction: column; gap: 16px;
 }
 .ad-forge .ad-stepper { display: flex; gap: 12px; flex-wrap: wrap; }
-.ad-forge .ad-step { flex: 1 1 160px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--ad-line); background: var(--ad-panel); border-radius: 12px; padding: 12px 15px; opacity: 0.55; transition: opacity 0.2s, border-color 0.2s; }
+.ad-forge .ad-step { flex: 1 1 160px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--ad-line); background: var(--ad-panel); border-radius: 12px; padding: 12px 15px; opacity: 0.6; transition: opacity 0.2s, border-color 0.2s; font: inherit; color: inherit; text-align: left; appearance: none; cursor: pointer; }
+.ad-forge .ad-step:hover { opacity: 0.95; border-color: rgba(150, 150, 180, 0.3); }
 .ad-forge .ad-step.done { opacity: 0.8; }
 .ad-forge .ad-step.step-brief.active { border-color: oklch(0.7 0.16 258 / 0.6); }
 .ad-forge .ad-step.step-infiltrate.active { border-color: var(--ad-violet-bd); box-shadow: 0 0 0 1px oklch(0.69 0.17 300 / 0.16); }

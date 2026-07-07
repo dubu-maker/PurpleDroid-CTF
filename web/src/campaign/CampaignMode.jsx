@@ -3892,6 +3892,7 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
   const [ledger, setLedger] = useState([]);
   const [seen, setSeen] = useState({ sig: true, exp: false, scope: false });
   const [busy, setBusy] = useState(false);
+  const zoneRef = useRef(null);
 
   const loadedCap = wallet.find((c) => c.id === loadedId) || null;
   const canSend = Boolean(loadedCap && selectedPath && !busy && !disabled && !solved);
@@ -3949,26 +3950,31 @@ function RequestForge({ attack, forge, token, onEvidence, solved, disabled, loca
     { label: "AUDIENCE", tag: showTell ? "never seen ⚠" : "not yet", tell: true },
   ];
 
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const scrollToZone = () => zoneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const steps = [
-    { key: "brief", num: "01", label: "BRIEF", sub: "read the target" },
-    { key: "infiltrate", num: "02", label: "INFILTRATE", sub: "route the capsule" },
-    { key: "patch", num: "03", label: "PATCH", sub: "seal the leak" },
+    { key: "brief", num: "01", label: "BRIEF", sub: "read the target", onClick: scrollToTop },
+    { key: "infiltrate", num: "02", label: "INFILTRATE", sub: "route the capsule", onClick: scrollToZone },
   ];
-  const activeStep = solved ? "patch" : "infiltrate";
-  const stepIdx = solved ? 2 : 1;
+  const activeStep = solved ? "brief" : "infiltrate";
 
   return (
     <section className="request-forge ad-forge">
       <div className="ad-stepper">
-        {steps.map((st, i) => (
-          <div key={st.key} className={`ad-step step-${st.key} ${st.key === activeStep ? "active" : ""} ${i < stepIdx ? "done" : ""}`}>
+        {steps.map((st) => (
+          <button
+            key={st.key}
+            type="button"
+            className={`ad-step step-${st.key} ${st.key === activeStep ? "active" : ""}`}
+            onClick={st.onClick}
+          >
             <span className="ad-step-num">{st.num}</span>
             <div className="ad-step-txt"><strong>{st.label}</strong><span>{st.sub}</span></div>
-          </div>
+          </button>
         ))}
       </div>
 
-      <div className="ad-zone">
+      <div className="ad-zone" ref={zoneRef}>
         <div className="ad-router">
           <div className="ad-panel-head">
             <span>{labels.title || "CAPSULE ROUTER"}</span>
