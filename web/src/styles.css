@@ -6934,20 +6934,25 @@ button:disabled {
 .mission-stage-tabs { display: flex; gap: 12px; flex-wrap: wrap; }
 .mission-stage-tabs .ad-step {
   flex: 1 1 160px; display: flex; align-items: center; gap: 12px;
-  border: 1px solid rgba(150, 150, 180, 0.13); background: #0f0f15; border-radius: 12px;
-  padding: 12px 15px; opacity: 0.6; transition: opacity 0.2s, border-color 0.2s;
+  border: 1px solid rgba(150, 150, 180, 0.2); background: #12121b; border-radius: 12px;
+  padding: 12px 15px; transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
   font: inherit; color: #ececf2; text-align: left; appearance: none; cursor: pointer;
 }
-.mission-stage-tabs .ad-step:hover { opacity: 0.92; border-color: rgba(150, 150, 180, 0.3); }
-.mission-stage-tabs .ad-step.active { opacity: 1; }
-.mission-stage-tabs .ad-step.step-brief.active { border-color: oklch(0.7 0.16 258 / 0.6); }
-.mission-stage-tabs .ad-step.step-infiltrate.active { border-color: oklch(0.69 0.17 300 / 0.55); box-shadow: 0 0 0 1px oklch(0.69 0.17 300 / 0.16); }
-.mission-stage-tabs .ad-step-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; font-size: 12px; font-weight: 700; color: #ececf2; background: rgba(150, 150, 180, 0.1); flex: none; }
-.mission-stage-tabs .ad-step.step-brief.active .ad-step-num { background: oklch(0.7 0.16 258 / 0.25); color: oklch(0.82 0.12 258); }
-.mission-stage-tabs .ad-step.step-infiltrate.active .ad-step-num { background: oklch(0.69 0.17 300 / 0.16); color: oklch(0.82 0.13 300); }
+/* each tab keeps a soft accent even when not selected */
+.mission-stage-tabs .ad-step.step-brief { border-color: oklch(0.7 0.16 258 / 0.38); background: oklch(0.7 0.16 258 / 0.07); }
+.mission-stage-tabs .ad-step.step-infiltrate { border-color: oklch(0.69 0.17 300 / 0.36); background: oklch(0.69 0.17 300 / 0.07); }
+.mission-stage-tabs .ad-step:hover { border-color: rgba(190, 190, 220, 0.5); }
+/* selected tab: stronger fill + glow */
+.mission-stage-tabs .ad-step.step-brief.active { border-color: oklch(0.72 0.16 258 / 0.8); background: oklch(0.7 0.16 258 / 0.18); box-shadow: 0 0 0 1px oklch(0.72 0.16 258 / 0.28); }
+.mission-stage-tabs .ad-step.step-infiltrate.active { border-color: oklch(0.71 0.17 300 / 0.78); background: oklch(0.69 0.17 300 / 0.18); box-shadow: 0 0 0 1px oklch(0.71 0.17 300 / 0.26); }
+.mission-stage-tabs .ad-step-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; font-size: 12px; font-weight: 700; flex: none; }
+.mission-stage-tabs .ad-step.step-brief .ad-step-num { background: oklch(0.7 0.16 258 / 0.22); color: oklch(0.85 0.12 258); }
+.mission-stage-tabs .ad-step.step-infiltrate .ad-step-num { background: oklch(0.69 0.17 300 / 0.2); color: oklch(0.85 0.13 300); }
 .mission-stage-tabs .ad-step-txt { display: flex; flex-direction: column; min-width: 0; }
-.mission-stage-tabs .ad-step-txt strong { font-size: 13px; letter-spacing: 0.08em; color: #ececf2; }
-.mission-stage-tabs .ad-step-txt span { font-size: 11px; color: #83838f; }
+.mission-stage-tabs .ad-step-txt strong { font-size: 13px; letter-spacing: 0.08em; }
+.mission-stage-tabs .ad-step.step-brief .ad-step-txt strong { color: oklch(0.88 0.09 258); }
+.mission-stage-tabs .ad-step.step-infiltrate .ad-step-txt strong { color: oklch(0.88 0.1 300); }
+.mission-stage-tabs .ad-step-txt span { font-size: 11px; color: #9a9aa8; }
 
 .ad-forge .ad-zone { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
 .ad-forge .ad-router { flex: 1 1 440px; min-width: 0; border: 1px solid oklch(0.69 0.17 300 / 0.3); background: var(--ad-panel); border-radius: 14px; padding: 18px 20px; box-shadow: 0 0 0 1px oklch(0.69 0.17 300 / 0.08), 0 18px 40px rgba(0, 0, 0, 0.35); }
