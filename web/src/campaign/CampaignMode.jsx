@@ -232,8 +232,8 @@ const TERMINAL_TRANSLATIONS = [
     "Line 9 is the safe fallback that denies failed integrity. The issue is the earlier point that built integrityGate from one header.",
   ],
   [
-    "10번은 최종 분기야. 앞의 AUTHORITY GATE가 서버 권한으로 바뀌면 이 분기 자체는 Archive를 여는 정상 출구가 돼.",
-    "Line 10 is the final branch. Once the AUTHORITY GATE is server-side authority, this branch is the normal Archive exit.",
+    "10번은 함정이야 — 여기가 Archive를 여는 줄이라 봉쇄하고 싶겠지만, 이건 결과(정상 출구)일 뿐이야. authorityGate가 vip/admin이면 여는 건 정당한 동작이고, 10번을 주석 처리하면 정상 오픈까지 다 막힐 뿐 신뢰 결함은 그대로 남아. 진짜 문제는 그 authorityGate를 '어디서' 만들었나 — 7번이 클라이언트 body의 tier(또는 token claim)를 그대로 서버 권한으로 삼고 있어. 봉쇄 대상은 7번이야.",
+    "Line 10 is the trap -- it's where the Archive opens, so you'll want to seal it, but it's only the result (a normal exit). Opening when authorityGate is vip/admin is legitimate, and commenting line 10 out just blocks valid opens while leaving the trust flaw intact. The real problem is WHERE authorityGate comes from -- line 7 takes the client's body tier (or token claim) as server authority. The line to seal is 7.",
   ],
   [
     "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass.",

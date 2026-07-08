@@ -113,7 +113,7 @@ PATCH_WRONG_FEEDBACK = {
     "d3": "5번은 archive path claim을 읽는 단계야. 읽기 자체보다 TOKEN GATE에서 검증 없이 신뢰하는 순간을 봐야 해.",
     "d6": "6번은 path mismatch를 막는 필요한 검증이야. 이 검사를 없애면 오히려 Archive 경계가 약해져.",
     "d7": "9번은 integrity 실패를 거부하는 안전한 폴백이야. 문제는 앞에서 Header 하나로 integrityGate를 만든 지점이야.",
-    "d8": "10번은 최종 분기야. 앞의 AUTHORITY GATE가 서버 권한으로 바뀌면 이 분기 자체는 Archive를 여는 정상 출구가 돼.",
+    "d8": "10번은 함정이야 — 여기가 Archive를 여는 줄이라 봉쇄하고 싶겠지만, 이건 결과(정상 출구)일 뿐이야. authorityGate가 vip/admin이면 여는 건 정당한 동작이고, 10번을 주석 처리하면 정상 오픈까지 다 막힐 뿐 신뢰 결함은 그대로 남아. 진짜 문제는 그 authorityGate를 '어디서' 만들었나 — 7번이 클라이언트 body의 tier(또는 token claim)를 그대로 서버 권한으로 삼고 있어. 봉쇄 대상은 7번이야.",
 }
 
 
