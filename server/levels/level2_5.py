@@ -375,7 +375,7 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         return (
             "AEGIS: Canonical button flow denied.\n"
             "AEGIS: Sealed Archive cannot be opened by standard UI.\n"
-            "MIRA: 버튼은 실패했지만 요청은 어딘가로 갔을 거야. 직접 조합해봐.\n"
+            "MIRA: 버튼은 실패했지만 요청은 어딘가로 갔어. /actions/dispatch로 직접 POST해서 sealed token부터 받아 — 방금 아래에 그 요청을 열어뒀어.\n"
         ), "", 0
 
     if cmdline in ("help", "?", "h"):

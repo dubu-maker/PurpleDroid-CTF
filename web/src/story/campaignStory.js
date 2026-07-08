@@ -1668,10 +1668,10 @@ export const CAMPAIGN_STORY = {
     consolePlaceholder: "assemble sealed archive request...",
     consoleStarter: {
       label: "TRY FIRST",
-      text: "버튼은 실패해. 직접 재구성해 — 먼저 dispatch로 sealed token을 받고 payload를 봐. 나머지는 거부 응답이 알려줄 거야.",
+      text: "먼저 표준 버튼부터 눌러봐. 실패하면 MIRA가 다음 수를 알려줄 거야.",
       commands: [
         { command: "click-open", note: "버튼은 실패" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "sealed token 발급" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "sealed token 발급", revealAfter: "click-open" },
       ],
     },
     objectives: [

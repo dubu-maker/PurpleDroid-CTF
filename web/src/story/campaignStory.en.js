@@ -1276,10 +1276,10 @@ export const CAMPAIGN_STORY_EN = {
     ],
     consoleStarter: {
       label: "TRY FIRST",
-      text: "The button fails. Rebuild it yourself — first get the sealed token from dispatch and read its payload. The denial responses guide the rest.",
+      text: "Try the standard button first. When it fails, MIRA will point you to the next move.",
       commands: [
         { command: "click-open", note: "button fails" },
-        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "issue sealed token" },
+        { command: "curl -i -X POST /api/v1/challenges/level2_5/actions/dispatch -H \"Content-Type: application/json\" --data '{\"parcel_id\":\"PD-2026-0001\"}'", note: "issue sealed token", revealAfter: "click-open" },
       ],
     },
     objectives: [

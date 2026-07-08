@@ -167,8 +167,8 @@ const TERMINAL_TRANSLATIONS = [
   ["Authorization 헤더가 필요해. 예:", "Authorization header required. Example:"],
   ["Authorization 누락:", "Authorization missing:"],
   [
-    "MIRA: 버튼은 실패했지만 요청은 어딘가로 갔을 거야. 직접 조합해봐.",
-    "MIRA: The button failed, but the request still went somewhere. Recompose it directly.",
+    "MIRA: 버튼은 실패했지만 요청은 어딘가로 갔어. /actions/dispatch로 직접 POST해서 sealed token부터 받아 — 방금 아래에 그 요청을 열어뒀어.",
+    "MIRA: The button failed, but the request still went somewhere. POST to /actions/dispatch directly to get the sealed token first -- I just opened that request below.",
   ],
   ["Hint: /actions/dispatch 엔드포인트를 호출해봐.", "Hint: call the /actions/dispatch endpoint."],
   [
@@ -649,7 +649,7 @@ const TERMINAL_TRANSLATIONS = [
   ["MIRA: token은 authority만 말해줘 — 어떤 warehouse를 열지 JSON body로 지정해야 해 (--data '{\"warehouse_path\":\"...\"}').", "MIRA: the token only states authority -- specify which warehouse to open in a JSON body (--data '{\"warehouse_path\":\"...\"}')."],
   ["이 bypass는 boolean 스위치가 아니야 — true/1로는 안 열려. devtools가 후킹된 '상태'를 나타내는 marker 값을 기대해.", "This bypass is not a boolean switch -- true/1 won't open it. It expects a marker value describing a devtools-hooked state."],
   ["MIRA: 그 값이 아니야. scope/exp를 통과하는 캡슐이 둘이야 — aud가 이 endpoint(archive-vault)와 일치하는 건 정상 인가라 회수할 게 없고, aud가 다른데도 통과하는 drift 캡슐을 /archive/vault로 보내야 Evidence가 나와.", "MIRA: That's not the value. Two capsules pass scope/exp -- the one whose aud matches this endpoint (archive-vault) is a legitimate access with nothing to recover, so send the drift capsule whose aud differs yet still passes to /archive/vault to get the Evidence."],
-  ["AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: 버튼은 실패했지만 요청은 어딘가로 갔을 거야. 직접 조합해봐.\n", "AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: The button failed, but the request went somewhere. Reconstruct it yourself.\n"],
+  ["AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: 버튼은 실패했지만 요청은 어딘가로 갔어. /actions/dispatch로 직접 POST해서 sealed token부터 받아 — 방금 아래에 그 요청을 열어뒀어.\n", "AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: The button failed, but the request still went somewhere. POST to /actions/dispatch directly to get the sealed token first -- I just opened that request below.\n"],
   ["MIRA: 캡슐마다 aud/scope/exp를 decode해서 대조해. scope/exp를 통과하는 두 캡슐 중, aud가 이 endpoint용이 아닌데도 서빙되는 쪽이 drift야 — 그게 안 묶여 있다는 증거.", "MIRA: Decode and compare each capsule's aud/scope/exp. Of the two capsules that pass scope/exp, the one served even though its aud isn't for this endpoint is the drift -- that's the proof it isn't bound."],
   ["5번은 봉쇄 대상이 맞아. X-Courier-Preview는 '미리보기'라도 여전히 ticket 모양 자격증명이야. 공격에선 미끼였어도 Header로 노출되는 것 자체가 누출이라 함께 막아야 해.", "Line 5 is a containment target. X-Courier-Preview is a 'preview', but it's still a ticket-shaped credential. Even though it was a decoy in the attack, exposing it in a Header is itself a leak, so seal it too."],
   ["MIRA: 그건 캡슐 payload/header 안에 보이던 값이야 — 이번 Evidence가 아니야. 캡슐을 /archive/vault로 통과시켜 나온 응답의 evidenceShard를 제출해.", "MIRA: That was a value visible inside the capsule payload/header -- not this node's Evidence. Send a capsule through /archive/vault and submit the evidenceShard from that response."],
@@ -3669,8 +3669,8 @@ const LEVEL25_GATES = [
   {
     key: "authority",
     name: "Authority",
-    hintEn: "tier / role still standard·user — forge VIP·admin",
-    hintKo: "tier·role이 아직 standard·user — VIP·admin으로 위조해",
+    hintEn: "tier / role claims still read as a plain user",
+    hintKo: "tier·role claim이 아직 일반 user 등급이야",
   },
   {
     key: "path",
@@ -3750,13 +3750,15 @@ function level25DevState(consoleLogs, locale) {
   });
   const resolvedCount = gates.filter((g) => g.node === "resolved").length;
 
-  // last JWT seen anywhere (chronological); decode its payload
+  // Payload panel stays sealed until the operator actually decodes a token
+  // (jwt-decode / decode-token). We don't auto-reveal claims.
+  const decodedRun = cmdLc.some((t) => t.includes("jwt-decode") || t.includes("decode-token"));
   let lastToken = null;
   for (const l of consoleLogs) {
     const m = String(l.text || "").match(LEVEL25_JWT_RE);
     if (m && m.length) lastToken = m[m.length - 1];
   }
-  const payload = lastToken ? decodeJwtPayloadSafe(lastToken) : null;
+  const payload = decodedRun && lastToken ? decodeJwtPayloadSafe(lastToken) : null;
 
   // last response to a network-ish action (curl / click-open) → gutter lines
   let lastNet = null;
@@ -3866,7 +3868,7 @@ function Level25DevTools({ consoleLogs, locale }) {
                   <div className="l25-code-line"><span className="l25-brace">{"}"}</span></div>
                 </>
               ) : (
-                <div className="l25-code-empty">{en ? "// decode a token to inspect its payload" : "// 토큰을 decode하면 payload가 여기 보여"}</div>
+                <div className="l25-code-empty">{en ? "// sealed — run jwt-decode <token> to read the payload" : "// 봉인됨 — jwt-decode <token>로 payload를 열어"}</div>
               )}
             </div>
           </div>
