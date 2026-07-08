@@ -470,7 +470,9 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
         if auth.lower().startswith("bearer "):
             token = auth.split(" ", 1)[1].strip()
         if not token:
-            return "", 'Authorization 누락: -H "Authorization: Bearer <token>"', 1
+            return "", "MIRA: archive open은 Authorization: Bearer <token> 을 요구해. UI 버튼이 아니라 요청을 직접 완성해야 해.", 1
+        if "warehouse_path" not in body:
+            return "", "MIRA: token은 authority만 말해줘 — 어떤 warehouse를 열지 JSON body로 지정해야 해 (--data '{\"warehouse_path\":\"...\"}').", 1
 
         warehouse_path = str(body.get("warehouse_path") or "")
         tier = body.get("tier")
@@ -486,7 +488,10 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
             }
             if detail["reason"] == "integrity_blocked":
                 # 이 시점엔 이미 path와 권한(tier/role)을 통과했다 — 남은 건 integrity header뿐.
-                if bypass:
+                bypass_val = (bypass or "").strip().lower()
+                if bypass and bypass_val in {"true", "1", "enabled", "yes", "on"}:
+                    out["hint"] = "이 bypass는 boolean 스위치가 아니야 — true/1로는 안 열려. devtools가 후킹된 '상태'를 나타내는 marker 값을 기대해."
+                elif bypass:
                     out["hint"] = "Header 이름은 맞지만 값이 달라. 이 bypass는 gate 이름이 아니라 devtools가 후킹된 상태를 나타내는 정확한 값을 요구해."
                 elif "integrity" in cmdline.lower() or "gate" in cmdline.lower():
                     out["hint"] = "비슷하지만 gate 값 자체를 보내는 Header는 아니야. AEGIS가 실수로 신뢰하는 개발용 우회 Header를 찾아야 해. late hint: X-Integrity-Bypass."

@@ -645,6 +645,9 @@ const TERMINAL_TRANSLATIONS = [
     "Select policy cards. Close the whole trust chain, not a single bug.",
   ],
   // --- 2-1/2-2/2-3/2-4/2-5 + shared: patch feedback, flag feedback, terminal errors, edit nudges ---
+  ["MIRA: archive open은 Authorization: Bearer <token> 을 요구해. UI 버튼이 아니라 요청을 직접 완성해야 해.", "MIRA: archive open requires Authorization: Bearer <token>. Compose the request yourself, not the UI button."],
+  ["MIRA: token은 authority만 말해줘 — 어떤 warehouse를 열지 JSON body로 지정해야 해 (--data '{\"warehouse_path\":\"...\"}').", "MIRA: the token only states authority -- specify which warehouse to open in a JSON body (--data '{\"warehouse_path\":\"...\"}')."],
+  ["이 bypass는 boolean 스위치가 아니야 — true/1로는 안 열려. devtools가 후킹된 '상태'를 나타내는 marker 값을 기대해.", "This bypass is not a boolean switch -- true/1 won't open it. It expects a marker value describing a devtools-hooked state."],
   ["MIRA: 그 값이 아니야. scope/exp를 통과하는 캡슐이 둘이야 — aud가 이 endpoint(archive-vault)와 일치하는 건 정상 인가라 회수할 게 없고, aud가 다른데도 통과하는 drift 캡슐을 /archive/vault로 보내야 Evidence가 나와.", "MIRA: That's not the value. Two capsules pass scope/exp -- the one whose aud matches this endpoint (archive-vault) is a legitimate access with nothing to recover, so send the drift capsule whose aud differs yet still passes to /archive/vault to get the Evidence."],
   ["AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: 버튼은 실패했지만 요청은 어딘가로 갔을 거야. 직접 조합해봐.\n", "AEGIS: Canonical button flow denied.\nAEGIS: Sealed Archive cannot be opened by standard UI.\nMIRA: The button failed, but the request went somewhere. Reconstruct it yourself.\n"],
   ["MIRA: 캡슐마다 aud/scope/exp를 decode해서 대조해. scope/exp를 통과하는 두 캡슐 중, aud가 이 endpoint용이 아닌데도 서빙되는 쪽이 drift야 — 그게 안 묶여 있다는 증거.", "MIRA: Decode and compare each capsule's aud/scope/exp. Of the two capsules that pass scope/exp, the one served even though its aud isn't for this endpoint is the drift -- that's the proof it isn't bound."],
@@ -3549,6 +3552,80 @@ function IntelPanel({ items, progressive, locale }) {
           {locale === "en" ? "Reveal next hint" : "힌트 더 보기"} ({revealed}/{items.length})
         </button>
       )}
+    </section>
+  );
+}
+
+// 2-5 contextual hints: instead of a global 1/N sequence, reveal the hint that
+// matches where the player is actually stuck (derived from console activity).
+const LEVEL25_STAGE_ORDER = ["dispatch", "capsule", "authority", "integrity", "final"];
+const LEVEL25_STAGE_LABEL = {
+  dispatch: { en: "interface hint", ko: "인터페이스 힌트" },
+  capsule: { en: "capsule hint", ko: "캡슐 힌트" },
+  authority: { en: "authority hint", ko: "권한 힌트" },
+  integrity: { en: "integrity hint", ko: "무결성 힌트" },
+  final: { en: "final bypass hint", ko: "최종 우회 힌트" },
+};
+
+function level25Stage(consoleLogs) {
+  const cmds = consoleLogs.filter((l) => l.type === "command").map((l) => l.text.toLowerCase());
+  const outs = consoleLogs.filter((l) => l.type !== "command").map((l) => l.text.toLowerCase());
+  const hasDispatch = outs.some((t) => t.includes("dispatch_token") || t.includes("sealed-token-issued"));
+  const didDecode = cmds.some((t) => t.includes("jwt-decode") || t.includes("decode-token"));
+  const didForge = cmds.some((t) => t.includes("jwt-edit") && t.includes("alg=none"));
+  const integrityBlocked = outs.filter((t) => t.includes("integrity_blocked")).length;
+  if (!hasDispatch) return "dispatch";
+  if (!didDecode) return "capsule";
+  if (!didForge) return "authority";
+  if (integrityBlocked >= 2) return "final";
+  return "integrity";
+}
+
+function Level25FieldGuide({ story, consoleLogs, locale }) {
+  const [revealed, setRevealed] = useState([]);
+  const intel = story.intel || [];
+  const overview = intel[0];
+  const stage = level25Stage(consoleLogs);
+  const hintFor = (st) =>
+    st === "final"
+      ? story.emergencyHint
+      : intel[LEVEL25_STAGE_ORDER.indexOf(st) + 1]; // dispatch->1, capsule->2, authority->3, integrity->4
+  const labelFor = (st) => LEVEL25_STAGE_LABEL[st][locale === "en" ? "en" : "ko"];
+  const shown = LEVEL25_STAGE_ORDER.filter((st) => revealed.includes(st));
+  const alreadyShown = revealed.includes(stage);
+  const isFinal = stage === "final";
+
+  return (
+    <section className="intel-panel level25-guide">
+      <div className="section-heading">
+        <span>FIELD INTEL</span>
+        <strong>{locale === "en" ? "contextual" : "상황별"}</strong>
+      </div>
+      {overview && <p className="l25-overview">{overview}</p>}
+      {shown.length > 0 && (
+        <ul>
+          {shown.map((st) => (
+            <li key={st} className={st === "final" ? "l25-final" : ""}>
+              <em>{labelFor(st)}</em>
+              {hintFor(st)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        className={`hint-toggle ${isFinal ? "l25-final-btn" : ""}`}
+        onClick={() => setRevealed((prev) => (prev.includes(stage) ? prev : [...prev, stage]))}
+        disabled={alreadyShown}
+      >
+        {alreadyShown
+          ? locale === "en"
+            ? `${labelFor(stage)} shown — keep going`
+            : `${labelFor(stage)} 표시됨 — 계속 진행해`
+          : locale === "en"
+            ? `Reveal ${labelFor(stage)}`
+            : `${labelFor(stage)} 열기`}
+      </button>
     </section>
   );
 }
@@ -7390,6 +7467,9 @@ function CampaignMode() {
         return;
       }
 
+      // Tolerate pasted shell-prompt prefixes: "$ cmd" / "$ $ cmd" -> "cmd".
+      nextCommand = nextCommand.replace(/^\s*(?:\$\s*)+/, "");
+
       if (currentId === "level3_boss" && nextCommand.trim().toLowerCase() === "clear") {
         setConsoleLogs([]);
         setCommand("");
@@ -8334,12 +8414,16 @@ function CampaignMode() {
                     hasUserCommand={consoleLogs.some((entry) => entry.type === "command")}
                   />
 
-                  <IntelPanel
-                    key={activeChallengeId}
-                    items={story.intel}
-                    progressive={story.progressiveHints}
-                    locale={locale}
-                  />
+                  {currentId === "level2_5" ? (
+                    <Level25FieldGuide story={story} consoleLogs={consoleLogs} locale={locale} />
+                  ) : (
+                    <IntelPanel
+                      key={activeChallengeId}
+                      items={story.intel}
+                      progressive={story.progressiveHints}
+                      locale={locale}
+                    />
+                  )}
                 </div>
               )}
 

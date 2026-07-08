@@ -1264,6 +1264,8 @@ export const CAMPAIGN_STORY_EN = {
       "Change authority one step at a time. A payload edit without a valid signature should fail; if authority passes, inspect how the token header was treated.",
       "The open request needs three channels: Bearer token, JSON body, and an integrity signal. The gate claim is a clue, not the bypass itself. On success, check both body and response headers for the Evidence Shard.",
     ],
+    emergencyHint:
+      "Spoiler — the exact bypass: add the header X-Integrity-Bypass: devtools-hooked (the marker for a devtools-hooked state, not a boolean).",
     consoleBoot: [
       "[MIRA] Signal Edge final node reached",
       "[AEGIS] Sealed Archive locked",

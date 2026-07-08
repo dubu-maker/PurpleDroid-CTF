@@ -1654,6 +1654,8 @@ export const CAMPAIGN_STORY = {
       "authority를 한 단계씩 바꿔라. 서명이 유효하지 않은 payload 편집은 거부돼야 정상이다. 그래도 authority가 통과하면, 서버가 token header를 어떻게 다뤘는지 살펴봐라.",
       "open 요청은 세 채널이 필요하다: Bearer 토큰, JSON body, integrity 신호. gate claim은 단서일 뿐 bypass 자체가 아니다. 성공하면 body와 응답 헤더 양쪽에서 Evidence Shard를 확인해라.",
     ],
+    emergencyHint:
+      "스포일러 — 정확한 우회: 헤더 X-Integrity-Bypass: devtools-hooked 를 추가해 (boolean이 아니라 devtools가 후킹된 상태를 나타내는 marker).",
     consoleBoot: [
       "[MIRA] Signal Edge final node reached",
       "[AEGIS] Sealed Archive locked",

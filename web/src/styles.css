@@ -1805,6 +1805,17 @@ button:disabled {
   margin-top: 6px;
 }
 
+/* 2-5 contextual field guide: stage-matched hints */
+.level25-guide .l25-overview { margin: 0 0 11px; color: #b9c4de; line-height: 1.55; font-size: 12.5px; }
+.level25-guide ul { list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 9px; margin: 0; }
+.level25-guide li { display: block; color: #cdd6e6; line-height: 1.5; }
+.level25-guide li em { display: block; font-style: normal; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.8 0.12 205); margin-bottom: 3px; }
+.level25-guide li.l25-final { border: 1px solid oklch(0.82 0.14 78 / 0.5); background: oklch(0.82 0.14 78 / 0.07); border-radius: 8px; padding: 9px 11px; color: #e7d9c4; }
+.level25-guide li.l25-final em { color: oklch(0.85 0.14 78); }
+.level25-guide .hint-toggle { margin-top: 12px; }
+.level25-guide .hint-toggle:disabled { opacity: 0.5; cursor: default; }
+.level25-guide .hint-toggle.l25-final-btn { border-color: oklch(0.82 0.14 78 / 0.55); color: oklch(0.86 0.14 78); }
+
 .network-trace-panel {
   border-color: rgba(106, 255, 191, 0.28);
 }
