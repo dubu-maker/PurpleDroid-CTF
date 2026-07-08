@@ -1816,6 +1816,24 @@ button:disabled {
 .level25-guide .hint-toggle:disabled { opacity: 0.5; cursor: default; }
 .level25-guide .hint-toggle.l25-final-btn { border-color: oklch(0.82 0.14 78 / 0.55); color: oklch(0.86 0.14 78); }
 
+/* 2-5 fake devtools (console mirror): muted, no green, only what the terminal shows */
+.l25-devtools { margin-top: 14px; border: 1px solid rgba(150, 150, 180, 0.18); background: #0c0c12; border-radius: 12px; padding: 12px 14px; font-family: "Share Tech Mono", "Consolas", "Menlo", monospace; }
+.l25-dev-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; }
+.l25-dev-head span { font-size: 11px; letter-spacing: 0.18em; color: #9a9aa8; }
+.l25-dev-head em { font-style: normal; font-size: 10px; letter-spacing: 0.12em; color: #5a5a66; }
+.l25-dev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
+.l25-dev-label { font-size: 10px; letter-spacing: 0.16em; color: #6a6a76; margin-bottom: 7px; }
+.l25-dev-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.l25-dev-rows li { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.l25-dev-rows li span { color: #a9a9b6; }
+.l25-dev-rows li b { font-weight: 600; letter-spacing: 0.04em; }
+.l25-dev-rows li.ok b { color: oklch(0.8 0.11 205); }
+.l25-dev-rows li.warn b { color: oklch(0.82 0.14 78); }
+.l25-dev-rows li.idle b { color: #5f5f6b; }
+.l25-dev-pre { margin: 0; font-size: 11.5px; line-height: 1.5; color: #b9b9c6; background: #08080d; border: 1px solid rgba(150, 150, 180, 0.12); border-radius: 8px; padding: 9px 11px; white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; }
+.l25-dev-resp { margin-top: 7px; }
+@media (max-width: 720px) { .l25-dev-grid { grid-template-columns: 1fr; } }
+
 .network-trace-panel {
   border-color: rgba(106, 255, 191, 0.28);
 }

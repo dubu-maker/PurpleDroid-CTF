@@ -3630,6 +3630,126 @@ function Level25FieldGuide({ story, consoleLogs, locale }) {
   );
 }
 
+// 2-5 fake devtools: mirrors the last console request so the player has a
+// place to see progress + the decoded token payload, not just raw terminal.
+function decodeJwtPayloadSafe(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+    let b = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b.length % 4) b += "=";
+    const json = decodeURIComponent(
+      atob(b)
+        .split("")
+        .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+const LEVEL25_JWT_RE = /[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g;
+
+function level25DevState(consoleLogs) {
+  const outLc = consoleLogs.filter((l) => l.type !== "command").map((l) => l.text.toLowerCase());
+  const cmdLc = consoleLogs.filter((l) => l.type === "command").map((l) => l.text.toLowerCase());
+  const clickOpen = cmdLc.some((t) => t.includes("click-open"));
+  const hasDispatch = outLc.some((t) => t.includes("dispatch_token") || t.includes("sealed-token-issued"));
+  // only the archive-open success is "ok" -- the dispatch response also says status:ok.
+  const ok = outLc.some((t) => t.includes("sealed-warehouse-opened"));
+  const integrityBlocked = outLc.some((t) => t.includes("integrity_blocked"));
+  const vipRequired = outLc.some((t) => t.includes("vip_required"));
+  const pathMismatch = outLc.some((t) => t.includes("path_mismatch"));
+  const pathMatched = ok || integrityBlocked || vipRequired;
+  const authorityPassed = ok || integrityBlocked;
+
+  // last JWT seen anywhere (chronological); decode its payload
+  let lastToken = null;
+  for (const l of consoleLogs) {
+    const m = String(l.text || "").match(LEVEL25_JWT_RE);
+    if (m && m.length) lastToken = m[m.length - 1];
+  }
+  const payload = lastToken ? decodeJwtPayloadSafe(lastToken) : null;
+
+  // last response to a network-ish action (curl / click-open)
+  let lastNet = null;
+  let prevCmd = "";
+  for (const l of consoleLogs) {
+    if (l.type === "command") prevCmd = l.text.toLowerCase();
+    else if (prevCmd.includes("curl") || prevCmd.includes("click-open")) lastNet = l.text;
+  }
+
+  return {
+    rows: [
+      { label: "Interface", state: clickOpen ? "blocked" : "not yet" },
+      { label: "Dispatch token", state: hasDispatch ? "present" : "not yet" },
+      { label: "Authority", state: authorityPassed ? "passed" : vipRequired ? "standard" : "not yet" },
+      { label: "Archive path", state: pathMatched ? "matched" : pathMismatch ? "mismatch" : "not yet" },
+      { label: "Integrity", state: ok ? "passed" : integrityBlocked ? "blocked" : "not yet" },
+      { label: "Evidence", state: ok ? "in response header" : "locked" },
+    ],
+    payload,
+    lastNet,
+  };
+}
+
+const LEVEL25_DEV_CLASS = {
+  passed: "ok",
+  matched: "ok",
+  present: "ok",
+  "in response header": "ok",
+  blocked: "warn",
+  mismatch: "warn",
+  standard: "warn",
+  "not yet": "idle",
+  locked: "idle",
+};
+
+function Level25DevTools({ consoleLogs, locale }) {
+  const { rows, payload, lastNet } = level25DevState(consoleLogs);
+  return (
+    <section className="l25-devtools">
+      <div className="l25-dev-head">
+        <span>&#9881; DEVTOOLS</span>
+        <em>{locale === "en" ? "console mirror" : "콘솔 미러"}</em>
+      </div>
+      <div className="l25-dev-grid">
+        <div className="l25-dev-col">
+          <div className="l25-dev-label">{locale === "en" ? "STATE" : "상태"}</div>
+          <ul className="l25-dev-rows">
+            {rows.map((r) => (
+              <li key={r.label} className={LEVEL25_DEV_CLASS[r.state] || "idle"}>
+                <span>{r.label}</span>
+                <b>{r.state}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="l25-dev-col">
+          <div className="l25-dev-label">{locale === "en" ? "TOKEN · payload" : "토큰 · payload"}</div>
+          <pre className="l25-dev-pre">
+            {payload
+              ? JSON.stringify(payload, null, 1)
+              : locale === "en"
+                ? "// decode a token to inspect its payload"
+                : "// 토큰을 decode하면 payload가 여기 보여"}
+          </pre>
+        </div>
+      </div>
+      <div className="l25-dev-label">{locale === "en" ? "NETWORK · last response" : "네트워크 · 최근 응답"}</div>
+      <pre className="l25-dev-pre l25-dev-resp">
+        {lastNet
+          ? lastNet.trim().slice(0, 400)
+          : locale === "en"
+            ? "// no request sent yet"
+            : "// 아직 보낸 요청이 없어"}
+      </pre>
+    </section>
+  );
+}
+
 function NetworkTracePanel({
   probe,
   disabled,
@@ -8539,6 +8659,10 @@ function CampaignMode() {
                       helpDefaultOpen={currentId === "level3_boss"}
                       starter={story.consoleStarter}
                     />
+                  )}
+
+                  {currentId === "level2_5" && phase !== "BRIEFING" && phase !== "LOCKED" && (
+                    <Level25DevTools consoleLogs={consoleLogs} locale={locale} />
                   )}
 
                   {currentId === "level1_2" && (
