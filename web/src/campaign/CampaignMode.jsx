@@ -44,6 +44,20 @@ const TERMINAL_TRANSLATIONS = [
   ["4번은 안전해 — 지우면 안 돼. token.aud가 이 endpoint의 required audience와 정확히 일치할 때만 통과시키는 올바른 검사야.", "Line 4 is safe -- don't remove it. It's the correct check that passes only when token.aud exactly matches this endpoint's required audience."],
   ["8번은 안전해. 기본 거부(forbidden) 폴백이야.", "Line 8 is safe. It's the default-deny (forbidden) fallback."],
   ["아직 위험 라인이 남아있어. audience를 endpoint에 바인딩하지 않고 '유효하기만 하면/aud가 있기만 하면/등급만 맞으면' 통과시키는 라인을 모두 확인해.", "A risky line still remains. Check every line that grants access on 'just valid / just has an aud / just high tier' without binding the audience to the endpoint."],
+  // --- 2-4 (Express Forge) terminal nudges + flag feedback ---
+  ["MIRA: 그 값이 아니야. 서명 검증을 우회(alg=none)한 위조 토큰으로 Express Gate를 통과시켜서 나온 응답의 flag를 제출해.", "MIRA: That's not the value. Pass the Express Gate with a token forged to bypass signature verification (alg=none), then submit the flag from that response."],
+  ["MIRA: Express Gate를 통과하면 응답에 flag가 나와. standard 토큰은 서명이 유효해도 권한이 낮아 — tier/role 위조 + alg=none이 같이 필요해.", "MIRA: Pass the Express Gate and the flag appears in the response. A standard token is validly signed but low-privilege -- you need tier/role forgery plus alg=none together."],
+  ["위조 후보가 만들어졌어 — 이 토큰을 Bearer로 Express Gate에 보내봐.", "A forgery candidate is ready -- send this token to the Express Gate as a Bearer."],
+  ["권한 claim은 바꿨어. 그대로 보내서 서버가 서명을 검증하는지 먼저 확인해봐.", "You changed the privilege claim. Send it as-is first to check whether the server verifies the signature."],
+  ["alg=none으로 서명 검증은 우회돼. 근데 tier/role이 아직 standard야 — 권한 claim도 위조해.", "alg=none bypasses signature verification -- but tier/role is still standard, so forge the privilege claim too."],
+  ["필드를 바꿨어. jwt-decode로 확인하고 Express Gate로 보내봐.", "Fields changed. Confirm with jwt-decode and send it to the Express Gate."],
+  ["payload는 평문으로 읽혀. 하지만 서명이 검증되는지 확인해 — payload를 바꾼 뒤 그대로 Express Gate에 보내봐.", "The payload reads in the clear. But check whether the signature is verified -- change the payload, then send it as-is to the Express Gate."],
+  ["jwt-edit: 적용된 편집이 없어. 바꿀 필드를 지정해줘.", "jwt-edit: no edits applied. Specify a field to change."],
+  ["jwt-forge-none은 더 이상 제공되지 않아. jwt-edit로 header/payload를 직접 바꿔 — 무엇을 바꿀지는 네가 판단해야 해.", "jwt-forge-none is no longer provided. Change the header/payload yourself with jwt-edit -- what to change is for you to decide."],
+  ["통과! 서명 검증이 없으니(alg=none) claim이 곧 신분이 됐어 — 이게 이 노드의 교훈이야.", "Through! With no signature verification (alg=none), the claim became identity itself -- that's the lesson of this node."],
+  ["서명이 검증되고 있어 — payload를 바꾸면 서명이 깨져. 비밀키 없이 재서명은 못 해. 그럼 검증 '자체'를 건너뛰게 만드는 header 값(alg)은 뭘까?", "The signature is being verified -- change the payload and it breaks, and you can't re-sign without the secret key. So what header value (alg) makes it skip the verification itself?"],
+  ["서명 검증은 넘어갔어. 이제 권한 claim이 문제야 — tier=vip 또는 role=admin으로 위조해.", "Signature verification is past. Now the privilege claim is the problem -- forge tier=vip or role=admin."],
+  ["무엇을 바꿀지는 스스로 판단해 — 도구는 대신 결정하지 않아.", "What to change is for you to decide -- the tool won't decide for you."],
   // --- 2-2 (Priority Capsule) nudges + flag/defense feedback ---
   ["MIRA: fastTrack은 이 게이트에선 안 통해. 응답의 upgrade-candidates 중 진짜를 x-tier-shape대로 복원해서 tier로 claim해.", "MIRA: fastTrack doesn't work at this gate. Reconstruct the real one from the response's upgrade-candidates per x-tier-shape and claim it as tier."],
   ["MIRA: 그건 마스킹된 형태 그대로야. 빈칸을 채워서 복원해 — shape는 3글자 소문자야.", "MIRA: That's still the masked form. Fill in the blank to reconstruct it -- the shape is 3 lowercase letters."],
@@ -630,6 +644,9 @@ const TERMINAL_TRANSLATIONS = [
     "정책 카드를 선택해줘. 단일 버그가 아니라 전체 trust chain을 함께 닫아야 해.",
     "Select policy cards. Close the whole trust chain, not a single bug.",
   ],
+  // --- granular last (2-4/2-5 jwt-edit usage help); run after full sentences ---
+  ["형식:", "Format:"],
+  ["예)", "e.g.)"],
 ];
 
 function localizeTerminalOutput(text, locale, challengeId) {
@@ -8378,7 +8395,7 @@ function CampaignMode() {
                       command={command}
                       setCommand={setCommand}
                       busy={consoleBusy}
-                      helpText={story.consoleGuide || detail?.attack?.terminal?.help}
+                      helpText={story.consoleGuide || localizeTerminalOutput(detail?.attack?.terminal?.help, locale, currentId)}
                       helpDefaultOpen={currentId === "level3_boss"}
                       starter={story.consoleStarter}
                     />
