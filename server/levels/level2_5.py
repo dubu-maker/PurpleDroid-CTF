@@ -501,7 +501,7 @@ def terminal_exec(command: str) -> Tuple[str, str, int]:
             return json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n", "", 0
 
         out = {"status": "ok", "lane": "sealed-warehouse-opened"}
-        if "-v" in parts:
+        if "-i" in parts or "-v" in parts:
             verbose = (
                 "< HTTP/1.1 200 OK\n"
                 f"< x-warehouse-flag: {LEVEL2_5_FLAG}\n"
