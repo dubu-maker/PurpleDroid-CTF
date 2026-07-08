@@ -1258,17 +1258,11 @@ export const CAMPAIGN_STORY_EN = {
     briefing:
       "This is the final Signal Edge node. AEGIS placed every assumption exposed so far behind the Sealed Archive. The standard Open button always fails, but a button is only interface behavior—not a security boundary. Obtain a dispatch token, recover the archive path, forge privileged claims, and compose the integrity-bypass request the server should never trust.",
     intel: [
-      "This final node combines the techniques from 2-1 through 2-4.",
-      "This training terminal accepts one command at a time. It does not support export, variable assignment, or command chaining with semicolons. Paste the full token directly into each command.",
-      "The browser button is expected to fail. A blocked interface does not prove a protected API.",
-      "Obtain a sealed dispatch_token from /api/v1/challenges/level2_5/actions/dispatch.",
-      "Decode the token payload to recover the archive path and gate clue.",
-      "The original token is standard/user and cannot open the archive.",
-      "Use jwt-edit to change payload and header fields yourself. Don't change everything at once — change only tier first and send it to confirm whether the server verifies the signature, then, based on that result, touch the header's alg. The editor does not know the server secret, so it cannot recompute the signature.",
-      "The open request requires a Bearer token, a JSON body, and an integrity header.",
-      "The gate claim is only a clue; sending that value directly will not open the archive.",
-      "The bypass value is not a generic true or 1 flag. It describes devtools in a hooked state.",
-      "On success, the Evidence Shard may appear in a response header rather than the body.",
+      "This final node chains the techniques from 2-1 through 2-4. Work gate by gate: interface, dispatch token, authority, integrity, archive.",
+      "A blocked browser button does not prove the API is protected. Recompose the request behind the button and obtain a sealed dispatch_token.",
+      "Decode the sealed token. The payload exposes the archive path and the integrity gate clue. The original capsule is only standard/user authority.",
+      "Change authority one step at a time. A payload edit without a valid signature should fail; if authority passes, inspect how the token header was treated.",
+      "The open request needs three channels: Bearer token, JSON body, and an integrity signal. The gate claim is a clue, not the bypass itself. On success, check both body and response headers for the Evidence Shard.",
     ],
     consoleBoot: [
       "[MIRA] Signal Edge final node reached",
