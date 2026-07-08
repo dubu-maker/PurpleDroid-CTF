@@ -3652,7 +3652,55 @@ function decodeJwtPayloadSafe(token) {
 
 const LEVEL25_JWT_RE = /[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g;
 
-function level25DevState(consoleLogs) {
+// Gate chain copy (archive open path). Hints are locale-aware.
+const LEVEL25_GATES = [
+  {
+    key: "interface",
+    name: "Interface",
+    hintEn: "standard Open button denied — UI is not a boundary",
+    hintKo: "표준 Open 버튼 거부됨 — UI는 경계가 아니야",
+  },
+  {
+    key: "dispatch",
+    name: "Dispatch token",
+    hintEn: "sealed token in hand — decode its payload",
+    hintKo: "sealed 토큰 확보 — payload를 decode해",
+  },
+  {
+    key: "authority",
+    name: "Authority",
+    hintEn: "tier / role still standard·user — forge VIP·admin",
+    hintKo: "tier·role이 아직 standard·user — VIP·admin으로 위조해",
+  },
+  {
+    key: "path",
+    name: "Archive path",
+    hintEn: "warehouse_path in payload, not applied yet",
+    hintKo: "warehouse_path가 payload에 있어, 아직 적용 안 됨",
+  },
+  {
+    key: "integrity",
+    name: "Integrity",
+    hintEn: "development bypass header not set",
+    hintKo: "development bypass 헤더 미설정",
+  },
+  {
+    key: "evidence",
+    name: "Evidence",
+    hintEn: "unseals when token · authority · integrity close",
+    hintKo: "token·authority·integrity가 닫히면 해제돼",
+  },
+];
+
+// A payload claim → which gate it feeds (annotation shown next to the claim).
+const LEVEL25_CLAIM_NOTE = {
+  tier: "→ authority",
+  role: "→ authority",
+  warehouse_path: "→ archive path",
+  gate: "→ integrity",
+};
+
+function level25DevState(consoleLogs, locale) {
   const outLc = consoleLogs.filter((l) => l.type !== "command").map((l) => l.text.toLowerCase());
   const cmdLc = consoleLogs.filter((l) => l.type === "command").map((l) => l.text.toLowerCase());
   const clickOpen = cmdLc.some((t) => t.includes("click-open"));
@@ -3665,6 +3713,43 @@ function level25DevState(consoleLogs) {
   const pathMatched = ok || integrityBlocked || vipRequired;
   const authorityPassed = ok || integrityBlocked;
 
+  const done = {
+    interface: clickOpen,
+    dispatch: hasDispatch,
+    authority: authorityPassed,
+    path: pathMatched,
+    integrity: ok,
+    evidence: ok,
+  };
+  const statusLabelFor = {
+    interface: clickOpen ? "blocked" : "not yet",
+    dispatch: hasDispatch ? "issued" : "not yet",
+    authority: authorityPassed ? "passed" : vipRequired ? "standard" : "not yet",
+    path: pathMatched ? "matched" : pathMismatch ? "mismatch" : "not yet",
+    integrity: ok ? "passed" : integrityBlocked ? "blocked" : "not yet",
+    evidence: ok ? "unsealed" : "locked",
+  };
+
+  // current = first non-done gate among 0..4 (evidence stays locked until ok)
+  let currentIdx = LEVEL25_GATES.findIndex((g, i) => i !== 5 && !done[g.key]);
+
+  const gates = LEVEL25_GATES.map((g, i) => {
+    let node;
+    if (g.key === "evidence") node = done.evidence ? "resolved" : "locked";
+    else if (done[g.key]) node = "resolved";
+    else if (i === currentIdx) node = "current";
+    else node = "pending";
+    return {
+      key: g.key,
+      idx: String(i + 1).padStart(2, "0"),
+      name: g.name,
+      hint: locale === "en" ? g.hintEn : g.hintKo,
+      statusLabel: statusLabelFor[g.key],
+      node,
+    };
+  });
+  const resolvedCount = gates.filter((g) => g.node === "resolved").length;
+
   // last JWT seen anywhere (chronological); decode its payload
   let lastToken = null;
   for (const l of consoleLogs) {
@@ -3673,79 +3758,138 @@ function level25DevState(consoleLogs) {
   }
   const payload = lastToken ? decodeJwtPayloadSafe(lastToken) : null;
 
-  // last response to a network-ish action (curl / click-open)
+  // last response to a network-ish action (curl / click-open) → gutter lines
   let lastNet = null;
   let prevCmd = "";
   for (const l of consoleLogs) {
     if (l.type === "command") prevCmd = l.text.toLowerCase();
     else if (prevCmd.includes("curl") || prevCmd.includes("click-open")) lastNet = l.text;
   }
+  const netLines = lastNet
+    ? String(lastNet)
+        .trim()
+        .split(/\r?\n/)
+        .slice(0, 8)
+        .map((raw) => {
+          const t = raw.trim();
+          let gutter = " ";
+          let tone = "meta";
+          if (t.startsWith(">")) gutter = ">";
+          else if (t.startsWith("<")) gutter = "<";
+          else if (t.startsWith("{")) tone = "json";
+          const low = t.toLowerCase();
+          if (/\b2\d\d\b/.test(t) && low.includes("ok")) tone = "ok";
+          else if (/\b4\d\d\b/.test(t) || low.includes("denied") || low.includes("blocked") || low.includes("required") || low.includes("mismatch")) tone = "bad";
+          return { gutter, tone, text: t.replace(/^[<>]\s?/, "") };
+        })
+    : [];
 
-  return {
-    rows: [
-      { label: "Interface", state: clickOpen ? "blocked" : "not yet" },
-      { label: "Dispatch token", state: hasDispatch ? "present" : "not yet" },
-      { label: "Authority", state: authorityPassed ? "passed" : vipRequired ? "standard" : "not yet" },
-      { label: "Archive path", state: pathMatched ? "matched" : pathMismatch ? "mismatch" : "not yet" },
-      { label: "Integrity", state: ok ? "passed" : integrityBlocked ? "blocked" : "not yet" },
-      { label: "Evidence", state: ok ? "in response header" : "locked" },
-    ],
-    payload,
-    lastNet,
-  };
+  return { gates, resolvedCount, payload, netLines };
 }
 
-const LEVEL25_DEV_CLASS = {
-  passed: "ok",
-  matched: "ok",
-  present: "ok",
-  "in response header": "ok",
-  blocked: "warn",
-  mismatch: "warn",
-  standard: "warn",
-  "not yet": "idle",
-  locked: "idle",
-};
-
 function Level25DevTools({ consoleLogs, locale }) {
-  const { rows, payload, lastNet } = level25DevState(consoleLogs);
+  const { gates, resolvedCount, payload, netLines } = level25DevState(consoleLogs, locale);
+  const en = locale === "en";
+  const payloadEntries = payload && typeof payload === "object" ? Object.entries(payload) : [];
   return (
-    <section className="l25-devtools">
-      <div className="l25-dev-head">
-        <span>&#9881; DEVTOOLS</span>
-        <em>{locale === "en" ? "console mirror" : "콘솔 미러"}</em>
+    <section className="l25-dev">
+      <div className="l25-dev-bar">
+        <div className="l25-dev-title">
+          <span className="l25-gear" aria-hidden="true" />
+          DEVTOOLS <em>{en ? "console mirror" : "콘솔 미러"}</em>
+        </div>
+        <div className="l25-dev-gate">
+          {en ? "gate chain" : "게이트 체인"} <b>{resolvedCount}</b> / 6
+          <span className="l25-pips">
+            {gates.map((g) => (
+              <i key={g.key} className={`l25-pip ${g.node === "resolved" ? "on" : g.node === "current" ? "cur" : "off"}`} />
+            ))}
+          </span>
+        </div>
       </div>
-      <div className="l25-dev-grid">
-        <div className="l25-dev-col">
-          <div className="l25-dev-label">{locale === "en" ? "STATE" : "상태"}</div>
-          <ul className="l25-dev-rows">
-            {rows.map((r) => (
-              <li key={r.label} className={LEVEL25_DEV_CLASS[r.state] || "idle"}>
-                <span>{r.label}</span>
-                <b>{r.state}</b>
+
+      <div className="l25-dev-body">
+        {/* gate chain */}
+        <div className="l25-chain">
+          <div className="l25-dev-kicker">{en ? "STATE · ARCHIVE OPEN PATH" : "상태 · 아카이브 오픈 경로"}</div>
+          <ol className="l25-steps">
+            {gates.map((g) => (
+              <li key={g.key} className={`l25-step ${g.node}`}>
+                <span className="l25-node">
+                  {g.node === "resolved" && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.4 6.2 5 8.7 9.6 3.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                  {g.node === "current" && <span className="l25-node-dot" />}
+                  {g.node === "locked" && (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.4" stroke="currentColor" strokeWidth="1.4" /><path d="M5.2 7V5.4a2.8 2.8 0 0 1 5.6 0V7" stroke="currentColor" strokeWidth="1.4" /></svg>
+                  )}
+                </span>
+                <div className="l25-step-text">
+                  <div className="l25-step-head">
+                    <i className="l25-step-idx">{g.idx}</i>
+                    <b className="l25-step-name">{g.name}</b>
+                    <em className="l25-step-tag">{g.statusLabel}</em>
+                  </div>
+                  <div className="l25-step-hint">{g.hint}</div>
+                </div>
               </li>
             ))}
-          </ul>
+          </ol>
+          <div className="l25-legend">
+            <span><i className="l25-lg resolved" />{en ? "resolved" : "완료"}</span>
+            <span><i className="l25-lg current" />{en ? "current" : "현재"}</span>
+            <span><i className="l25-lg pending" />{en ? "pending" : "대기"}</span>
+            <span><i className="l25-lg sealed" />{en ? "sealed" : "봉인"}</span>
+          </div>
         </div>
-        <div className="l25-dev-col">
-          <div className="l25-dev-label">{locale === "en" ? "TOKEN · payload" : "토큰 · payload"}</div>
-          <pre className="l25-dev-pre">
-            {payload
-              ? JSON.stringify(payload, null, 1)
-              : locale === "en"
-                ? "// decode a token to inspect its payload"
-                : "// 토큰을 decode하면 payload가 여기 보여"}
-          </pre>
+
+        {/* payload + network */}
+        <div className="l25-right">
+          <div className="l25-panel">
+            <div className="l25-panel-head">
+              <span>{en ? "TOKEN · PAYLOAD" : "토큰 · payload"}</span>
+              <span className="l25-panel-chip">{payload ? "decoded" : "sealed"}</span>
+            </div>
+            <div className="l25-code">
+              {payload ? (
+                <>
+                  <div className="l25-code-line"><span className="l25-brace">{"{"}</span></div>
+                  {payloadEntries.map(([k, v]) => (
+                    <div key={k} className="l25-code-line">
+                      <span className="l25-kv">
+                        <span className="l25-key">{"  "}"{k}": </span>
+                        <span className="l25-val">{JSON.stringify(v)},</span>
+                      </span>
+                      {LEVEL25_CLAIM_NOTE[k] && <span className="l25-note">{LEVEL25_CLAIM_NOTE[k]}</span>}
+                    </div>
+                  ))}
+                  <div className="l25-code-line"><span className="l25-brace">{"}"}</span></div>
+                </>
+              ) : (
+                <div className="l25-code-empty">{en ? "// decode a token to inspect its payload" : "// 토큰을 decode하면 payload가 여기 보여"}</div>
+              )}
+            </div>
+          </div>
+
+          <div className="l25-panel">
+            <div className="l25-panel-head">
+              <span>{en ? "NETWORK · LAST RESPONSE" : "네트워크 · 최근 응답"}</span>
+            </div>
+            <div className="l25-code">
+              {netLines.length ? (
+                netLines.map((nl, i) => (
+                  <div key={i} className="l25-net-line">
+                    <span className="l25-net-gutter">{nl.gutter}</span>
+                    <span className={`l25-net-text l25-net-${nl.tone}`}>{nl.text}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="l25-code-empty">{en ? "// no request sent yet" : "// 아직 보낸 요청이 없어"}</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-      <div className="l25-dev-label">{locale === "en" ? "NETWORK · last response" : "네트워크 · 최근 응답"}</div>
-      <pre className="l25-dev-pre l25-dev-resp">
-        {lastNet
-          ? lastNet.trim().slice(0, 400)
-          : locale === "en"
-            ? "// no request sent yet"
-            : "// 아직 보낸 요청이 없어"}
-      </pre>
     </section>
   );
 }

@@ -1817,22 +1817,68 @@ button:disabled {
 .level25-guide .hint-toggle.l25-final-btn { border-color: oklch(0.82 0.14 78 / 0.55); color: oklch(0.86 0.14 78); }
 
 /* 2-5 fake devtools (console mirror): muted, no green, only what the terminal shows */
-.l25-devtools { margin-top: 14px; border: 1px solid rgba(150, 150, 180, 0.18); background: #0c0c12; border-radius: 12px; padding: 12px 14px; font-family: "Share Tech Mono", "Consolas", "Menlo", monospace; }
-.l25-dev-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; }
-.l25-dev-head span { font-size: 11px; letter-spacing: 0.18em; color: #9a9aa8; }
-.l25-dev-head em { font-style: normal; font-size: 10px; letter-spacing: 0.12em; color: #5a5a66; }
-.l25-dev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
-.l25-dev-label { font-size: 10px; letter-spacing: 0.16em; color: #6a6a76; margin-bottom: 7px; }
-.l25-dev-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.l25-dev-rows li { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
-.l25-dev-rows li span { color: #a9a9b6; }
-.l25-dev-rows li b { font-weight: 600; letter-spacing: 0.04em; }
-.l25-dev-rows li.ok b { color: oklch(0.8 0.11 205); }
-.l25-dev-rows li.warn b { color: oklch(0.82 0.14 78); }
-.l25-dev-rows li.idle b { color: #5f5f6b; }
-.l25-dev-pre { margin: 0; font-size: 11.5px; line-height: 1.5; color: #b9b9c6; background: #08080d; border: 1px solid rgba(150, 150, 180, 0.12); border-radius: 8px; padding: 9px 11px; white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; }
-.l25-dev-resp { margin-top: 7px; }
-@media (max-width: 720px) { .l25-dev-grid { grid-template-columns: 1fr; } }
+/* 2-5 Sealed Archive — Devtools Inspector (gate chain redesign) */
+.l25-dev { margin-top: 14px; border: 1px solid rgba(150, 150, 180, 0.15); background: #0f0f15; border-radius: 14px; overflow: hidden; }
+.l25-dev-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid rgba(150, 150, 180, 0.13); background: linear-gradient(180deg, #16161f, #101017); }
+.l25-dev-title { display: flex; align-items: center; gap: 9px; font-family: "JetBrains Mono", "Share Tech Mono", monospace; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #b9b9c6; }
+.l25-dev-title em { font-style: normal; font-size: 11px; letter-spacing: 0.12em; color: #6a6a76; text-transform: none; }
+.l25-gear { width: 13px; height: 13px; border-radius: 50%; border: 2px solid oklch(0.72 0.15 300); box-shadow: 0 0 0 2px oklch(0.72 0.15 300 / 0.18) inset; }
+.l25-dev-gate { display: flex; align-items: center; gap: 10px; font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #83838f; }
+.l25-dev-gate b { color: #ececf2; }
+.l25-pips { display: inline-flex; gap: 5px; }
+.l25-pip { width: 16px; height: 5px; border-radius: 3px; border: 1px solid rgba(150, 150, 180, 0.25); }
+.l25-pip.on { background: rgba(200, 200, 220, 0.6); border: none; }
+.l25-pip.cur { border-color: oklch(0.72 0.15 300); box-shadow: 0 0 6px oklch(0.72 0.15 300 / 0.5); }
+
+.l25-dev-body { display: grid; grid-template-columns: 1.15fr 1fr; }
+.l25-chain { padding: 16px 20px; border-right: 1px solid rgba(150, 150, 180, 0.11); }
+.l25-dev-kicker { font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #83838f; margin-bottom: 10px; }
+.l25-steps { list-style: none; margin: 0; padding: 0; }
+.l25-step { position: relative; display: flex; align-items: flex-start; gap: 14px; padding-bottom: 15px; }
+.l25-step:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 26px; bottom: -3px; width: 0; border-left: 2px dashed rgba(150, 150, 180, 0.22); }
+.l25-step.resolved:not(:last-child)::before { border-left: 2px solid rgba(150, 150, 180, 0.32); }
+.l25-node { position: relative; z-index: 1; flex: none; width: 24px; height: 24px; border-radius: 7px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(150, 150, 180, 0.22); background: rgba(150, 150, 180, 0.05); color: #7a7a86; }
+.l25-step.resolved .l25-node { background: rgba(150, 150, 180, 0.16); border-color: rgba(150, 150, 180, 0.3); color: #ececf2; }
+.l25-step.current .l25-node { border-radius: 50%; border: 2px solid oklch(0.72 0.15 300); background: oklch(0.72 0.15 300 / 0.14); box-shadow: 0 0 0 4px oklch(0.72 0.15 300 / 0.1); }
+.l25-node-dot { width: 7px; height: 7px; border-radius: 50%; background: oklch(0.74 0.15 300); }
+.l25-step.pending .l25-node { border: 1.5px dashed rgba(150, 150, 180, 0.32); background: transparent; }
+.l25-step-text { flex: 1; min-width: 0; padding-top: 1px; }
+.l25-step-head { display: flex; align-items: baseline; gap: 9px; }
+.l25-step-idx { font-family: "JetBrains Mono", monospace; font-style: normal; font-size: 9px; color: #5f5f6b; }
+.l25-step-name { font-family: "JetBrains Mono", monospace; font-size: 13.5px; font-weight: 500; letter-spacing: 0.01em; color: #83838f; }
+.l25-step.resolved .l25-step-name, .l25-step.current .l25-step-name { color: #ececf2; font-weight: 600; }
+.l25-step.current .l25-step-name { color: oklch(0.85 0.1 300); }
+.l25-step-tag { margin-left: auto; font-family: "JetBrains Mono", monospace; font-style: normal; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6a76; white-space: nowrap; }
+.l25-step.current .l25-step-tag { color: oklch(0.72 0.15 300); border-bottom: 1px solid oklch(0.72 0.15 300 / 0.5); }
+.l25-step-hint { font-size: 11.5px; color: #7a7a86; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l25-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; padding-top: 12px; border-top: 1px solid rgba(150, 150, 180, 0.1); font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #6a6a76; }
+.l25-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.l25-lg { width: 12px; height: 12px; }
+.l25-lg.resolved { border-radius: 4px; background: rgba(150, 150, 180, 0.16); border: 1px solid rgba(150, 150, 180, 0.3); }
+.l25-lg.current { border-radius: 50%; border: 2px solid oklch(0.72 0.15 300); }
+.l25-lg.pending { border-radius: 3px; border: 1.5px dashed rgba(150, 150, 180, 0.32); }
+.l25-lg.sealed { border-radius: 3px; border: 1px solid rgba(150, 150, 180, 0.22); background: rgba(150, 150, 180, 0.05); }
+
+.l25-right { display: flex; flex-direction: column; }
+.l25-panel { padding: 16px 20px; }
+.l25-panel + .l25-panel { border-top: 1px solid rgba(150, 150, 180, 0.11); flex: 1; }
+.l25-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #83838f; }
+.l25-panel-chip { font-size: 9.5px; letter-spacing: 0.12em; color: #6a6a76; border: 1px solid rgba(150, 150, 180, 0.18); border-radius: 5px; padding: 3px 7px; }
+.l25-code { border: 1px solid rgba(150, 150, 180, 0.13); border-radius: 9px; background: #07070b; padding: 12px 14px; font-family: "JetBrains Mono", "Share Tech Mono", monospace; font-size: 12px; line-height: 1.65; overflow: auto; max-height: 220px; }
+.l25-code-line { display: flex; align-items: baseline; gap: 12px; }
+.l25-code-line .l25-kv { flex: 1; min-width: 0; white-space: pre; }
+.l25-key { color: #83838f; }
+.l25-val { color: #c9c9d4; }
+.l25-brace { color: #83838f; }
+.l25-note { flex: none; font-size: 10px; color: oklch(0.72 0.15 300 / 0.85); }
+.l25-code-empty { color: #5f5f6b; }
+.l25-net-line { display: flex; gap: 9px; white-space: pre-wrap; word-break: break-all; }
+.l25-net-gutter { flex: none; width: 10px; color: #5f5f6b; }
+.l25-net-meta { color: #83838f; }
+.l25-net-json { color: #b9b9c6; }
+.l25-net-ok { color: oklch(0.78 0.12 158); }
+.l25-net-bad { color: oklch(0.7 0.17 22); }
+@media (max-width: 760px) { .l25-dev-body { grid-template-columns: 1fr; } .l25-chain { border-right: none; border-bottom: 1px solid rgba(150, 150, 180, 0.11); } .l25-step-hint { white-space: normal; } }
 
 .network-trace-panel {
   border-color: rgba(106, 255, 191, 0.28);
