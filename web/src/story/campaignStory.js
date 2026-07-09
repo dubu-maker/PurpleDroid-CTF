@@ -1787,8 +1787,9 @@ export const CAMPAIGN_STORY = {
       label: "Sync My Capsules",
       secondaryLabel: "Queue Detail Request",
       status: "recording",
+      layout: "lanes",
       caption:
-        "Network Trace는 관찰 도구, Mission Console은 조작 도구다. 목록 요청에서 기준 객체 ID와 Authorization 헤더를 확인하고, 상세 요청은 콘솔에서 직접 재현해.",
+        "Network Trace는 관찰 도구, Mission Console은 조작 도구다. 요청은 의도별 3개 레인(관찰 → 기준 → 교차 조회)으로 접히고, 반복·거부 시도는 카드가 아니라 카운터로 합쳐진다. 목록 요청에서 기준 객체 ID와 Authorization 헤더를 확인하고, 상세 요청은 콘솔에서 직접 재현해.",
       success:
         "Object registry probe captured. 응답 preview에서 owner와 capsule_id를 확인해.",
     },

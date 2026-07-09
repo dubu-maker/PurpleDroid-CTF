@@ -1358,7 +1358,7 @@ export const CAMPAIGN_STORY_EN = {
     ],
     actionProbe: {
       caption:
-        "Network Trace observes; Mission Console mutates. Recover the reference object ID and Authorization header from the list request, then reproduce the detail request directly.",
+        "Network Trace observes; Mission Console mutates. Requests fold into three intent lanes (observe → baseline → cross-object probe); repeats and denied attempts collapse into a counter, not a new card. Recover the reference object ID and Authorization header from the list request, then reproduce the detail request directly.",
       success:
         "Object registry probe captured. Inspect owner and capsule_id in the response preview.",
     },

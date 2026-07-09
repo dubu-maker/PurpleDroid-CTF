@@ -2590,6 +2590,7 @@ function createTraceEntry({
     method,
     url,
     status,
+    hits: 1,
     requestHeaders,
     body: displayBody,
     preview: previewNetworkBody(displayBody),
@@ -2619,6 +2620,7 @@ function mergeTraceEntries(currentEntries, incomingEntries) {
       nextEntries[existingIndex] = {
         ...entry,
         id: nextEntries[existingIndex].id,
+        hits: (nextEntries[existingIndex].hits || 1) + 1,
       };
       return;
     }
@@ -2627,6 +2629,116 @@ function mergeTraceEntries(currentEntries, incomingEntries) {
   });
 
   return nextEntries;
+}
+
+const BOLA_BASE_ID = "PD-1004";
+
+function bolaProbeId(entry) {
+  const url = entry?.url || "";
+  const q = url.match(/parcel_id=([^&\s"'`]+)/i);
+  const seg = url.match(/\/parcels\/([A-Za-z0-9<>_\-]+)/);
+  const raw = q ? q[1] : seg ? seg[1] : "";
+  try {
+    return decodeURIComponent(raw).toUpperCase();
+  } catch {
+    return String(raw).toUpperCase();
+  }
+}
+
+function bolaLaneKey(entry) {
+  const url = entry?.url || "";
+  if (url.includes("/parcels/mine")) {
+    return "observe";
+  }
+  return bolaProbeId(entry) === BOLA_BASE_ID ? "baseline" : "probe";
+}
+
+function bolaEntryDenied(entry) {
+  return !(entry?.status === 200 && entry?.body?.ok !== false);
+}
+
+function bolaSumHits(list) {
+  return list.reduce((total, entry) => total + (entry.hits || 1), 0);
+}
+
+// 3-1 BOLA: collapse the flat chronological trace into three intent lanes
+// (observe -> baseline -> cross-object probe). Repeats and denied attempts
+// fold into per-lane counters instead of stacking a card each; a successful
+// foreign 200 is promoted to a single anomaly milestone.
+function groupBolaLanes(entries, capsuleId) {
+  const buckets = { observe: [], baseline: [], probe: [] };
+  entries.forEach((entry) => {
+    buckets[bolaLaneKey(entry)].push(entry);
+  });
+
+  const latest = (list) => (list.length ? list[list.length - 1] : null);
+
+  const baselineLatest = latest(buckets.baseline);
+  const observeLatest = latest(buckets.observe);
+  let referenceId = (capsuleId || "").toUpperCase();
+  if (!referenceId && baselineLatest) {
+    referenceId = bolaProbeId(baselineLatest);
+  }
+  if (!referenceId && observeLatest) {
+    const data = observeLatest.body?.data || {};
+    const first = (data.capsules || data.parcels || [])[0] || {};
+    referenceId = String(first.capsule_id || first.parcel_id || "").toUpperCase();
+  }
+
+  const probeList = buckets.probe;
+  const anomalyEntry =
+    [...probeList]
+      .reverse()
+      .find((entry) => !bolaEntryDenied(entry) && bolaProbeId(entry) !== BOLA_BASE_ID) || null;
+
+  const lanes = [
+    {
+      key: "observe",
+      num: "01",
+      title: "Capsule List",
+      role: "observe",
+      list: buckets.observe,
+      latest: observeLatest,
+      count: bolaSumHits(buckets.observe),
+    },
+    {
+      key: "baseline",
+      num: "02",
+      title: "Self Detail",
+      role: "baseline",
+      list: buckets.baseline,
+      latest: baselineLatest,
+      count: bolaSumHits(buckets.baseline),
+    },
+    {
+      key: "probe",
+      num: "03",
+      title: "Cross-Object Probe",
+      role: anomalyEntry ? "exploit found" : probeList.length ? "probing" : "queued",
+      list: probeList,
+      latest: latest(probeList),
+      count: bolaSumHits(probeList),
+      deniedCount: bolaSumHits(probeList.filter(bolaEntryDenied)),
+      anomalyEntry,
+      anomalyId: anomalyEntry ? bolaProbeId(anomalyEntry) : "",
+      anomalyOwner: anomalyEntry?.body?.data?.owner || "",
+    },
+  ];
+
+  return {
+    lanes,
+    referenceId,
+    rawCount: bolaSumHits(entries),
+    hasAnomaly: Boolean(anomalyEntry),
+  };
+}
+
+function bolaIdPattern(referenceId) {
+  if (!referenceId) {
+    return "PD-100X seq";
+  }
+  const stem = referenceId.replace(/\d+$/, "");
+  return `${stem}100X seq`;
 }
 
 function parseJsonFromTerminalOutput(stdout) {
@@ -3896,6 +4008,196 @@ function Level25DevTools({ consoleLogs, locale }) {
   );
 }
 
+function bolaShortPath(url) {
+  return (url || "").replace("/api/v1/challenges/level3_1/actions", "…");
+}
+
+function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
+  const { latest, anomalyEntry } = lane;
+  const active = Boolean(latest);
+  const isProbe = lane.key === "probe";
+
+  const badgeState = anomalyEntry
+    ? "exploit"
+    : active
+    ? isProbe
+      ? "current"
+      : "done"
+    : "pending";
+
+  const representative = anomalyEntry || latest;
+  const statusValue = anomalyEntry ? 200 : latest?.status;
+  const statusTone = anomalyEntry ? "leak" : statusValue === 200 ? "ok" : active ? "deny" : "idle";
+
+  const chipSource = anomalyEntry || latest;
+  const chips = Array.isArray(chipSource?.preview) ? chipSource.preview : [];
+
+  const expanded = representative ? Boolean(expandedById[representative.id]) : false;
+
+  const counter = (() => {
+    if (isProbe) {
+      if (!active) {
+        return null;
+      }
+      return {
+        text: `×${lane.count} ${lane.count === 1 ? "probe" : "probes"}`,
+        sub: anomalyEntry
+          ? `leak on ${lane.anomalyId} · ${lane.deniedCount} denied in lane`
+          : `0 leak · ${lane.deniedCount} denied so far`,
+        tone: anomalyEntry ? "leak" : "deny",
+      };
+    }
+    if (lane.count > 1) {
+      return {
+        text: `×${lane.count} ${lane.key === "observe" ? "syncs" : "loads"}`,
+        sub: "identical 200 — collapsed, latest kept",
+        tone: "ok",
+      };
+    }
+    return null;
+  })();
+
+  return (
+    <div className="bola-lane">
+      <div className="bola-lane-rail">
+        <div className={`bola-badge bola-badge-${badgeState}`}>{lane.num}</div>
+      </div>
+      <div className={`bola-card bola-card-${badgeState}`}>
+        <div className="bola-card-head">
+          <div className="bola-card-title">
+            <strong>{lane.title}</strong>
+            <span>{lane.role}</span>
+          </div>
+          <span className="bola-card-trigger">
+            trigger: {latest?.trigger || (isProbe ? "mission console" : "button")}
+          </span>
+        </div>
+
+        {active ? (
+          <>
+            <div className="bola-req-line">
+              <span className={`bola-status bola-status-${statusTone}`}>{statusValue}</span>
+              <code>
+                <em>{representative?.method || "GET"}</em>{" "}
+                {bolaShortPath(representative?.url)}
+              </code>
+            </div>
+
+            {counter && (
+              <div className={`bola-counter bola-counter-${counter.tone}`}>
+                <strong>{counter.text}</strong>
+                <span>{counter.sub}</span>
+              </div>
+            )}
+
+            {chips.length > 0 && (
+              <div className="bola-chips">
+                {chips.map((chip) => (
+                  <span key={chip} className={anomalyEntry ? "bola-chip bola-chip-leak" : "bola-chip"}>
+                    {chip}
+                  </span>
+                ))}
+                {anomalyEntry && <span className="bola-chip bola-chip-leak">NOT your object</span>}
+              </div>
+            )}
+
+            {anomalyEntry && (
+              <div className="bola-anomaly">
+                <div className="bola-anomaly-head">
+                  <span className="bola-anomaly-tag">anomaly · 200 leak</span>
+                  <code>GET {bolaShortPath(anomalyEntry.url)}</code>
+                </div>
+                <p>
+                  Returned {lane.anomalyOwner || "another operator"}'s capsule with your session
+                  token. Ownership never checked server-side — open Raw Response for the relay
+                  residue.
+                </p>
+              </div>
+            )}
+
+            <div className="bola-req-headers">
+              <span>request headers</span>
+              <code>Authorization: Bearer $SESSION_TOKEN</code>
+            </div>
+
+            <div className="bola-card-actions">
+              <button type="button" className="ghost-button" onClick={() => onToggleResponse(representative.id)}>
+                {expanded ? "Hide Raw Response" : "View Raw Response"}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => onCopyCurl(representative.curl)}>
+                Copy as curl
+              </button>
+            </div>
+
+            {expanded && (
+              <pre className="network-response">{JSON.stringify(representative.body, null, 2)}</pre>
+            )}
+          </>
+        ) : (
+          <p className="bola-lane-pending">
+            {isProbe
+              ? "awaiting a neighbor probe from the Mission Console"
+              : lane.key === "observe"
+              ? "awaiting Sync My Capsules"
+              : "awaiting Queue Detail Request"}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleResponse }) {
+  const { lanes, referenceId, rawCount } = useMemo(
+    () => groupBolaLanes(entries, capsuleId),
+    [entries, capsuleId]
+  );
+
+  return (
+    <div className="bola-lane-trace">
+      <div className="bola-recovered">
+        <span className="bola-recovered-label">RECOVERED · carry into mission console</span>
+        <div className="bola-recovered-items">
+          <div className="bola-recovered-item">
+            <span>reference_id</span>
+            <strong>{referenceId || "sync list first"}</strong>
+            <small>from list · lane 01</small>
+          </div>
+          <div className="bola-recovered-item">
+            <span>authorization</span>
+            <strong>Bearer $SESSION_TOKEN</strong>
+            <small>session header</small>
+          </div>
+          <div className="bola-recovered-item">
+            <span>id_pattern</span>
+            <strong>{bolaIdPattern(referenceId)}</strong>
+            <small>inferred</small>
+          </div>
+        </div>
+      </div>
+
+      <div className="bola-lanes">
+        {lanes.map((lane) => (
+          <BolaLane
+            key={lane.key}
+            lane={lane}
+            expandedById={expandedById}
+            onCopyCurl={onCopyCurl}
+            onToggleResponse={onToggleResponse}
+          />
+        ))}
+      </div>
+
+      <div className="bola-raw-footer">
+        <span>
+          {"▸"} raw chronological log · {rawCount} {rawCount === 1 ? "entry" : "entries"}
+        </span>
+        <span>{rawCount === 0 ? "awaiting capture" : "collapsed"}</span>
+      </div>
+    </div>
+  );
+}
+
 function NetworkTracePanel({
   probe,
   disabled,
@@ -3978,11 +4280,20 @@ function NetworkTracePanel({
         </div>
       )}
 
-      <div className="network-trace-list">
-        {entries.length === 0 ? (
-          <p className="network-trace-empty">{probe.emptyText || "No captured requests yet."}</p>
-        ) : (
-          entries.map((entry) => {
+      {probe.layout === "lanes" ? (
+        <BolaLaneTrace
+          entries={entries}
+          capsuleId={capsuleId}
+          expandedById={expandedById}
+          onCopyCurl={onCopyCurl}
+          onToggleResponse={onToggleResponse}
+        />
+      ) : (
+        <div className="network-trace-list">
+          {entries.length === 0 ? (
+            <p className="network-trace-empty">{probe.emptyText || "No captured requests yet."}</p>
+          ) : (
+            entries.map((entry) => {
             const expanded = Boolean(expandedById[entry.id]);
             return (
               <article key={entry.id} className="network-trace-entry">
@@ -4040,8 +4351,9 @@ function NetworkTracePanel({
               </article>
             );
           })
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
