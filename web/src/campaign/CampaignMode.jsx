@@ -2695,6 +2695,16 @@ function groupBolaLanes(entries, capsuleId) {
       .reverse()
       .find((entry) => !bolaEntryDenied(entry) && bolaProbeId(entry) !== BOLA_BASE_ID) || null;
 
+  // the single lane the player should act on next, in order
+  let nextKey = null;
+  if (buckets.observe.length === 0) {
+    nextKey = "observe";
+  } else if (buckets.baseline.length === 0) {
+    nextKey = "baseline";
+  } else if (!anomalyEntry) {
+    nextKey = "probe";
+  }
+
   const lanes = [
     {
       key: "observe",
@@ -2729,12 +2739,64 @@ function groupBolaLanes(entries, capsuleId) {
     },
   ];
 
+  lanes.forEach((lane) => {
+    lane.isNext = lane.key === nextKey;
+  });
+
   return {
     lanes,
     referenceId,
+    nextKey,
     rawCount: bolaSumHits(entries),
     hasAnomaly: Boolean(anomalyEntry),
   };
+}
+
+function bolaNextGuess(referenceId) {
+  if (!referenceId) {
+    return "PD-1005";
+  }
+  const bumped = referenceId.replace(/(\d+)$/, (digits) => String(Number(digits) + 1).padStart(digits.length, "0"));
+  return bumped === referenceId ? "PD-1005" : bumped;
+}
+
+function bolaNextStep(nextKey, referenceId, hasAnomaly, locale) {
+  const en = locale === "en";
+  const ref = referenceId || "PD-1004";
+  const guess = bolaNextGuess(referenceId);
+  if (hasAnomaly) {
+    return {
+      tag: "DONE",
+      text: en
+        ? "A neighbor capsule leaked. Open View Raw Response for the residue, then submit the evidence below."
+        : "이웃 캡슐이 열렸어. View Raw Response로 residue를 확인하고 아래 Evidence를 제출해.",
+    };
+  }
+  if (nextKey === "observe") {
+    return {
+      tag: "STEP 1",
+      text: en
+        ? "Click Sync My Capsules to recover your reference object ID from your own list."
+        : "'Sync My Capsules'를 눌러 내 목록에서 기준 객체 ID를 확보해.",
+    };
+  }
+  if (nextKey === "baseline") {
+    return {
+      tag: "STEP 2",
+      text: en
+        ? `Click Queue Detail Request — it stages your own capsule (${ref}) in the console. Run it to see the baseline response.`
+        : `'Queue Detail Request'를 누르면 콘솔에 내 캡슐(${ref}) 조회가 준비돼. 그대로 Run 해서 기준 응답을 확인해.`,
+    };
+  }
+  if (nextKey === "probe") {
+    return {
+      tag: "STEP 3",
+      text: en
+        ? `In the Mission Console, change parcel_id to a neighbor (${guess}, …) and Run. A foreign object opening is the win.`
+        : `콘솔에서 parcel_id를 이웃 ID(${guess} 등)로 바꿔 Run 해봐. 남의 객체가 열리면 성공이야.`,
+    };
+  }
+  return null;
 }
 
 function bolaIdPattern(referenceId) {
@@ -4016,7 +4078,7 @@ function bolaShortPath(url) {
   return (url || "").replace("/api/v1/challenges/level3_1/actions", "…");
 }
 
-function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
+function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel }) {
   const { latest, anomalyEntry } = lane;
   const active = Boolean(latest);
   const isProbe = lane.key === "probe";
@@ -4027,6 +4089,8 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
     ? isProbe
       ? "current"
       : "done"
+    : lane.isNext
+    ? "next"
     : "pending";
 
   const representative = anomalyEntry || latest;
@@ -4129,7 +4193,7 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
                 {expanded ? "Hide Raw Response" : "View Raw Response"}
               </button>
               <button type="button" className="ghost-button" onClick={() => onCopyCurl(representative.curl)}>
-                Copy as curl
+                {stageLabel}
               </button>
             </div>
 
@@ -4138,7 +4202,8 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
             )}
           </>
         ) : (
-          <p className="bola-lane-pending">
+          <p className={lane.isNext ? "bola-lane-pending bola-lane-pending-next" : "bola-lane-pending"}>
+            {lane.isNext ? "▸ " : ""}
             {isProbe
               ? "awaiting a neighbor probe from the Mission Console"
               : lane.key === "observe"
@@ -4151,14 +4216,24 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse }) {
   );
 }
 
-function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleResponse }) {
-  const { lanes, referenceId, rawCount } = useMemo(
+function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleResponse, locale }) {
+  const { lanes, referenceId, nextKey, rawCount, hasAnomaly } = useMemo(
     () => groupBolaLanes(entries, capsuleId),
     [entries, capsuleId]
   );
 
+  const step = bolaNextStep(nextKey, referenceId, hasAnomaly, locale);
+  const stageLabel = locale === "en" ? "Stage in Console" : "콘솔에 넣기";
+
   return (
     <div className="bola-lane-trace">
+      {step && (
+        <div className={`bola-next ${hasAnomaly ? "bola-next-done" : ""}`}>
+          <span className="bola-next-tag">{step.tag}</span>
+          <span className="bola-next-text">{step.text}</span>
+        </div>
+      )}
+
       <div className="bola-recovered">
         <span className="bola-recovered-label">RECOVERED · carry into mission console</span>
         <div className="bola-recovered-items">
@@ -4188,6 +4263,7 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
             expandedById={expandedById}
             onCopyCurl={onCopyCurl}
             onToggleResponse={onToggleResponse}
+            stageLabel={stageLabel}
           />
         ))}
       </div>
@@ -4217,6 +4293,7 @@ function NetworkTracePanel({
   onCopyCurl,
   onAuditSelectorDraftChange,
   onToggleResponse,
+  locale,
 }) {
   if (!probe) {
     return null;
@@ -4291,6 +4368,7 @@ function NetworkTracePanel({
           expandedById={expandedById}
           onCopyCurl={onCopyCurl}
           onToggleResponse={onToggleResponse}
+          locale={locale}
         />
       ) : (
         <div className="network-trace-list">
@@ -9042,6 +9120,7 @@ function CampaignMode() {
                   onCopyCurl={handleCopyTraceCurl}
                   onAuditSelectorDraftChange={handleAuditSelectorDraftChange}
                   onToggleResponse={handleToggleTraceResponse}
+                  locale={locale}
                 />
               )}
 
