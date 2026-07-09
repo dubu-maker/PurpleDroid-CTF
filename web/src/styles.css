@@ -2855,10 +2855,12 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.rb-send {
+/* prefixed with .request-builder to beat `.campaign-page button` (0,1,1),
+   which otherwise forces a faded-violet background on both states */
+.request-builder .rb-send {
   cursor: pointer;
   border: none;
-  padding: 12px 28px;
+  padding: 12px 30px;
   border-radius: 6px;
   background: #9d4edd;
   color: #0a0a0e;
@@ -2867,16 +2869,21 @@ button:disabled {
   font-weight: 700;
   letter-spacing: 0.5px;
   box-shadow: 0 12px 30px -14px #9d4edd;
+  opacity: 1;
 }
 
-.rb-send:hover:not(:disabled) {
-  filter: brightness(1.1);
+.request-builder .rb-send:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 14px 34px -12px #9d4edd;
 }
 
-.rb-send:disabled {
-  cursor: default;
-  opacity: 0.5;
+.request-builder .rb-send:disabled {
+  cursor: not-allowed;
+  background: rgba(129, 144, 179, 0.1);
+  color: #565d6e;
+  border: 1px solid rgba(129, 144, 179, 0.2);
   box-shadow: none;
+  opacity: 1;
 }
 
 .rb-send-hint {
