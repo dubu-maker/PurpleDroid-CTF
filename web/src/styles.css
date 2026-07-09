@@ -2227,6 +2227,15 @@ button:disabled {
   font-size: 11px;
 }
 
+.bola-recovered-locked {
+  border-left-color: rgba(129, 144, 179, 0.4);
+}
+
+.bola-recovered-locked strong {
+  color: #6a6a76;
+  font-weight: 400;
+}
+
 .bola-lanes {
   position: relative;
   display: grid;
@@ -2597,6 +2606,21 @@ button:disabled {
   color: #b9c4de;
   line-height: 1.6;
   font-size: 13px;
+}
+
+.request-builder-standby {
+  border-color: rgba(129, 144, 179, 0.22);
+}
+
+.rb-standby-note {
+  border: 1px dashed rgba(129, 144, 179, 0.35);
+  border-radius: 4px;
+  background: rgba(129, 144, 179, 0.06);
+  color: #9aa6c4;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  padding: 11px 14px;
 }
 
 .rb-field {

@@ -4254,6 +4254,8 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
 
   const step = bolaNextStep(nextKey, referenceId, hasAnomaly, locale, builder);
   const stageLabel = locale === "en" ? "Stage in Console" : "콘솔에 넣기";
+  const synced = Boolean(referenceId);
+  const lockedText = locale === "en" ? "— sync to recover —" : "— 동기화로 확보 —";
 
   return (
     <div className="bola-lane-trace">
@@ -4269,20 +4271,20 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
           RECOVERED · carry into {builder ? "request builder" : "mission console"}
         </span>
         <div className="bola-recovered-items">
-          <div className="bola-recovered-item">
+          <div className={`bola-recovered-item ${synced ? "" : "bola-recovered-locked"}`}>
             <span>reference_id</span>
-            <strong>{referenceId || "sync list first"}</strong>
-            <small>from list · lane 01</small>
+            <strong>{referenceId || lockedText}</strong>
+            <small>{synced ? "from list · lane 01" : "sync my capsules"}</small>
           </div>
           <div className="bola-recovered-item">
             <span>authorization</span>
             <strong>Bearer $SESSION_TOKEN</strong>
             <small>session header</small>
           </div>
-          <div className="bola-recovered-item">
+          <div className={`bola-recovered-item ${synced ? "" : "bola-recovered-locked"}`}>
             <span>id_pattern</span>
-            <strong>{bolaIdPattern(referenceId)}</strong>
-            <small>inferred</small>
+            <strong>{synced ? bolaIdPattern(referenceId) : lockedText}</strong>
+            <small>{synced ? "inferred" : "sync to infer"}</small>
           </div>
         </div>
       </div>
@@ -4317,6 +4319,7 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
   const en = locale === "en";
   const activeId = (value || "").trim();
   const candidates = Array.isArray(builder?.candidates) ? builder.candidates : ["PD-1004", "PD-1003", "PD-1005"];
+  const synced = Boolean(referenceId);
   const isRefChip = (id, idx) =>
     referenceId ? id.toUpperCase() === referenceId.toUpperCase() : idx === 0;
 
@@ -4361,10 +4364,10 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
     : "parcel_id를 바꾸고 보내";
 
   return (
-    <section className={`request-builder ${accentClass}`}>
+    <section className={`request-builder ${accentClass} ${synced ? "" : "request-builder-standby"}`}>
       <div className="section-heading">
         <span>REQUEST BUILDER</span>
-        <strong>{busy ? "sending" : en ? "online" : "online"}</strong>
+        <strong>{busy ? "sending" : synced ? "online" : "standby"}</strong>
       </div>
       <p className="rb-intro">
         {builder?.intro ||
@@ -4372,6 +4375,14 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
             ? "The request is pre-assembled from your Network Trace. Method, path and Authorization are locked to your session — only parcel_id is yours to change."
             : "요청은 Network Trace에서 자동 조립됐어. Method·path·Authorization은 세션에 고정돼 있고, parcel_id만 네가 바꿀 수 있어.")}
       </p>
+
+      {!synced && (
+        <div className="rb-standby-note">
+          {en
+            ? "Standby — the request has no reference object yet. Press Sync My Capsules in the Network Trace above to recover your object id and id pattern."
+            : "대기 중 — 아직 기준 객체가 없어. 위 Network Trace의 Sync My Capsules를 눌러 내 객체 id와 id 패턴을 먼저 확보해."}
+        </div>
+      )}
 
       <div className="rb-field">
         <div className="rb-label">
@@ -4396,7 +4407,7 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
             type="text"
             value={value}
             spellCheck={false}
-            placeholder={referenceId || "PD-1004"}
+            placeholder={synced ? referenceId : en ? "sync capsules first" : "먼저 캡슐 동기화"}
             disabled={disabled || busy}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
@@ -4409,6 +4420,9 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
           <span>{en ? "adjacent ids:" : "인접 id:"}</span>
           {candidates.map((id, idx) => {
             const ref = isRefChip(id, idx);
+            if (ref && !synced) {
+              return null;
+            }
             if (!ref && !baselineSent) {
               return null;
             }
@@ -4425,11 +4439,15 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
               </button>
             );
           })}
-          {!baselineSent && (
+          {!synced ? (
+            <span className="rb-candidates-hint">
+              {en ? "· sync my capsules to recover the reference id" : "· Sync My Capsules로 기준 id를 확보해"}
+            </span>
+          ) : !baselineSent ? (
             <span className="rb-candidates-hint">
               {en ? "· send yours to reveal neighbors" : "· 내 요청을 보내면 이웃 id가 열려"}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 
