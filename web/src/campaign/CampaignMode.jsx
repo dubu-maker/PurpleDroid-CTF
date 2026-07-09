@@ -9005,6 +9005,23 @@ function CampaignMode() {
                 </div>
               )}
 
+              {phase === "BRIEFING" && (
+                <section className="briefing-lock">
+                  <p>
+                    {usesMemoryVault
+                      ? locale === "en"
+                        ? "Review the briefing to unlock the Memory Board."
+                        : "브리핑을 확인했으면 Memory Board를 열 수 있어."
+                      : locale === "en"
+                        ? "Review the briefing to unlock the infiltration console."
+                        : "작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어."}
+                  </p>
+                  <button onClick={handleBeginMission}>
+                    {usesMemoryVault ? "Open Memory Board" : "Begin Infiltration"}
+                  </button>
+                </section>
+              )}
+
               {!usesMemoryVault && (
                 <NetworkTracePanel
                   probe={story.actionProbe}
@@ -9022,23 +9039,6 @@ function CampaignMode() {
                   onAuditSelectorDraftChange={handleAuditSelectorDraftChange}
                   onToggleResponse={handleToggleTraceResponse}
                 />
-              )}
-
-              {phase === "BRIEFING" && (
-                <section className="briefing-lock">
-                  <p>
-                    {usesMemoryVault
-                      ? locale === "en"
-                        ? "Review the briefing to unlock the Memory Board."
-                        : "브리핑을 확인했으면 Memory Board를 열 수 있어."
-                      : locale === "en"
-                        ? "Review the briefing to unlock the infiltration console."
-                        : "작전 브리핑을 확인했으면 침투 콘솔을 열 수 있어."}
-                  </p>
-                  <button onClick={handleBeginMission}>
-                    {usesMemoryVault ? "Open Memory Board" : "Begin Infiltration"}
-                  </button>
-                </section>
               )}
 
               {usesMemoryVault ? (
