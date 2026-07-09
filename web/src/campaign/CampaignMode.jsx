@@ -4373,13 +4373,6 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
         <span>REQUEST BUILDER</span>
         <strong>{busy ? "sending" : synced ? "online" : "standby"}</strong>
       </div>
-      <p className="rb-intro">
-        {builder?.intro ||
-          (en
-            ? "The request is pre-assembled from your Network Trace. Method, path and Authorization are locked to your session — only parcel_id is yours to change."
-            : "요청은 Network Trace에서 자동 조립됐어. Method·path·Authorization은 세션에 고정돼 있고, parcel_id만 네가 바꿀 수 있어.")}
-      </p>
-
       {!synced && (
         <div className="rb-standby-note">
           {en
@@ -4395,6 +4388,18 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
         <div className="rb-methodpath">
           <span className="rb-method">GET</span>
           <span className="rb-path">{BUILDER_PATH}</span>
+          <span className="rb-lock" aria-hidden="true">🔒</span>
+        </div>
+      </div>
+
+      <div className="rb-field">
+        <div className="rb-label">
+          {en ? "Headers" : "Headers"} <span>· {en ? "auto from session" : "세션에서 자동"}</span>
+        </div>
+        <div className="rb-headers">
+          <span className="rb-header-key">Authorization</span>
+          <span className="rb-eq">:</span>
+          <code>Bearer $SESSION_TOKEN</code>
           <span className="rb-lock" aria-hidden="true">🔒</span>
         </div>
       </div>
@@ -4453,29 +4458,6 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
             </span>
           ) : null}
         </div>
-      </div>
-
-      <div className="rb-field">
-        <div className="rb-label">
-          {en ? "Headers" : "Headers"} <span>· {en ? "auto from session" : "세션에서 자동"}</span>
-        </div>
-        <div className="rb-headers">
-          <span className="rb-header-key">Authorization</span>
-          <span className="rb-eq">:</span>
-          <code>Bearer $SESSION_TOKEN</code>
-          <span className="rb-lock" aria-hidden="true">🔒</span>
-        </div>
-      </div>
-
-      <div className="rb-assembled">
-        <div className="rb-assembled-head">
-          <span>{en ? "assembled · curl" : "assembled · curl"}</span>
-          <span>{en ? "read-only" : "읽기 전용"}</span>
-        </div>
-        <code>
-          curl -s <em>GET</em> "{BUILDER_PATH}?parcel_id=
-          <b className="rb-curl-id">{activeId || "…"}</b>" -H "Authorization: Bearer $SESSION_TOKEN"
-        </code>
       </div>
 
       <div className="rb-send-row">
