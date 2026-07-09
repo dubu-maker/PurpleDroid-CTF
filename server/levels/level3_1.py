@@ -222,6 +222,16 @@ def placeholder_id_feedback(parcel_id: str) -> Optional[str]:
     return None
 
 
+def prefix_id_feedback(parcel_id: str) -> Optional[str]:
+    value = (parcel_id or "").strip()
+    if not value or value.upper().startswith("PD-"):
+        return None
+    match = re.search(r"(\d{3,})$", value)
+    if not match:
+        return None
+    return f"object id는 PD- 형식이야. 숫자만 넣으면 안 열려. 예: PD-{match.group(1)}"
+
+
 def placeholder_token_feedback(authorization: str) -> Optional[str]:
     auth = (authorization or "").strip()
     if not auth.lower().startswith("bearer "):
@@ -327,6 +337,12 @@ def _shell_http_router(
                     {"ok": False, "error": {"code": "PLACEHOLDER_ID", "message": placeholder_message}},
                     400,
                 )
+            prefix_message = prefix_id_feedback(parcel_id)
+            if prefix_message:
+                return _json_response(
+                    {"ok": False, "error": {"code": "ID_FORMAT", "message": prefix_message}},
+                    400,
+                )
             return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "parcel not found"}}, 404)
         return _json_response({"ok": True, "data": render_capsule_view(parcel)})
 
@@ -339,6 +355,12 @@ def _shell_http_router(
                 if placeholder_message:
                     return _json_response(
                         {"ok": False, "error": {"code": "PLACEHOLDER_ID", "message": placeholder_message}},
+                        400,
+                    )
+                prefix_message = prefix_id_feedback(matched.group(1))
+                if prefix_message:
+                    return _json_response(
+                        {"ok": False, "error": {"code": "ID_FORMAT", "message": prefix_message}},
                         400,
                     )
                 return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "parcel not found"}}, 404)

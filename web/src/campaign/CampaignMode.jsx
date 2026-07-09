@@ -262,6 +262,10 @@ const TERMINAL_TRANSLATIONS = [
   ["꺾쇠(< >)는 placeholder 표시야.", "Angle brackets (< >) mark a placeholder."],
   ["실제 object id를 꺾쇠 없이 넣어줘.", "Enter the actual object ID without angle brackets."],
   ["처럼 꺾쇠 없이 넣어줘.", " without angle brackets."],
+  [
+    "object id는 PD- 형식이야. 숫자만 넣으면 안 열려. 예: PD-",
+    "object IDs use the PD- format. A bare number won't open. e.g. PD-",
+  ],
   ["object id는 ", "Enter the object ID as "],
   [
     "Mission Console에서는 Authorization 값을 Bearer $SESSION_TOKEN으로 쓸 수 있어. 지금 값:",

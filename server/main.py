@@ -953,13 +953,21 @@ def level3_1_get_mine(authorization: Optional[str] = Header(None)):
 def _level3_1_lookup_parcel(authorization: Optional[str], parcel_id: str):
     _, session = _get_session(authorization)
     _rate_limit_parcel_lookup(session)
-    from levels.level3_1 import get_parcel, placeholder_id_feedback, render_capsule_view
+    from levels.level3_1 import (
+        get_parcel,
+        placeholder_id_feedback,
+        prefix_id_feedback,
+        render_capsule_view,
+    )
 
     parcel = get_parcel(parcel_id)
     if not parcel:
         placeholder_message = placeholder_id_feedback(parcel_id)
         if placeholder_message:
             raise APIError("PLACEHOLDER_ID", placeholder_message, 400)
+        prefix_message = prefix_id_feedback(parcel_id)
+        if prefix_message:
+            raise APIError("ID_FORMAT", prefix_message, 400)
         raise APIError("NOT_FOUND", "parcel not found", 404)
 
     # 의도적 취약점: owner == current_user 검증 없음 (BOLA)
