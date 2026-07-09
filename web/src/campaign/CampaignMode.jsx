@@ -4235,9 +4235,13 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel
           <p className={lane.isNext ? "bola-lane-pending bola-lane-pending-next" : "bola-lane-pending"}>
             {lane.isNext ? "▸ " : ""}
             {isProbe
-              ? "awaiting a neighbor probe from the Mission Console"
+              ? hideStage
+                ? "awaiting a neighbor id · send it in the Request Builder"
+                : "awaiting a neighbor probe from the Mission Console"
               : lane.key === "observe"
               ? "awaiting Sync My Capsules"
+              : hideStage
+              ? "awaiting the baseline send · Send your own request in the Request Builder"
               : "awaiting Queue Detail Request"}
           </p>
         )}
