@@ -1785,13 +1785,18 @@ export const CAMPAIGN_STORY = {
     actionProbe: {
       id: "level3_1_mine",
       label: "Sync My Capsules",
-      secondaryLabel: "Queue Detail Request",
       status: "recording",
       layout: "lanes",
+      builder: true,
       caption:
-        "Network Trace는 관찰 도구, Mission Console은 조작 도구다. 요청은 의도별 3개 레인(관찰 → 기준 → 교차 조회)으로 접히고, 반복·거부 시도는 카드가 아니라 카운터로 합쳐진다. 목록 요청에서 기준 객체 ID와 Authorization 헤더를 확인하고, 상세 요청은 콘솔에서 직접 재현해.",
+        "Network Trace는 관찰 도구, Request Builder는 조작 도구다. 요청은 의도별 3개 레인(관찰 → 기준 → 교차 조회)으로 접히고, 반복·거부 시도는 카드가 아니라 카운터로 합쳐진다. 목록 요청에서 기준 객체 ID와 Authorization 헤더를 확인하고, 상세 요청은 아래 Request Builder에서 보내.",
       success:
         "Object registry probe captured. 응답 preview에서 owner와 capsule_id를 확인해.",
+    },
+    requestBuilder: {
+      candidates: ["PD-1004", "PD-1003", "PD-1005"],
+      intro:
+        "요청은 Network Trace에서 자동 조립됐어. Method·path·Authorization은 세션에 고정돼 있고, parcel_id만 네가 바꿀 수 있어. 인접 id로 바꿔 보내면 응답이 그게 누구 객체인지 알려줘.",
     },
     objectives: [
       "내 Signal Capsule 목록과 ID 패턴을 확인한다.",

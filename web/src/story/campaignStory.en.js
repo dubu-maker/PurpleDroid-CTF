@@ -1358,9 +1358,13 @@ export const CAMPAIGN_STORY_EN = {
     ],
     actionProbe: {
       caption:
-        "Network Trace observes; Mission Console mutates. Requests fold into three intent lanes (observe → baseline → cross-object probe); repeats and denied attempts collapse into a counter, not a new card. Recover the reference object ID and Authorization header from the list request, then reproduce the detail request directly.",
+        "Network Trace observes; the Request Builder mutates. Requests fold into three intent lanes (observe → baseline → cross-object probe); repeats and denied attempts collapse into a counter, not a new card. Recover the reference object ID and Authorization header from the list request, then send the detail request from the Request Builder below.",
       success:
         "Object registry probe captured. Inspect owner and capsule_id in the response preview.",
+    },
+    requestBuilder: {
+      intro:
+        "The request is pre-assembled from your Network Trace. Method, path and Authorization are locked to your session — only parcel_id is yours to change. Enumerate an adjacent id and send; the response tells you whose object it is.",
     },
     objectives: [
       "Inspect your Signal Capsule list and its ID pattern.",

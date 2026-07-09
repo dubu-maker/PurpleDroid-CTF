@@ -2661,6 +2661,20 @@ function bolaEntryDenied(entry) {
   return !(entry?.status === 200 && entry?.body?.ok !== false);
 }
 
+// a foreign 200 is a leak, but only the object carrying the MIRA residue
+// (courier_ticket) is the mission's flag milestone — an ordinary neighbor
+// leak (PD-1005) must NOT be treated as "done".
+function bolaHasFlag(entry) {
+  if (bolaEntryDenied(entry)) {
+    return false;
+  }
+  try {
+    return JSON.stringify(entry.body || {}).includes("courier_ticket");
+  } catch {
+    return false;
+  }
+}
+
 function bolaSumHits(list) {
   return list.reduce((total, entry) => total + (entry.hits || 1), 0);
 }
@@ -2690,10 +2704,8 @@ function groupBolaLanes(entries, capsuleId) {
   }
 
   const probeList = buckets.probe;
-  const anomalyEntry =
-    [...probeList]
-      .reverse()
-      .find((entry) => !bolaEntryDenied(entry) && bolaProbeId(entry) !== BOLA_BASE_ID) || null;
+  const anomalyEntry = [...probeList].reverse().find((entry) => bolaHasFlag(entry)) || null;
+  const leakEntries = probeList.filter((entry) => !bolaEntryDenied(entry) && !bolaHasFlag(entry));
 
   // the single lane the player should act on next, in order
   let nextKey = null;
@@ -2733,6 +2745,7 @@ function groupBolaLanes(entries, capsuleId) {
       latest: latest(probeList),
       count: bolaSumHits(probeList),
       deniedCount: bolaSumHits(probeList.filter(bolaEntryDenied)),
+      leakCount: bolaSumHits(leakEntries),
       anomalyEntry,
       anomalyId: anomalyEntry ? bolaProbeId(anomalyEntry) : "",
       anomalyOwner: anomalyEntry?.body?.data?.owner || "",
@@ -2760,14 +2773,18 @@ function bolaNextGuess(referenceId) {
   return bumped === referenceId ? "PD-1005" : bumped;
 }
 
-function bolaNextStep(nextKey, referenceId, hasAnomaly, locale) {
+function bolaNextStep(nextKey, referenceId, hasAnomaly, locale, builder) {
   const en = locale === "en";
   const ref = referenceId || "PD-1004";
   const guess = bolaNextGuess(referenceId);
   if (hasAnomaly) {
     return {
       tag: "DONE",
-      text: en
+      text: builder
+        ? en
+          ? "A neighbor capsule leaked. Copy the flag from the Request Builder response and submit it as evidence below."
+          : "이웃 캡슐이 열렸어. Request Builder 응답에서 플래그를 복사해 아래 Evidence에 제출해."
+        : en
         ? "A neighbor capsule leaked. Open View Raw Response for the residue, then submit the evidence below."
         : "이웃 캡슐이 열렸어. View Raw Response로 residue를 확인하고 아래 Evidence를 제출해.",
     };
@@ -2783,7 +2800,11 @@ function bolaNextStep(nextKey, referenceId, hasAnomaly, locale) {
   if (nextKey === "baseline") {
     return {
       tag: "STEP 2",
-      text: en
+      text: builder
+        ? en
+          ? `In the Request Builder below, Send the pre-filled request (${ref}) to load your own object as the baseline.`
+          : `아래 Request Builder에서 미리 채워진 요청(${ref})을 Send 해서 내 객체를 기준으로 확인해.`
+        : en
         ? `Click Queue Detail Request — it stages your own capsule (${ref}) in the console. Run it to see the baseline response.`
         : `'Queue Detail Request'를 누르면 콘솔에 내 캡슐(${ref}) 조회가 준비돼. 그대로 Run 해서 기준 응답을 확인해.`,
     };
@@ -2791,7 +2812,11 @@ function bolaNextStep(nextKey, referenceId, hasAnomaly, locale) {
   if (nextKey === "probe") {
     return {
       tag: "STEP 3",
-      text: en
+      text: builder
+        ? en
+          ? `In the Request Builder, change parcel_id to a neighbor (${guess}, …) and Send. A foreign object opening is the win.`
+          : `Request Builder에서 parcel_id를 이웃 ID(${guess} 등)로 바꿔 Send 해봐. 남의 객체가 열리면 성공이야.`
+        : en
         ? `In the Mission Console, change parcel_id to a neighbor (${guess}, …) and Run. A foreign object opening is the win.`
         : `콘솔에서 parcel_id를 이웃 ID(${guess} 등)로 바꿔 Run 해봐. 남의 객체가 열리면 성공이야.`,
     };
@@ -4078,7 +4103,7 @@ function bolaShortPath(url) {
   return (url || "").replace("/api/v1/challenges/level3_1/actions", "…");
 }
 
-function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel }) {
+function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel, hideStage }) {
   const { latest, anomalyEntry } = lane;
   const active = Boolean(latest);
   const isProbe = lane.key === "probe";
@@ -4107,12 +4132,15 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel
       if (!active) {
         return null;
       }
+      const sub = anomalyEntry
+        ? `residue on ${lane.anomalyId} · ${lane.count} sent`
+        : lane.leakCount > 0
+        ? `${lane.leakCount} foreign leak · residue not found — keep enumerating`
+        : `${lane.deniedCount} denied · no object opened yet`;
       return {
         text: `×${lane.count} ${lane.count === 1 ? "probe" : "probes"}`,
-        sub: anomalyEntry
-          ? `leak on ${lane.anomalyId} · ${lane.deniedCount} denied in lane`
-          : `0 leak · ${lane.deniedCount} denied so far`,
-        tone: anomalyEntry ? "leak" : "deny",
+        sub,
+        tone: anomalyEntry ? "leak" : lane.leakCount > 0 ? "leak" : "deny",
       };
     }
     if (lane.count > 1) {
@@ -4192,9 +4220,11 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel
               <button type="button" className="ghost-button" onClick={() => onToggleResponse(representative.id)}>
                 {expanded ? "Hide Raw Response" : "View Raw Response"}
               </button>
-              <button type="button" className="ghost-button" onClick={() => onCopyCurl(representative.curl)}>
-                {stageLabel}
-              </button>
+              {!hideStage && (
+                <button type="button" className="ghost-button" onClick={() => onCopyCurl(representative.curl)}>
+                  {stageLabel}
+                </button>
+              )}
             </div>
 
             {expanded && (
@@ -4216,13 +4246,13 @@ function BolaLane({ lane, expandedById, onCopyCurl, onToggleResponse, stageLabel
   );
 }
 
-function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleResponse, locale }) {
+function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleResponse, locale, builder }) {
   const { lanes, referenceId, nextKey, rawCount, hasAnomaly } = useMemo(
     () => groupBolaLanes(entries, capsuleId),
     [entries, capsuleId]
   );
 
-  const step = bolaNextStep(nextKey, referenceId, hasAnomaly, locale);
+  const step = bolaNextStep(nextKey, referenceId, hasAnomaly, locale, builder);
   const stageLabel = locale === "en" ? "Stage in Console" : "콘솔에 넣기";
 
   return (
@@ -4235,7 +4265,9 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
       )}
 
       <div className="bola-recovered">
-        <span className="bola-recovered-label">RECOVERED · carry into mission console</span>
+        <span className="bola-recovered-label">
+          RECOVERED · carry into {builder ? "request builder" : "mission console"}
+        </span>
         <div className="bola-recovered-items">
           <div className="bola-recovered-item">
             <span>reference_id</span>
@@ -4264,6 +4296,7 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
             onCopyCurl={onCopyCurl}
             onToggleResponse={onToggleResponse}
             stageLabel={stageLabel}
+            hideStage={builder}
           />
         ))}
       </div>
@@ -4275,6 +4308,176 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
         <span>{rawCount === 0 ? "awaiting capture" : "collapsed"}</span>
       </div>
     </div>
+  );
+}
+
+const BUILDER_PATH = "/api/v1/challenges/level3_1/actions/parcel";
+
+function RequestBuilder({ builder, value, referenceId, response, busy, disabled, onChange, onSend, locale }) {
+  const en = locale === "en";
+  const activeId = (value || "").trim();
+  const candidates = Array.isArray(builder?.candidates) ? builder.candidates : ["PD-1004", "PD-1003", "PD-1005"];
+
+  const kind = response?.kind;
+  const isOwn = kind === "own";
+  const isLeak = kind === "leak" || kind === "flag";
+  const accentClass = isLeak ? "rb-accent-leak" : "rb-accent-own";
+
+  const verdictLabel = isOwn
+    ? en
+      ? "your own object"
+      : "내 객체"
+    : isLeak
+    ? en
+      ? "someone else's object"
+      : "남의 객체"
+    : "";
+
+  const leakNote =
+    kind === "flag"
+      ? en
+        ? "MIRA relay residue found in courier_ticket — stage the flag as evidence below."
+        : "courier_ticket에서 MIRA relay residue 발견 — 아래 Evidence에 플래그를 제출해."
+      : en
+      ? "Same endpoint returned a neighbor you do not own. Keep enumerating for the residue."
+      : "같은 엔드포인트가 네 것이 아닌 이웃 객체를 반환했어. residue를 찾을 때까지 계속 열거해봐.";
+
+  const sendHint = busy
+    ? en
+      ? "sending…"
+      : "전송 중…"
+    : isOwn
+    ? en
+      ? "baseline — confirms the request shape"
+      : "baseline — 요청 형태 확인"
+    : isLeak
+    ? en
+      ? "ownership never checked server-side"
+      : "서버가 소유권을 확인하지 않았어"
+    : en
+    ? "change parcel_id, then send"
+    : "parcel_id를 바꾸고 보내";
+
+  return (
+    <section className={`request-builder ${accentClass}`}>
+      <div className="section-heading">
+        <span>REQUEST BUILDER</span>
+        <strong>{busy ? "sending" : en ? "online" : "online"}</strong>
+      </div>
+      <p className="rb-intro">
+        {builder?.intro ||
+          (en
+            ? "The request is pre-assembled from your Network Trace. Method, path and Authorization are locked to your session — only parcel_id is yours to change."
+            : "요청은 Network Trace에서 자동 조립됐어. Method·path·Authorization은 세션에 고정돼 있고, parcel_id만 네가 바꿀 수 있어.")}
+      </p>
+
+      <div className="rb-field">
+        <div className="rb-label">
+          {en ? "Method & path" : "Method & path"} <span>· {en ? "locked" : "고정"}</span>
+        </div>
+        <div className="rb-methodpath">
+          <span className="rb-method">GET</span>
+          <span className="rb-path">{BUILDER_PATH}</span>
+          <span className="rb-lock" aria-hidden="true">🔒</span>
+        </div>
+      </div>
+
+      <div className="rb-field">
+        <div className="rb-label rb-label-edit">
+          {en ? "Query params" : "Query params"} <span>· {en ? "editable" : "편집 가능"}</span>
+        </div>
+        <div className="rb-param-row">
+          <span className="rb-param-key">parcel_id</span>
+          <span className="rb-eq">=</span>
+          <input
+            className="rb-input"
+            type="text"
+            value={value}
+            spellCheck={false}
+            placeholder={referenceId || "PD-1004"}
+            disabled={disabled || busy}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onSend();
+            }}
+          />
+          <span className="rb-editable-tag">editable</span>
+        </div>
+        <div className="rb-candidates">
+          <span>{en ? "adjacent ids:" : "인접 id:"}</span>
+          {candidates.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`rb-chip ${id === activeId ? "rb-chip-on" : ""}`}
+              disabled={disabled || busy}
+              onClick={() => onChange(id)}
+            >
+              {id}
+              {referenceId && id.toUpperCase() === referenceId.toUpperCase() && (
+                <em> {en ? "you" : "나"}</em>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rb-field">
+        <div className="rb-label">
+          {en ? "Headers" : "Headers"} <span>· {en ? "auto from session" : "세션에서 자동"}</span>
+        </div>
+        <div className="rb-headers">
+          <span className="rb-header-key">Authorization</span>
+          <span className="rb-eq">:</span>
+          <code>Bearer $SESSION_TOKEN</code>
+          <span className="rb-lock" aria-hidden="true">🔒</span>
+        </div>
+      </div>
+
+      <div className="rb-assembled">
+        <div className="rb-assembled-head">
+          <span>{en ? "assembled · curl" : "assembled · curl"}</span>
+          <span>{en ? "read-only" : "읽기 전용"}</span>
+        </div>
+        <code>
+          curl -s <em>GET</em> "{BUILDER_PATH}?parcel_id=
+          <b className="rb-curl-id">{activeId || "…"}</b>" -H "Authorization: Bearer $SESSION_TOKEN"
+        </code>
+      </div>
+
+      <div className="rb-send-row">
+        <button type="button" className="rb-send" disabled={disabled || busy || !activeId} onClick={() => onSend()}>
+          {en ? "Send Request" : "Send Request"}
+        </button>
+        <span className="rb-send-hint">{sendHint}</span>
+      </div>
+
+      {response && (
+        <div className={`rb-response ${isLeak ? "rb-response-leak" : ""}`}>
+          <div className="rb-response-head">
+            <span className="rb-response-label">Response</span>
+            <span className={`rb-status ${response.status === 200 ? (isLeak ? "rb-status-leak" : "rb-status-ok") : "rb-status-err"}`}>
+              {response.status || "—"}
+            </span>
+            {verdictLabel && <span className="rb-verdict">{verdictLabel}</span>}
+            <span className="rb-ctype">application/json</span>
+          </div>
+          <div className="rb-response-body">
+            {response.kind === "error" ? (
+              <pre className="rb-json rb-json-err">{response.errorMessage || (en ? "request failed" : "요청 실패")}</pre>
+            ) : (
+              <pre className="rb-json">{JSON.stringify(response.body, null, 2)}</pre>
+            )}
+            {isLeak && (
+              <div className="rb-leak">
+                <span className="rb-leak-tag">{en ? "object-level auth broken" : "객체 인가 결함"}</span>
+                <span className="rb-leak-note">{leakNote}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -4300,6 +4503,7 @@ function NetworkTracePanel({
   }
 
   const probeActions = Array.isArray(probe.actions) && probe.actions.length > 0 ? probe.actions : null;
+  const usesBuilder = Boolean(probe.builder);
 
   return (
     <section className="network-trace-panel">
@@ -4326,7 +4530,7 @@ function NetworkTracePanel({
             {probe.label}
           </button>
         )}
-        {!probeActions && probe.secondaryLabel && (
+        {!probeActions && !usesBuilder && probe.secondaryLabel && (
           <button type="button" className="ghost-button" onClick={onOpenCapsule} disabled={disabled || busy || !capsuleId}>
             {probe.secondaryLabel}
           </button>
@@ -4369,6 +4573,7 @@ function NetworkTracePanel({
           onCopyCurl={onCopyCurl}
           onToggleResponse={onToggleResponse}
           locale={locale}
+          builder={usesBuilder}
         />
       ) : (
         <div className="network-trace-list">
@@ -7646,6 +7851,9 @@ function CampaignMode() {
   const [networkTraceBusy, setNetworkTraceBusy] = useState(false);
   const [networkTraceEntries, setNetworkTraceEntries] = useState([]);
   const [networkTraceCapsuleId, setNetworkTraceCapsuleId] = useState("");
+  const [builderParcelId, setBuilderParcelId] = useState("");
+  const [builderResponse, setBuilderResponse] = useState(null);
+  const [builderBusy, setBuilderBusy] = useState(false);
   const [auditSelectorFields, setAuditSelectorFields] = useState([]);
   const [auditSelectorDraft, setAuditSelectorDraft] = useState({});
   const [expandedTraceById, setExpandedTraceById] = useState({});
@@ -7823,6 +8031,9 @@ function CampaignMode() {
     setNetworkTraceBusy(false);
     setNetworkTraceEntries([]);
     setNetworkTraceCapsuleId("");
+    setBuilderParcelId("");
+    setBuilderResponse(null);
+    setBuilderBusy(false);
     setAuditSelectorFields([]);
     setAuditSelectorDraft({});
     setExpandedTraceById({});
@@ -8251,6 +8462,9 @@ function CampaignMode() {
         const body = await response.json();
         const capsuleId = body?.data?.capsules?.[0]?.capsule_id || "";
         setNetworkTraceCapsuleId(capsuleId);
+        if (capsuleId) {
+          setBuilderParcelId((prev) => prev || capsuleId);
+        }
         setNetworkTraceEntries((prev) => mergeTraceEntries(prev, [
           createTraceEntry({
             method: "GET",
@@ -8637,6 +8851,84 @@ function CampaignMode() {
           : "Detail request queued in Mission Console. $SESSION_TOKEN은 콘솔 안에서 현재 세션으로 처리돼.",
     });
   }, [locale, networkTraceCapsuleId, token]);
+
+  const handleBuilderSend = useCallback(
+    async (overrideId) => {
+      const rawId = (overrideId ?? builderParcelId).trim();
+      if (!token || !rawId) {
+        return;
+      }
+      if (overrideId !== undefined) {
+        setBuilderParcelId(rawId);
+      }
+
+      const traceUrl = `/api/v1/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(rawId)}`;
+      setBuilderBusy(true);
+      setBuilderResponse(null);
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/challenges/level3_1/actions/parcel?parcel_id=${encodeURIComponent(rawId)}`,
+          { method: "GET", headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+        );
+
+        let body = null;
+        try {
+          body = await response.json();
+        } catch {
+          body = null;
+        }
+
+        const localizedBody = body ? localizeStructuredValue(body, locale, "level3_1") : null;
+
+        if (localizedBody) {
+          setNetworkTraceEntries((prev) =>
+            mergeTraceEntries(prev, [
+              createTraceEntry({
+                method: "GET",
+                url: traceUrl,
+                status: response.status,
+                body: localizedBody,
+                token,
+                title: traceTitleForCommand(traceUrl, localizedBody, "GET"),
+                trigger: "request builder",
+                suppressCurlButton: true,
+              }),
+            ])
+          );
+        }
+
+        const data = (body && body.data) || {};
+        const referenceOwner = networkTraceCapsuleId || "PD-1004";
+        const hasFlag = Boolean(body) && JSON.stringify(body).includes("courier_ticket");
+        const isOwn = response.ok && String(data.capsule_id || "").toUpperCase() === referenceOwner.toUpperCase();
+        const kind = !response.ok ? "error" : hasFlag ? "flag" : isOwn ? "own" : "leak";
+
+        setBuilderResponse({
+          id: rawId,
+          status: response.status,
+          kind,
+          body: localizedBody,
+          owner: data.owner || "",
+          errorMessage:
+            !response.ok && body
+              ? localizeTerminalOutput(body?.error?.message || "", locale, "level3_1")
+              : "",
+        });
+      } catch {
+        setBuilderResponse({
+          id: rawId,
+          status: 0,
+          kind: "error",
+          body: null,
+          errorMessage: locale === "en" ? "Request failed to send." : "요청 전송에 실패했어.",
+        });
+      } finally {
+        setBuilderBusy(false);
+      }
+    },
+    [builderParcelId, locale, networkTraceCapsuleId, token]
+  );
 
   const handleCopyTraceCurl = useCallback((curl) => {
     setCommand(curl);
@@ -9186,6 +9478,18 @@ function CampaignMode() {
                       locale={locale}
                     />
                     ) : null
+                  ) : currentId === "level3_1" ? (
+                    <RequestBuilder
+                      builder={story.requestBuilder}
+                      value={builderParcelId}
+                      referenceId={networkTraceCapsuleId}
+                      response={builderResponse}
+                      busy={builderBusy}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING"}
+                      onChange={setBuilderParcelId}
+                      onSend={handleBuilderSend}
+                      locale={locale}
+                    />
                   ) : (
                     <MissionConsole
                       disabled={phase === "LOCKED" || phase === "BRIEFING"}

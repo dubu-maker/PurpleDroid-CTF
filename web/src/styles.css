@@ -2585,6 +2585,401 @@ button:disabled {
   text-transform: uppercase;
 }
 
+/* --- 3-1 Request Builder (replaces the terminal for level3_1) --- */
+.request-builder {
+  border-color: rgba(157, 78, 221, 0.28);
+  display: grid;
+  gap: 16px;
+}
+
+.rb-intro {
+  margin: 0;
+  color: #b9c4de;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.rb-field {
+  display: grid;
+  gap: 8px;
+}
+
+.rb-label {
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #8190b3;
+}
+
+.rb-label span {
+  color: #65708f;
+}
+
+.rb-label-edit {
+  color: #c79bff;
+}
+
+.rb-methodpath,
+.rb-headers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(129, 144, 179, 0.18);
+  border-radius: 4px;
+  background: rgba(5, 7, 12, 0.7);
+  padding: 0;
+  overflow: hidden;
+}
+
+.rb-headers {
+  padding: 11px 14px;
+  gap: 10px;
+}
+
+.rb-method {
+  flex: none;
+  padding: 12px 16px;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6affbf;
+  background: rgba(106, 255, 191, 0.08);
+  border-right: 1px solid rgba(129, 144, 179, 0.16);
+}
+
+.rb-path {
+  flex: 1;
+  padding: 12px 14px;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12.5px;
+  color: #9aa6c4;
+  overflow-wrap: anywhere;
+}
+
+.rb-lock {
+  flex: none;
+  padding: 0 14px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.rb-headers .rb-lock {
+  padding: 0;
+}
+
+.rb-param-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rb-param-key,
+.rb-header-key {
+  flex: none;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12.5px;
+  color: #c8d2ec;
+}
+
+.rb-eq {
+  flex: none;
+  color: #65708f;
+}
+
+.rb-input {
+  flex: 1;
+  min-width: 140px;
+  border: 1px solid rgba(157, 78, 221, 0.5);
+  border-radius: 4px;
+  background: rgba(157, 78, 221, 0.06);
+  box-shadow: 0 0 0 3px rgba(157, 78, 221, 0.08);
+  color: #edf2ff;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 11px 13px;
+}
+
+.rb-input::placeholder {
+  color: #65708f;
+  font-weight: 400;
+}
+
+.rb-input:focus {
+  outline: none;
+  border-color: #b57bff;
+}
+
+.rb-editable-tag {
+  flex: none;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #d7b8ff;
+  border: 1px solid rgba(157, 78, 221, 0.5);
+  background: rgba(157, 78, 221, 0.14);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.rb-candidates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rb-candidates > span {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 11px;
+  color: #65708f;
+}
+
+.rb-chip {
+  cursor: pointer;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 11px;
+  color: #8a95b0;
+  border: 1px solid rgba(129, 144, 179, 0.22);
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.rb-chip em {
+  font-style: normal;
+  opacity: 0.6;
+}
+
+.rb-chip:hover:not(:disabled) {
+  border-color: rgba(157, 78, 221, 0.5);
+  color: #d7ddff;
+}
+
+.rb-chip-on {
+  color: #d7b8ff;
+  border-color: #9d4edd;
+  background: rgba(157, 78, 221, 0.14);
+  font-weight: 600;
+}
+
+.rb-chip:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.rb-headers code {
+  flex: 1;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12.5px;
+  color: #6affbf;
+  overflow-wrap: anywhere;
+}
+
+.rb-assembled {
+  border: 1px solid rgba(129, 144, 179, 0.16);
+  border-radius: 4px;
+  background: rgba(3, 5, 9, 0.75);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.rb-assembled-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #65708f;
+}
+
+.rb-assembled code {
+  display: block;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #a8a8b4;
+  word-break: break-all;
+}
+
+.rb-assembled code em {
+  color: #6affbf;
+  font-style: normal;
+}
+
+.rb-curl-id {
+  color: #c79bff;
+  font-weight: 700;
+}
+
+.rb-send-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.rb-send {
+  cursor: pointer;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 6px;
+  background: #9d4edd;
+  color: #0a0a0e;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 12px 30px -14px #9d4edd;
+}
+
+.rb-send:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.rb-send:disabled {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.rb-send-hint {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 11px;
+  color: #8190b3;
+}
+
+.rb-response {
+  border: 1px solid rgba(129, 144, 179, 0.16);
+  border-radius: 4px;
+  background: rgba(5, 7, 12, 0.8);
+  overflow: hidden;
+}
+
+.rb-response-leak {
+  border-color: rgba(157, 78, 221, 0.4);
+}
+
+.rb-response-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-wrap: wrap;
+  padding: 11px 15px;
+  border-bottom: 1px solid rgba(129, 144, 179, 0.12);
+}
+
+.rb-response-label {
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #8190b3;
+}
+
+.rb-status {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+
+.rb-status-ok {
+  color: #5ad0ff;
+  background: rgba(90, 208, 255, 0.12);
+}
+
+.rb-status-leak {
+  color: #c79bff;
+  background: rgba(157, 78, 221, 0.16);
+}
+
+.rb-status-err {
+  color: #ff8fab;
+  background: rgba(255, 143, 171, 0.12);
+}
+
+.rb-verdict {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #c79bff;
+}
+
+.rb-response-leak .rb-verdict {
+  color: #c79bff;
+}
+
+.rb-ctype {
+  margin-left: auto;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 10px;
+  color: #65708f;
+}
+
+.rb-response-body {
+  padding: 14px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.rb-json {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  color: #c8d2ec;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rb-json-err {
+  color: #ff8fab;
+}
+
+.rb-leak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(157, 78, 221, 0.5);
+  border-radius: 4px;
+  background: rgba(157, 78, 221, 0.08);
+  padding: 11px 13px;
+}
+
+.rb-leak-tag {
+  flex: none;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #d7b8ff;
+  border: 1px solid rgba(157, 78, 221, 0.6);
+  background: rgba(157, 78, 221, 0.14);
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.rb-leak-note {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  color: #cbb8e6;
+  line-height: 1.5;
+}
+
 .briefing-lock,
 .aegis-alert,
 .mission-complete-panel {
