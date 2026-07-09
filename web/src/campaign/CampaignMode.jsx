@@ -4313,10 +4313,12 @@ function BolaLaneTrace({ entries, capsuleId, expandedById, onCopyCurl, onToggleR
 
 const BUILDER_PATH = "/api/v1/challenges/level3_1/actions/parcel";
 
-function RequestBuilder({ builder, value, referenceId, response, busy, disabled, onChange, onSend, locale }) {
+function RequestBuilder({ builder, value, referenceId, response, busy, disabled, baselineSent, onChange, onSend, locale }) {
   const en = locale === "en";
   const activeId = (value || "").trim();
   const candidates = Array.isArray(builder?.candidates) ? builder.candidates : ["PD-1004", "PD-1003", "PD-1005"];
+  const isRefChip = (id, idx) =>
+    referenceId ? id.toUpperCase() === referenceId.toUpperCase() : idx === 0;
 
   const kind = response?.kind;
   const isOwn = kind === "own";
@@ -4405,20 +4407,29 @@ function RequestBuilder({ builder, value, referenceId, response, busy, disabled,
         </div>
         <div className="rb-candidates">
           <span>{en ? "adjacent ids:" : "인접 id:"}</span>
-          {candidates.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`rb-chip ${id === activeId ? "rb-chip-on" : ""}`}
-              disabled={disabled || busy}
-              onClick={() => onChange(id)}
-            >
-              {id}
-              {referenceId && id.toUpperCase() === referenceId.toUpperCase() && (
-                <em> {en ? "you" : "나"}</em>
-              )}
-            </button>
-          ))}
+          {candidates.map((id, idx) => {
+            const ref = isRefChip(id, idx);
+            if (!ref && !baselineSent) {
+              return null;
+            }
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`rb-chip ${id === activeId ? "rb-chip-on" : ""}`}
+                disabled={disabled || busy}
+                onClick={() => onChange(id)}
+              >
+                {id}
+                {ref && <em> {en ? "you" : "나"}</em>}
+              </button>
+            );
+          })}
+          {!baselineSent && (
+            <span className="rb-candidates-hint">
+              {en ? "· send yours to reveal neighbors" : "· 내 요청을 보내면 이웃 id가 열려"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -8072,6 +8083,22 @@ function CampaignMode() {
   const requiresTerminalVerification = Boolean(detail?.defense?.instruction?.includes("defense verify"));
   const containmentVerified = Boolean(containmentVerifiedById[currentId]);
   const usesMemoryVault = currentId === "level4_1" || currentId === "level4_2" || currentId === "level4_3";
+  // 3-1 Request Builder: neighbor id chips stay hidden until the player has sent
+  // their own (baseline) request — a successful 200 for the reference id.
+  const builderBaselineSent = useMemo(() => {
+    if (currentId !== "level3_1") {
+      return false;
+    }
+    const ref = (networkTraceCapsuleId || "PD-1004").toUpperCase();
+    return networkTraceEntries.some((entry) => {
+      if (entry.status !== 200) {
+        return false;
+      }
+      const match = (entry.url || "").match(/parcel_id=([^&\s"'`]+)/i);
+      const pid = match ? decodeURIComponent(match[1]).toUpperCase() : "";
+      return pid === ref;
+    });
+  }, [currentId, networkTraceCapsuleId, networkTraceEntries]);
   // The fragment board reasoning gate covers BOTH 1-3 and 1-4 (they share the board
   // component and never run at the same time). 1-4 additionally requires commit verification.
   const fragmentBoardReasoningLevel = currentId === "level1_3" || currentId === "level1_4";
@@ -9485,6 +9512,7 @@ function CampaignMode() {
                       referenceId={networkTraceCapsuleId}
                       response={builderResponse}
                       busy={builderBusy}
+                      baselineSent={builderBaselineSent}
                       disabled={phase === "LOCKED" || phase === "BRIEFING"}
                       onChange={setBuilderParcelId}
                       onSend={handleBuilderSend}

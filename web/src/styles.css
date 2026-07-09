@@ -2738,6 +2738,11 @@ button:disabled {
   color: #65708f;
 }
 
+.rb-candidates-hint {
+  color: #7a6a9c !important;
+  font-style: italic;
+}
+
 .rb-chip {
   cursor: pointer;
   font-family: "Consolas", "Menlo", monospace;
