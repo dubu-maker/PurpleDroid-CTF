@@ -209,7 +209,7 @@ export const CAMPAIGN_STORY = {
       text: "일단 덤프를 펼쳐봐. FLAG가 너무 많이 보이면, 값이 아니라 흐름으로 좁혀 — Login success 근처를 봐.",
       commands: [
         { command: "adb logcat -d", note: "전체 덤프" },
-        { command: 'adb logcat -d | grep "Login success"', note: "흐름으로 좁히기" },
+        { command: 'adb logcat -d | grep -A 1 "Login success"', note: "성공 직후 세션까지 확인" },
       ],
     },
     consoleGuide:
@@ -1140,7 +1140,7 @@ export const CAMPAIGN_STORY = {
       reasoning: [
         { id: "r1", correct: false, text: "헤더 이름에 Ticket이 들어가서 골랐다." },
         { id: "r2", correct: false, text: "FLAG{ 형태라서 자격증명이라고 봤다." },
-        { id: "r3", correct: false, text: "Courier 계열 헤더라서 라우팅 티켓이라고 판단했다." },
+        { id: "r3", correct: false, text: "Courier라는 이름만 보고 라우팅 티켓이라고 단정했다." },
         { id: "r4", correct: true, text: "두 응답에서 값이 바뀌지 않고 그대로 남았다." },
         { id: "r5", correct: true, text: "Preview·Cached·Trace처럼 매 요청 재생성되는 값과 달리 안정적이다." },
         { id: "r6", correct: false, text: "고정값이면 무조건 정답이라 메타데이터 헤더(edge-node 등)도 후보로 봤다." },

@@ -284,7 +284,7 @@ export const CAMPAIGN_STORY_EN = {
       text: 'Spread the dump first. If too many FLAGs show up, narrow by flow, not by value — look around "Login success".',
       commands: [
         { command: "adb logcat -d", note: "full dump" },
-        { command: 'adb logcat -d | grep "Login success"', note: "narrow by flow" },
+        { command: 'adb logcat -d | grep -A 1 "Login success"', note: "include the following session" },
       ],
     },
     mira: {
@@ -866,7 +866,7 @@ export const CAMPAIGN_STORY_EN = {
       reasoning: [
         { id: "r1", correct: false, text: "I picked it because the header name contains 'Ticket'." },
         { id: "r2", correct: false, text: "I trusted it because it is shaped like FLAG{...}." },
-        { id: "r3", correct: false, text: "I judged it real because it is a Courier-family header." },
+        { id: "r3", correct: false, text: "I treated it as real based only on the Courier-family name." },
         { id: "r4", correct: true, text: "Its value did not change across the two responses." },
         { id: "r5", correct: true, text: "Unlike Preview/Cached/Trace it is stable instead of regenerated each request." },
         { id: "r6", correct: false, text: "Any stable value must be the answer, so a metadata header (edge-node, etc.) is also a candidate." },

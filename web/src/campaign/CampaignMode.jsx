@@ -3705,7 +3705,19 @@ function DialoguePanel({ story, phase, attackNotice, locale, dialogueKey }) {
 function ObjectivePanel({ story, phase, hasUserCommand }) {
   const attackDone = phase === "DEFENSE" || phase === "MISSION_COMPLETE";
   const defenseDone = phase === "MISSION_COMPLETE";
-  const checks = [hasUserCommand || attackDone, attackDone, defenseDone];
+  const objectives = story.objectives || [];
+  const checks = objectives.map((_, idx) => {
+    if (defenseDone) {
+      return true;
+    }
+    if (idx === 0) {
+      return hasUserCommand || attackDone;
+    }
+    if (attackDone) {
+      return idx < objectives.length - 1;
+    }
+    return false;
+  });
 
   return (
     <section className="objective-panel">
@@ -3714,7 +3726,7 @@ function ObjectivePanel({ story, phase, hasUserCommand }) {
         <strong>{story.threat}</strong>
       </div>
       <ol>
-        {story.objectives.map((objective, idx) => (
+        {objectives.map((objective, idx) => (
           <li key={objective} className={checks[idx] ? "done" : ""}>
             <span>{checks[idx] ? "OK" : "..."}</span>
             {objective}
@@ -7351,16 +7363,30 @@ function PatchSubmit({
   busy,
 }) {
   const enabled = detail?.defense?.enabled && phase === "DEFENSE";
+  const completed = phase === "MISSION_COMPLETE";
+  const locked = !enabled && !completed;
   const canSubmit = enabled && (!requiresVerification || verificationReady);
   const lines = detail?.defense?.code?.lines || [];
+  const lockMessage =
+    phase === "BRIEFING" || phase === "LOCKED"
+      ? "LOCKED — Begin Infiltration to unseal the patch surface"
+      : busy
+        ? "CHECKING EVIDENCE — Containment sync in progress"
+        : "LOCKED — Recover the Evidence to unseal the patch surface";
 
   return (
-    <section className={`containment-panel ${enabled ? "active" : ""}`}>
+    <section
+      className={`containment-panel ${enabled ? "active" : ""} ${completed ? "completed" : ""} ${
+        locked ? "locked" : ""
+      }`}
+    >
       <div className="section-heading">
         <span>CONTAINMENT PATCH</span>
         <strong>
-          {!enabled
-            ? "locked"
+          {completed
+            ? "completed"
+            : !enabled
+              ? "locked"
             : requiresVerification && !verificationReady
               ? "terminal verification required"
               : "verification ready"}
@@ -7392,6 +7418,7 @@ function PatchSubmit({
             </button>
           );
         })}
+        {locked && <div className="containment-lock-overlay">{lockMessage}</div>}
       </div>
       <div className="patch-submit-row">
         <code>patched: [{selectedPatchIds.join(", ")}]</code>
@@ -7860,6 +7887,7 @@ function CampaignMode() {
   const [command, setCommand] = useState("");
   const [consoleBusy, setConsoleBusy] = useState(false);
   const [flagValue, setFlagValue] = useState("");
+  const [evidenceBusy, setEvidenceBusy] = useState(false);
   const [evidenceResult, setEvidenceResult] = useState(null);
   const [patchResult, setPatchResult] = useState(null);
   const [networkTraceResult, setNetworkTraceResult] = useState(null);
@@ -8040,6 +8068,7 @@ function CampaignMode() {
     setConsoleLogs([]);
     setCommand("");
     setFlagValue("");
+    setEvidenceBusy(false);
     setEvidenceResult(null);
     setPatchResult(null);
     setNetworkTraceResult(null);
@@ -8348,6 +8377,7 @@ function CampaignMode() {
       setStatusText("Loading selected node...");
 
       try {
+        setDetail(null);
         setCurrentId(challengeId);
         await loadMissionDetail(token, challengeId);
         if (solved) {
@@ -8990,6 +9020,7 @@ function CampaignMode() {
       return;
     }
 
+    setEvidenceBusy(true);
     try {
       const data = await apiRequest(`/challenges/${currentId}/submit-flag`, {
         method: "POST",
@@ -9015,6 +9046,8 @@ function CampaignMode() {
       }
     } catch (error) {
       setEvidenceResult({ correct: false, message: localizeTerminalOutput(error.message, locale, currentId) || "Evidence rejected." });
+    } finally {
+      setEvidenceBusy(false);
     }
   }, [
     currentId,
@@ -9226,9 +9259,10 @@ function CampaignMode() {
         return;
       }
 
+      setShowDebrief(false);
+      setDetail(null);
       setCurrentId(candidate);
       await loadMissionDetail(token, candidate);
-      setShowDebrief(false);
       return;
     }
 
@@ -9268,6 +9302,7 @@ function CampaignMode() {
       setLoading(true);
       setStatusText("Opening " + enterStatus + "...");
       try {
+        setDetail(null);
         setCurrentId(targetId);
         await loadMissionDetail(token, targetId);
         setStatusText("");
@@ -9589,7 +9624,7 @@ function CampaignMode() {
 
                   {(currentId !== "level2_3" || adStage === "infiltrate") && (
                     <EvidenceSubmit
-                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy}
+                      disabled={phase === "LOCKED" || phase === "BRIEFING" || consoleBusy || evidenceBusy}
                       value={flagValue}
                       onChange={setFlagValue}
                       onSubmit={handleSubmitEvidence}
@@ -9618,7 +9653,7 @@ function CampaignMode() {
                   onToggle={handleTogglePatch}
                   onSubmit={handleSubmitPatch}
                   result={patchResult}
-                  busy={loading}
+                  busy={loading || evidenceBusy}
                 />
               )}
 

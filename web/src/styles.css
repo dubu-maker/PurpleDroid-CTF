@@ -7513,6 +7513,9 @@ button:disabled {
   border-color: var(--violet);
   box-shadow: 0 0 60px -34px var(--violet);
 }
+.campaign-shell .containment-panel.completed {
+  border-color: var(--ok);
+}
 .campaign-shell .containment-panel p { color: var(--fg-dim); }
 .campaign-shell .campaign-code-box {
   position: relative;
@@ -7528,9 +7531,8 @@ button:disabled {
 }
 .campaign-shell .campaign-code-line.patched code,
 .campaign-shell .campaign-code-line.patched span { color: var(--fg); }
-/* locked state: blur the code behind a crisp lock overlay */
-.campaign-shell .containment-panel:not(.active) .campaign-code-box::after {
-  content: "\2337  LOCKED \2014 Begin Infiltration to unseal the patch surface";
+/* locked state: blur the code behind a phase-aware lock overlay */
+.campaign-shell .containment-lock-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -7548,7 +7550,7 @@ button:disabled {
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.campaign-shell .containment-panel:not(.active) .campaign-code-box {
+.campaign-shell .containment-panel.locked .campaign-code-box {
   user-select: none;
 }
 .campaign-shell .verification-status { color: var(--fg-dim); }
