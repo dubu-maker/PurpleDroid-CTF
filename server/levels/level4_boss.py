@@ -67,6 +67,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "asset의 WEBHOOK_SECRET_B64는 base64 값이다. decode한 secret을 sign-webhook 첫 번째 인자로 넣어."},
             {"platform": "all", "text": "admin/config는 BAD_PARTNER_PASS와 FORBIDDEN이 구분된다. 에러 타입을 읽어가며 맞춰."},
             {"platform": "all", "text": "webhook 스탬프는 accepted가 아니라 credited가 올라가야 한다."},
+            {"platform": "all", "text": "직접 webhook/receive를 호출할 때는 X-PurpleDroid-Lab-Session으로 현재 실습 세션을 연결해."},
             {"platform": "all", "text": "스탬프 5개를 빠르게 쌓으려면 seq 1 5 | xargs -I{} ... 패턴을 활용해. event_id와 timestamp가 매번 달라야 credited 된다."},
             {
                 "platform": "windows",
@@ -90,7 +91,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": f'curl -s -X POST {WEBHOOK_PATH} -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "<json>"',
+                "text": f'curl -s -X POST {WEBHOOK_PATH} -H "X-PurpleDroid-Lab-Session: $SESSION_TOKEN" -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "<json>"',
             },
             {
                 "platform": "windows",
@@ -134,12 +135,14 @@ STATIC: Dict[str, Any] = {
 }
 
 
-_STATE: Dict[str, Any] = {
-    "stampCountByTicket": {VAULT_TICKET: 0},
-    "processedEventIds": set(),
-    "lastTimestampByTicket": {},
-    "lastWarningByTicket": {VAULT_TICKET: None},
-}
+def _level_state(session: Dict[str, Any]) -> Dict[str, Any]:
+    """Return Partner Vault state isolated to one campaign session."""
+    state = session.setdefault("level4_boss_state", {})
+    state.setdefault("stampCountByTicket", {VAULT_TICKET: 0})
+    state.setdefault("processedEventIds", [])
+    state.setdefault("lastTimestampByTicket", {})
+    state.setdefault("lastWarningByTicket", {VAULT_TICKET: None})
+    return state
 
 
 def check_flag(flag: str) -> bool:
@@ -392,6 +395,7 @@ def admin_config_payload(partner_pass: str) -> Tuple[bool, Dict[str, Any]]:
                         "ticket": VAULT_TICKET,
                         "webhook": {
                             "headers": {
+                                "labSession": "X-PurpleDroid-Lab-Session",
                                 "timestamp": "X-Webhook-Timestamp",
                                 "signature": "X-Webhook-Signature",
                                 "eventId": "X-Webhook-Event-Id",
@@ -419,12 +423,14 @@ def _sign_webhook_with_secret(secret: str, timestamp: str, raw_body: str) -> str
 
 
 def webhook_receive_payload(
+    session: Dict[str, Any],
     timestamp: str | None,
     event_id: str | None,
     signature: str | None,
     raw_body: str,
     now_ts: int | None = None,
 ) -> Tuple[int, Dict[str, Any]]:
+    state = _level_state(session)
     now = int(now_ts or time.time())
     ts_text = str(timestamp or "").strip()
     event_text = str(event_id or "").strip()
@@ -458,60 +464,61 @@ def webhook_receive_payload(
             "data": {
                 "accepted": False,
                 "credited": False,
-                "stampCount": _STATE["stampCountByTicket"].get(VAULT_TICKET, 0),
+                "stampCount": state["stampCountByTicket"].get(VAULT_TICKET, 0),
                 "target": REQUIRED_STAMPS,
                 "warnings": ["IGNORED_EVENT"],
             },
         }
 
     warnings = []
-    if event_text in _STATE["processedEventIds"]:
+    if event_text in state["processedEventIds"]:
         warnings.append("DUPLICATE_EVENT_ID")
-        _STATE["lastWarningByTicket"][ticket] = "DUPLICATE_EVENT_ID"
+        state["lastWarningByTicket"][ticket] = "DUPLICATE_EVENT_ID"
         return 200, {
             "ok": True,
             "data": {
                 "accepted": True,
                 "credited": False,
-                "stampCount": _STATE["stampCountByTicket"].get(ticket, 0),
+                "stampCount": state["stampCountByTicket"].get(ticket, 0),
                 "target": REQUIRED_STAMPS,
                 "warnings": warnings,
             },
         }
 
-    last_ts = _STATE["lastTimestampByTicket"].get(ticket)
+    last_ts = state["lastTimestampByTicket"].get(ticket)
     if last_ts == ts_int:
         warnings.append("SUSPICIOUS_SAME_TIMESTAMP")
-        _STATE["processedEventIds"].add(event_text)
-        _STATE["lastWarningByTicket"][ticket] = "SUSPICIOUS_SAME_TIMESTAMP"
+        state["processedEventIds"].append(event_text)
+        state["lastWarningByTicket"][ticket] = "SUSPICIOUS_SAME_TIMESTAMP"
         return 200, {
             "ok": True,
             "data": {
                 "accepted": True,
                 "credited": False,
-                "stampCount": _STATE["stampCountByTicket"].get(ticket, 0),
+                "stampCount": state["stampCountByTicket"].get(ticket, 0),
                 "target": REQUIRED_STAMPS,
                 "warnings": warnings,
             },
         }
 
-    _STATE["processedEventIds"].add(event_text)
-    _STATE["lastTimestampByTicket"][ticket] = ts_int
-    _STATE["stampCountByTicket"][ticket] = _STATE["stampCountByTicket"].get(ticket, 0) + 1
-    _STATE["lastWarningByTicket"][ticket] = None
+    state["processedEventIds"].append(event_text)
+    state["lastTimestampByTicket"][ticket] = ts_int
+    state["stampCountByTicket"][ticket] = state["stampCountByTicket"].get(ticket, 0) + 1
+    state["lastWarningByTicket"][ticket] = None
     return 200, {
         "ok": True,
         "data": {
             "accepted": True,
             "credited": True,
-            "stampCount": _STATE["stampCountByTicket"][ticket],
+            "stampCount": state["stampCountByTicket"][ticket],
             "target": REQUIRED_STAMPS,
             "warnings": warnings,
         },
     }
 
 
-def vault_status_payload(ticket: str) -> Tuple[bool, Dict[str, Any]]:
+def vault_status_payload(session: Dict[str, Any], ticket: str) -> Tuple[bool, Dict[str, Any]]:
+    state = _level_state(session)
     t = str(ticket or "").strip()
     if t != VAULT_TICKET:
         return False, {"ok": False, "error": {"code": "BAD_TICKET", "message": "unknown vault ticket"}, "_status": 404}
@@ -519,18 +526,19 @@ def vault_status_payload(ticket: str) -> Tuple[bool, Dict[str, Any]]:
         "ok": True,
         "data": {
             "ticket": t,
-            "stampCount": _STATE["stampCountByTicket"].get(t, 0),
+            "stampCount": state["stampCountByTicket"].get(t, 0),
             "target": REQUIRED_STAMPS,
-            "lastWarning": _STATE["lastWarningByTicket"].get(t),
+            "lastWarning": state["lastWarningByTicket"].get(t),
         },
     }
 
 
-def vault_claim_payload(ticket: str) -> Tuple[bool, Dict[str, Any]]:
+def vault_claim_payload(session: Dict[str, Any], ticket: str) -> Tuple[bool, Dict[str, Any]]:
+    state = _level_state(session)
     t = str(ticket or "").strip()
     if t != VAULT_TICKET:
         return False, {"ok": False, "error": {"code": "BAD_TICKET", "message": "invalid ticket"}, "_status": 403}
-    count = _STATE["stampCountByTicket"].get(t, 0)
+    count = state["stampCountByTicket"].get(t, 0)
     if count < REQUIRED_STAMPS:
         return False, {"ok": False, "error": {"code": "NOT_READY", "message": "need more stamps"}, "_status": 409}
     return True, {"ok": True, "data": {"status": "unlocked", "flag": LEVEL4_BOSS_FLAG}}
@@ -615,7 +623,11 @@ def _shell_http_router(
         return _json_response(payload, status if not ok_cfg else 200)
 
     if method == "POST" and path == WEBHOOK_PATH:
+        session = ctx.data.get("session")
+        if not isinstance(session, dict):
+            return _unauthorized()
         status, payload = webhook_receive_payload(
+            session,
             headers.get("x-webhook-timestamp"),
             headers.get("x-webhook-event-id"),
             headers.get("x-webhook-signature"),
@@ -629,7 +641,10 @@ def _shell_http_router(
             return _unauthorized()
         q = parse_qs(query or "")
         ticket = (q.get("ticket") or [""])[0]
-        ok_status, payload = vault_status_payload(ticket)
+        session = ctx.data.get("session")
+        if not isinstance(session, dict):
+            return _unauthorized()
+        ok_status, payload = vault_status_payload(session, ticket)
         status_code = int(payload.get("_status", 200))
         return _json_response(payload, status_code if not ok_status else 200)
 
@@ -640,7 +655,10 @@ def _shell_http_router(
             parsed = json.loads(body or "{}")
         except Exception:
             return _json_response({"ok": False, "error": {"code": "BAD_JSON", "message": "invalid json body"}}, 400)
-        ok_claim, payload = vault_claim_payload(str(parsed.get("ticket", "")))
+        session = ctx.data.get("session")
+        if not isinstance(session, dict):
+            return _unauthorized()
+        ok_claim, payload = vault_claim_payload(session, str(parsed.get("ticket", "")))
         status_code = int(payload.get("_status", 200))
         return _json_response(payload, status_code if not ok_claim else 200)
 
@@ -718,6 +736,7 @@ def terminal_exec_with_session(command: str, session: Dict[str, Any]) -> Tuple[s
             "HOME": "/workspace",
         },
         cwd=str(level_state.get("cwd", "/workspace")),
+        data={"session": session},
     )
     stdout, stderr, code = _SHELL.execute(cmd, ctx)
     level_state["cwd"] = ctx.cwd

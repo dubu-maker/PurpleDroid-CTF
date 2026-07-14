@@ -2080,12 +2080,13 @@ export const CAMPAIGN_STORY_EN = {
       "The signing string is of the form '<timestamp>.<raw_body>'.",
       "The signing secret may have leaked in the 4-1 public bundle.",
       "Use sign-webhook <secret> <timestamp> '<raw_json>' and provide the leaked secret yourself.",
+      "X-PurpleDroid-Lab-Session only correlates isolated lab state; it is not part of webhook authentication or the signed message.",
       "Send a forged parcel.delivered event, then check /track?parcel_id=PD-1004 for the status change.",
       "Defense is moving the secret out of client artifacts into server storage, plus replay protection and detection.",
     ],
     consolePlaceholder: "forge a signed webhook...",
     consoleGuide:
-      "Allowed: curl .../actions/webhook/spec, sign-webhook <secret> <timestamp> '<raw_json>', hmacsha256 <secret> '<message>', curl -X POST .../actions/webhook/receive -H 'X-Webhook-Timestamp: <ts>' -H 'X-Webhook-Event-Id: EVT-...' -H 'X-Webhook-Signature: sha256=<hex>' -H 'Content-Type: application/json' --data-raw '<json>', curl .../actions/track?parcel_id=PD-1004 -H 'Authorization: Bearer <token>'",
+      "Allowed: curl .../actions/webhook/spec, sign-webhook <secret> <timestamp> '<raw_json>', hmacsha256 <secret> '<message>', curl -X POST .../actions/webhook/receive -H 'X-PurpleDroid-Lab-Session: $SESSION_TOKEN' -H 'X-Webhook-Timestamp: <ts>' -H 'X-Webhook-Event-Id: EVT-...' -H 'X-Webhook-Signature: sha256=<hex>' -H 'Content-Type: application/json' --data-raw '<json>', curl .../actions/track?parcel_id=PD-1004 -H 'Authorization: Bearer <token>'",
     objectives: [
       "Read the signature format and signing string from /webhook/spec.",
       "Compute the signature of a forged event with the secret leaked in 4-1.",
@@ -2137,6 +2138,7 @@ export const CAMPAIGN_STORY_EN = {
       "Forge a PartnerPass with the legacy kid (kty=oct, k value) from jwks.",
       "admin/config distinguishes BAD_PARTNER_PASS from FORBIDDEN. Read the error type to converge.",
       "Webhook stamps must raise credited, not just accepted. event_id and timestamp must differ each time.",
+      "When calling webhook/receive directly, correlate the current lab with X-PurpleDroid-Lab-Session.",
       "Use a pattern like seq 1 5 | xargs -I {} ... to stack stamps quickly.",
       "When stamps reach the target, claim the final Evidence with vault/claim.",
       "Defense is not a single patch; it is rebinding every trust boundary to server authority.",

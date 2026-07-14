@@ -35,6 +35,7 @@ STATIC: Dict[str, Any] = {
             {"platform": "all", "text": "시크릿은 4-1 공개 번들에서 유출될 수 있다."},
             {"platform": "all", "text": "sign-webhook은 secret을 직접 요구한다. 4-1 공개 번들에서 유출된 webhook secret을 넣어야 해."},
             {"platform": "all", "text": "웹훅 성공 뒤에는 /track?parcel_id=PD-1004 결과를 다시 조회해 상태 변화를 확인해."},
+            {"platform": "all", "text": "X-PurpleDroid-Lab-Session은 다중 사용자 실습 상태 격리용이며 webhook 서명에는 포함되지 않는다."},
             {
                 "platform": "windows",
                 "text": 'curl -s /api/v1/challenges/level4_5/actions/webhook/spec',
@@ -45,7 +46,7 @@ STATIC: Dict[str, Any] = {
             },
             {
                 "platform": "windows",
-                "text": 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+                "text": 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-PurpleDroid-Lab-Session: $SESSION_TOKEN" -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
             },
             {
                 "platform": "windows",
@@ -58,7 +59,7 @@ STATIC: Dict[str, Any] = {
             "maxOutputBytes": 18000,
             "help": (
                 "허용: curl .../actions/webhook/spec, "
-                "curl -X POST .../actions/webhook/receive -H 'X-Webhook-Timestamp: <ts>' "
+                "curl -X POST .../actions/webhook/receive -H 'X-PurpleDroid-Lab-Session: $SESSION_TOKEN' -H 'X-Webhook-Timestamp: <ts>' "
                 "-H 'X-Webhook-Event-Id: EVT-...' -H 'X-Webhook-Signature: sha256=<hex>' -H 'Content-Type: application/json' --data-raw '<json>', "
                 "curl .../actions/track?parcel_id=PD-1004 -H 'Authorization: Bearer <token>', "
                 "sign-webhook <secret> <timestamp> '<raw_json>', hmacsha256 <secret> '<message>'"
@@ -126,13 +127,15 @@ PATCH_MISSING_LABELS = {
 }
 
 
-# global webhook state (webhook receiver is intentionally sessionless)
-_STATE: Dict[str, Any] = {
-    "processedEventIds": set(),
-    "parcelStatus": {
-        "PD-1004": {"status": "in_transit", "source": "system", "receipt": None},
-    },
-}
+def _level_state(session: Dict[str, Any]) -> Dict[str, Any]:
+    """Return webhook state isolated to the current campaign session."""
+    state = session.setdefault("level4_5_state", {})
+    state.setdefault("processedEventIds", [])
+    state.setdefault(
+        "parcelStatus",
+        {"PD-1004": {"status": "in_transit", "source": "system", "receipt": None}},
+    )
+    return state
 
 
 def check_flag(flag: str) -> bool:
@@ -183,6 +186,7 @@ def webhook_spec_payload() -> Dict[str, Any]:
         "ok": True,
         "data": {
             "headers": {
+                "labSession": "X-PurpleDroid-Lab-Session",
                 "timestamp": "X-Webhook-Timestamp",
                 "signature": "X-Webhook-Signature",
                 "eventId": "X-Webhook-Event-Id",
@@ -221,12 +225,14 @@ def _parse_timestamp(ts: str, now_ts: int) -> Tuple[bool, int]:
 
 
 def receive_webhook_payload(
+    session: Dict[str, Any],
     timestamp: str | None,
     event_id: str | None,
     signature: str | None,
     raw_body: str,
     now_ts: int | None = None,
 ) -> Tuple[int, Dict[str, Any]]:
+    state = _level_state(session)
     now = int(now_ts or time.time())
     ts_text = str(timestamp or "").strip()
     event_text = str(event_id or "").strip()
@@ -248,26 +254,35 @@ def receive_webhook_payload(
     except Exception:
         return 400, {"ok": False, "error": {"code": "BAD_JSON", "message": "invalid json body"}}
 
-    if event_text in _STATE["processedEventIds"]:
+    if event_text in state["processedEventIds"]:
         return 200, {"ok": True, "data": {"accepted": True, "credited": False, "duplicate": True}}
-
-    _STATE["processedEventIds"].add(event_text)
 
     event_type = str(body.get("type", "")).strip()
     parcel_id = str(body.get("parcel_id", "")).strip()
-    if event_type == "parcel.delivered" and parcel_id:
-        _STATE["parcelStatus"][parcel_id] = {
-            "status": "delivered",
-            "source": "webhook",
-            "receipt": event_text,
+    if event_type != "parcel.delivered" or not parcel_id:
+        return 422, {
+            "ok": False,
+            "error": {
+                "code": "UNSUPPORTED_EVENT",
+                "message": "parcel.delivered event with parcel_id required",
+            },
         }
+
+    # Consume the replay key only after the signed event is semantically valid.
+    state["processedEventIds"].append(event_text)
+    state["parcelStatus"][parcel_id] = {
+        "status": "delivered",
+        "source": "webhook",
+        "receipt": event_text,
+    }
 
     return 200, {"ok": True, "data": {"accepted": True, "credited": True}}
 
 
-def track_payload(parcel_id: str) -> Dict[str, Any]:
+def track_payload(session: Dict[str, Any], parcel_id: str) -> Dict[str, Any]:
+    state = _level_state(session)
     pid = str(parcel_id or "").strip() or "PD-1004"
-    st = _STATE["parcelStatus"].get(pid, {"status": "unknown", "source": "none", "receipt": None})
+    st = state["parcelStatus"].get(pid, {"status": "unknown", "source": "none", "receipt": None})
     data = {
         "parcel_id": pid,
         "status": st["status"],
@@ -324,7 +339,11 @@ def _shell_http_router(
         return _json_response(webhook_spec_payload())
 
     if method == "POST" and path == "/api/v1/challenges/level4_5/actions/webhook/receive":
+        session = ctx.data.get("session")
+        if not isinstance(session, dict):
+            return _unauthorized()
         status, payload = receive_webhook_payload(
+            session,
             headers.get("x-webhook-timestamp"),
             headers.get("x-webhook-event-id"),
             headers.get("x-webhook-signature"),
@@ -338,7 +357,10 @@ def _shell_http_router(
             return _unauthorized()
         q = parse_qs(query or "")
         parcel_id = (q.get("parcel_id") or ["PD-1004"])[0]
-        return _json_response(track_payload(parcel_id))
+        session = ctx.data.get("session")
+        if not isinstance(session, dict):
+            return _unauthorized()
+        return _json_response(track_payload(session, parcel_id))
 
     return _json_response({"ok": False, "error": {"code": "NOT_FOUND", "message": "route not found"}}, 404)
 
@@ -408,6 +430,7 @@ def terminal_exec_with_session(command: str, session: Dict[str, Any]) -> Tuple[s
             "HOME": "/workspace",
         },
         cwd=str(level_state.get("cwd", "/workspace")),
+        data={"session": session},
     )
     stdout, stderr, code = _SHELL.execute(cmd, ctx)
     level_state["cwd"] = ctx.cwd

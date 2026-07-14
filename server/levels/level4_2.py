@@ -31,6 +31,11 @@ STATIC: Dict[str, Any] = {
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
+        "campaignConfig": {
+            "evidenceShard": LEVEL4_2_FLAG,
+            "activeKid": ACTIVE_KID,
+            "legacyKid": LEGACY_KID,
+        },
         "hints": [
             {"platform": "all", "text": "pass/issue로 정상 PartnerPass를 먼저 받아 header.kid와 payload.role을 확인해."},
             {"platform": "all", "text": "keys/jwks 응답에서 active/legacy 키 상태를 비교해."},

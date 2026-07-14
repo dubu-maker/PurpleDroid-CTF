@@ -273,6 +273,7 @@ const FALLBACK_HINTS = {
     { platform: "all", text: "webhook은 사용자 세션 버튼이 아니라 서버 입력 채널이다. 먼저 /webhook/spec을 확인해." },
     { platform: "all", text: "signing string은 '<timestamp>.<raw_body>' 형태다." },
     { platform: "all", text: "시크릿은 4-1 공개 자산에서 유출됐을 수 있다. sign-webhook에는 secret을 직접 넣어야 해." },
+    { platform: "all", text: "X-PurpleDroid-Lab-Session은 다중 사용자 실습 상태 격리용이며 webhook 서명에는 포함되지 않는다." },
     {
       platform: "windows",
       text: 'curl -s /api/v1/challenges/level4_5/actions/webhook/spec',
@@ -283,7 +284,7 @@ const FALLBACK_HINTS = {
     },
     {
       platform: "windows",
-      text: 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
+      text: 'curl -s -X POST /api/v1/challenges/level4_5/actions/webhook/receive -H "X-PurpleDroid-Lab-Session: <token>" -H "X-Webhook-Timestamp: <ts>" -H "X-Webhook-Event-Id: EVT-9001" -H "X-Webhook-Signature: <sig>" -H "Content-Type: application/json" --data-raw "{\\"type\\":\\"parcel.delivered\\",\\"parcel_id\\":\\"PD-1004\\",\\"delivered_at\\":1739999999,\\"meta\\":{\\"courier\\":\\"PurpleDroid\\"}}"',
     },
     {
       platform: "windows",

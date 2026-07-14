@@ -29,6 +29,12 @@ STATIC: Dict[str, Any] = {
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
+        "campaignConfig": {
+            "evidenceShard": LEVEL4_1_FLAG,
+            "assetFilename": ASSET_FILENAME,
+            "assetMapFilename": ASSET_MAP_FILENAME,
+            "partnerKey": PARTNER_KEY,
+        },
         "hints": [
             {
                 "platform": "web",

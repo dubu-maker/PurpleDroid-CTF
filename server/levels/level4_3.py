@@ -38,6 +38,11 @@ STATIC: Dict[str, Any] = {
     ),
     "status": {"attack": "available", "defense": "locked"},
     "attack": {
+        "campaignConfig": {
+            "evidenceShard": LEVEL4_3_FLAG,
+            "target": STAMP_TARGET,
+            "windowSec": BURST_WINDOW_SEC,
+        },
         "hints": [
             {"platform": "all", "text": "첫 stamp가 타이머 시작점이다. 시간 창 안에서 목표 횟수를 채워야 한다."},
             {"platform": "all", "text": f"제한 시간({BURST_WINDOW_SEC}초)을 넘기면 timeout과 함께 카운터가 리셋된다."},

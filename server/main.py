@@ -751,11 +751,27 @@ def me(authorization: Optional[str] = Header(None)):
 def reset_level(challenge_id: str, authorization: Optional[str] = Header(None)):
     _, session = _get_session(authorization)
 
-    if challenge_id not in session["progress"]:
+    mod = LEVELS.get(challenge_id)
+    if challenge_id not in session["progress"] or not mod:
         raise APIError("NOT_FOUND", "없는 레벨이야.", 404)
 
     session["progress"][challenge_id] = {"attackSolved": False, "defenseSolved": False}
-    session.pop(challenge_id, None)
+
+    # Level implementations use both the exact challenge id (level4_3) and
+    # prefixed keys (level3_3_profile, level3_5_state, level3_boss_state, ...).
+    # Clear the whole namespace so Reset always produces a clean replay.
+    for key in list(session.keys()):
+        if key == challenge_id or key.startswith(f"{challenge_id}_"):
+            session.pop(key, None)
+
+    fake_shell_state = session.get("fakeShellState")
+    if isinstance(fake_shell_state, dict):
+        fake_shell_state.pop(challenge_id, None)
+        if not fake_shell_state:
+            session.pop("fakeShellState", None)
+
+    if hasattr(mod, "reset_session_state"):
+        mod.reset_session_state(session)
     return ok({"message": "reset ok", "status": _status_for(session, challenge_id)})
 
 
@@ -1313,14 +1329,17 @@ def level4_5_webhook_spec():
 @app.post("/api/v1/challenges/level4_5/actions/webhook/receive")
 async def level4_5_webhook_receive(
     request: Request,
+    x_lab_session: Optional[str] = Header(None, alias="X-PurpleDroid-Lab-Session"),
     x_webhook_timestamp: Optional[str] = Header(None, alias="X-Webhook-Timestamp"),
     x_webhook_event_id: Optional[str] = Header(None, alias="X-Webhook-Event-Id"),
     x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
 ):
     from levels.level4_5 import receive_webhook_payload
 
+    _, session = _get_session(f"Bearer {x_lab_session or ''}")
     raw_body = (await request.body()).decode("utf-8", errors="replace")
     status, payload = receive_webhook_payload(
+        session,
         x_webhook_timestamp,
         x_webhook_event_id,
         x_webhook_signature,
@@ -1335,10 +1354,10 @@ def level4_5_track(
     authorization: Optional[str] = Header(None),
     parcel_id: str = Query(default="PD-1004", min_length=3, max_length=40),
 ):
-    _get_session(authorization)
+    _, session = _get_session(authorization)
     from levels.level4_5 import track_payload
 
-    return track_payload(parcel_id)
+    return track_payload(session, parcel_id)
 
 
 @app.get("/api/v1/challenges/level4_boss/actions/public/status")
@@ -1391,14 +1410,17 @@ def level4_boss_admin_config(
 @app.post("/api/v1/challenges/level4_boss/actions/webhook/receive")
 async def level4_boss_webhook_receive(
     request: Request,
+    x_lab_session: Optional[str] = Header(None, alias="X-PurpleDroid-Lab-Session"),
     x_webhook_timestamp: Optional[str] = Header(None, alias="X-Webhook-Timestamp"),
     x_webhook_event_id: Optional[str] = Header(None, alias="X-Webhook-Event-Id"),
     x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
 ):
     from levels.level4_boss import webhook_receive_payload
 
+    _, session = _get_session(f"Bearer {x_lab_session or ''}")
     raw_body = (await request.body()).decode("utf-8", errors="replace")
     status, payload = webhook_receive_payload(
+        session,
         x_webhook_timestamp,
         x_webhook_event_id,
         x_webhook_signature,
@@ -1413,10 +1435,10 @@ def level4_boss_vault_status(
     authorization: Optional[str] = Header(None),
     ticket: str = Query(..., min_length=3, max_length=80),
 ):
-    _get_session(authorization)
+    _, session = _get_session(authorization)
     from levels.level4_boss import vault_status_payload
 
-    ok_result, payload = vault_status_payload(ticket)
+    ok_result, payload = vault_status_payload(session, ticket)
     if not ok_result:
         err = payload.get("error", {})
         raise APIError(err.get("code", "BAD_TICKET"), err.get("message", "unknown ticket"), int(payload.get("_status", 404)))
@@ -1428,10 +1450,10 @@ def level4_boss_vault_claim(
     authorization: Optional[str] = Header(None),
     req: Dict[str, Any] = Body(default={}),
 ):
-    _get_session(authorization)
+    _, session = _get_session(authorization)
     from levels.level4_boss import vault_claim_payload
 
-    ok_result, payload = vault_claim_payload(str(req.get("ticket", "")))
+    ok_result, payload = vault_claim_payload(session, str(req.get("ticket", "")))
     if not ok_result:
         err = payload.get("error", {})
         raise APIError(err.get("code", "NOT_READY"), err.get("message", "claim failed"), int(payload.get("_status", 409)))

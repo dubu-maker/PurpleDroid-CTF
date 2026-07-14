@@ -1133,12 +1133,29 @@ const LEVEL4_1_MEMORY_UI = {
   },
 };
 
-function getLevel41MemoryPuzzle(locale) {
-  if (locale !== "en") {
-    return LEVEL4_1_MEMORY_PUZZLE;
+function replacePuzzleStrings(value, replacements) {
+  if (Array.isArray(value)) {
+    return value.map((item) => replacePuzzleStrings(item, replacements));
   }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        replacePuzzleStrings(item, replacements),
+      ])
+    );
+  }
+  if (typeof value !== "string") {
+    return value;
+  }
+  return replacements.reduce(
+    (text, [from, to]) => text.split(from).join(to),
+    value
+  );
+}
 
-  return {
+function getLevel41MemoryPuzzle(locale, campaignConfig = {}) {
+  const localized = locale !== "en" ? LEVEL4_1_MEMORY_PUZZLE : {
     ...LEVEL4_1_MEMORY_PUZZLE,
     cards: LEVEL4_1_MEMORY_PUZZLE.cards.map((card) => ({
       ...card,
@@ -1152,6 +1169,15 @@ function getLevel41MemoryPuzzle(locale) {
       ...card,
       ...(LEVEL4_1_MEMORY_PUZZLE_EN.policyCards[card.id] || {}),
     })),
+  };
+  const replacements = [
+    ["pd.partner.config.5f3c2a.js.map", campaignConfig.assetMapFilename || "pd.partner.config.5f3c2a.js.map"],
+    ["pd.partner.config.5f3c2a.js", campaignConfig.assetFilename || "pd.partner.config.5f3c2a.js"],
+    ["pd_partner_live_4f9a2d71", campaignConfig.partnerKey || "pd_partner_live_4f9a2d71"],
+  ];
+  return {
+    ...replacePuzzleStrings(localized, replacements),
+    evidenceShard: campaignConfig.evidenceShard || localized.evidenceShard,
   };
 }
 
@@ -1834,12 +1860,8 @@ const LEVEL4_2_KEY_SLOT_UI = {
   },
 };
 
-function getLevel42KeySlotPuzzle(locale) {
-  if (locale !== "en") {
-    return LEVEL4_2_KEY_SLOT_PUZZLE;
-  }
-
-  return {
+function getLevel42KeySlotPuzzle(locale, campaignConfig = {}) {
+  const localized = locale !== "en" ? LEVEL4_2_KEY_SLOT_PUZZLE : {
     ...LEVEL4_2_KEY_SLOT_PUZZLE,
     cards: LEVEL4_2_KEY_SLOT_PUZZLE.cards.map((card) => ({
       ...card,
@@ -1853,6 +1875,12 @@ function getLevel42KeySlotPuzzle(locale) {
       ...card,
       ...(LEVEL4_2_KEY_SLOT_PUZZLE_EN.policyCards[card.id] || {}),
     })),
+  };
+  return {
+    ...localized,
+    evidenceShard: campaignConfig.evidenceShard || localized.evidenceShard,
+    activeKid: campaignConfig.activeKid || localized.activeKid,
+    legacyKid: campaignConfig.legacyKid || localized.legacyKid,
   };
 }
 
@@ -2198,12 +2226,8 @@ const LEVEL4_3_REPLAY_UI = {
   },
 };
 
-function getLevel43ReplayPuzzle(locale) {
-  if (locale !== "en") {
-    return LEVEL4_3_REPLAY_PUZZLE;
-  }
-
-  return {
+function getLevel43ReplayPuzzle(locale, campaignConfig = {}) {
+  const localized = locale !== "en" ? LEVEL4_3_REPLAY_PUZZLE : {
     ...LEVEL4_3_REPLAY_PUZZLE,
     cards: LEVEL4_3_REPLAY_PUZZLE.cards.map((card) => ({
       ...card,
@@ -2214,10 +2238,16 @@ function getLevel43ReplayPuzzle(locale) {
       ...(LEVEL4_3_REPLAY_PUZZLE_EN.policyCards[card.id] || {}),
     })),
   };
+  return {
+    ...localized,
+    evidenceShard: campaignConfig.evidenceShard || localized.evidenceShard,
+    target: Number(campaignConfig.target || localized.target),
+    windowSec: Number(campaignConfig.windowSec || localized.windowSec),
+  };
 }
 
 function level33SafeUpdateCurl() {
-  return 'curl "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{}\'';
+  return 'curl -v -X PUT "/api/v1/challenges/level3_3/actions/profile" -H "Authorization: Bearer $SESSION_TOKEN" -H "Content-Type: application/json" -d \'{"displayName":"Agent VIOLET","relayNote":"standard trust lane","timezone":"KST"}\'';
 }
 
 function level43EventCurl(eventId = LEVEL4_3_REPLAY_PUZZLE.sampleEventId, via = LEVEL4_3_REPLAY_PUZZLE.sampleVia) {
@@ -5833,8 +5863,12 @@ function Level41MemoryVault({
   patchResult,
   busy,
   locale,
+  campaignConfig,
 }) {
-  const puzzle = useMemo(() => getLevel41MemoryPuzzle(locale), [locale]);
+  const puzzle = useMemo(
+    () => getLevel41MemoryPuzzle(locale, campaignConfig),
+    [campaignConfig, locale]
+  );
   const ui = LEVEL4_1_MEMORY_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
     () => new Map(puzzle.cards.map((card) => [card.id, card])),
@@ -6223,8 +6257,12 @@ function Level42KeySlotLab({
   patchResult,
   busy,
   locale,
+  campaignConfig,
 }) {
-  const puzzle = useMemo(() => getLevel42KeySlotPuzzle(locale), [locale]);
+  const puzzle = useMemo(
+    () => getLevel42KeySlotPuzzle(locale, campaignConfig),
+    [campaignConfig, locale]
+  );
   const ui = LEVEL4_2_KEY_SLOT_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
     () => new Map(puzzle.cards.map((card) => [card.id, card])),
@@ -6894,8 +6932,12 @@ function Level43ReplayStampLab({
   consoleBusy,
   onExec,
   locale,
+  campaignConfig,
 }) {
-  const puzzle = useMemo(() => getLevel43ReplayPuzzle(locale), [locale]);
+  const puzzle = useMemo(
+    () => getLevel43ReplayPuzzle(locale, campaignConfig),
+    [campaignConfig, locale]
+  );
   const ui = LEVEL4_3_REPLAY_UI[locale === "en" ? "en" : "ko"];
   const cardsById = useMemo(
     () => new Map(puzzle.cards.map((card) => [card.id, card])),
@@ -9488,33 +9530,47 @@ function CampaignMode() {
                     phase={phase}
                     evidenceSolved={evidenceSolved}
                     evidenceResult={evidenceResult}
-                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_1_MEMORY_PUZZLE.evidenceShard)}
+                    onRestoreEvidence={() =>
+                      submitEvidenceValue(
+                        detail?.attack?.campaignConfig?.evidenceShard || LEVEL4_1_MEMORY_PUZZLE.evidenceShard
+                      )
+                    }
                     selectedPolicyIds={selectedPatchIds}
                     onTogglePolicy={handleTogglePatch}
                     onSubmitPolicy={handleSubmitPatch}
                     patchResult={patchResult}
                     busy={loading}
                     locale={locale}
+                    campaignConfig={detail?.attack?.campaignConfig}
                   />
                 ) : phase !== "BRIEFING" && currentId === "level4_2" ? (
                   <Level42KeySlotLab
                     phase={phase}
                     evidenceSolved={evidenceSolved}
                     evidenceResult={evidenceResult}
-                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard)}
+                    onRestoreEvidence={() =>
+                      submitEvidenceValue(
+                        detail?.attack?.campaignConfig?.evidenceShard || LEVEL4_2_KEY_SLOT_PUZZLE.evidenceShard
+                      )
+                    }
                     selectedPolicyIds={selectedPatchIds}
                     onTogglePolicy={handleTogglePatch}
                     onSubmitPolicy={handleSubmitPatch}
                     patchResult={patchResult}
                     busy={loading}
                     locale={locale}
+                    campaignConfig={detail?.attack?.campaignConfig}
                   />
                 ) : phase !== "BRIEFING" && currentId === "level4_3" ? (
                   <Level43ReplayStampLab
                     phase={phase}
                     evidenceSolved={evidenceSolved}
                     evidenceResult={evidenceResult}
-                    onRestoreEvidence={() => submitEvidenceValue(LEVEL4_3_REPLAY_PUZZLE.evidenceShard)}
+                    onRestoreEvidence={() =>
+                      submitEvidenceValue(
+                        detail?.attack?.campaignConfig?.evidenceShard || LEVEL4_3_REPLAY_PUZZLE.evidenceShard
+                      )
+                    }
                     selectedPolicyIds={selectedPatchIds}
                     onTogglePolicy={handleTogglePatch}
                     onSubmitPolicy={handleSubmitPatch}
@@ -9528,6 +9584,7 @@ function CampaignMode() {
                     consoleBusy={consoleBusy}
                     onExec={handleExec}
                     locale={locale}
+                    campaignConfig={detail?.attack?.campaignConfig}
                   />
                 ) : null
               ) : (
